@@ -42,7 +42,7 @@ export class PowerlineRenderer {
 
   private needsSessionBlock(): boolean {
     return this.config.display.lines.some(
-      (line) => line.segments.block?.enabled
+      (line) => line.segments.block?.enabled || line.segments.usage?.enabled
     );
   }
 
@@ -68,7 +68,7 @@ export class PowerlineRenderer {
       const isLast = i === segments.length - 1;
       const nextSegment = !isLast ? segments[i + 1] : null;
       const nextBgColor = nextSegment
-        ? this.getSegmentBgColor(nextSegment.type, colors)
+        ? this.getSegmentBgColor(nextSegment.type, colors, sessionBlockInfo)
         : "";
 
       const segmentData = this.renderSegment(
@@ -131,6 +131,9 @@ export class PowerlineRenderer {
           blockType
         );
 
+      case "usage":
+        return this.segmentRenderer.renderUsage(sessionBlockInfo, colors);
+
       case "tmux":
         const tmuxSessionId = this.tmuxService.getSessionId();
         return this.segmentRenderer.renderTmux(tmuxSessionId, colors);
@@ -178,6 +181,8 @@ export class PowerlineRenderer {
       todayFg: hexToAnsi(colorTheme.today.fg, false),
       blockBg: hexToAnsi(colorTheme.block.bg, true),
       blockFg: hexToAnsi(colorTheme.block.fg, false),
+      usageBg: hexToAnsi(colorTheme.usage.bg, true),
+      usageFg: hexToAnsi(colorTheme.usage.fg, false),
       burnLowBg: hexToAnsi(colorTheme.today.bg, true),
       burnFg: hexToAnsi(colorTheme.today.fg, false),
       tmuxBg: hexToAnsi(colorTheme.tmux.bg, true),
@@ -187,7 +192,8 @@ export class PowerlineRenderer {
 
   private getSegmentBgColor(
     segmentType: string,
-    colors: PowerlineColors
+    colors: PowerlineColors,
+    sessionBlockInfo?: any
   ): string {
     switch (segmentType) {
       case "directory":
@@ -202,11 +208,23 @@ export class PowerlineRenderer {
         return colors.burnLowBg;
       case "block":
         return colors.blockBg;
+      case "usage":
+        // Always return black background for usage segment
+        return colors.usageBg || colors.blockBg;
       case "tmux":
         return colors.tmuxBg;
       default:
         return colors.modeBg;
     }
+  }
+
+  private hexToAnsi(hex: string, isBackground: boolean): string {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    const result = `\x1b[${isBackground ? "48" : "38"};2;${r};${g};${b}m`;
+    // Debug: ensure colors are properly formatted
+    return result;
   }
 
   private formatSegment(
@@ -218,13 +236,27 @@ export class PowerlineRenderer {
     let output = `${bgColor}${fgColor} ${text} `;
 
     if (nextBgColor) {
-      const arrowFgColor = extractBgToFg(bgColor);
-      output += `${nextBgColor}${arrowFgColor}${this.symbols.right}`;
+      const arrowFgColor = this.bgToFg(bgColor);
+      // Force reset and explicit color setting
+      output += `\x1b[0m${nextBgColor}${arrowFgColor}${this.symbols.right}`;
     } else {
-      const arrowFgColor = extractBgToFg(bgColor);
+      const arrowFgColor = this.bgToFg(bgColor);
       output += `\x1b[0m${arrowFgColor}${this.symbols.right}\x1b[0m`;
     }
 
     return output;
+  }
+
+  private bgToFg(bgColor: string): string {
+    // Convert background color to foreground color for arrows
+    // Handle both 48;2;r;g;b and 48;5;n formats
+    if (bgColor.includes('48;2;')) {
+      return bgColor.replace(/48;2;/g, '38;2;');
+    } else if (bgColor.includes('48;5;')) {
+      return bgColor.replace(/48;5;/g, '38;5;');
+    } else if (bgColor.includes('48')) {
+      return bgColor.replace(/48/g, '38');
+    }
+    return bgColor;
   }
 }

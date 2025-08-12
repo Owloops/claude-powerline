@@ -28,6 +28,7 @@ export interface ColorTheme {
   session: SegmentColor;
   today: SegmentColor;
   block: SegmentColor;
+  usage: SegmentColor;
   tmux: SegmentColor;
 }
 
@@ -39,6 +40,7 @@ export interface LineConfig {
     session?: UsageSegmentConfig;
     today?: UsageSegmentConfig;
     block?: BlockSegmentConfig;
+    usage?: SegmentConfig;
     tmux?: TmuxSegmentConfig;
   };
 }

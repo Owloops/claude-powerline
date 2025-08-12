@@ -27,6 +27,8 @@ export interface PowerlineColors {
   todayFg: string;
   blockBg: string;
   blockFg: string;
+  usageBg: string;
+  usageFg: string;
   burnLowBg: string;
   burnFg: string;
   tmuxBg: string;

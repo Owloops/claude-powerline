@@ -136,12 +136,54 @@ export class SegmentRenderer {
   ): SegmentData | null {
     if (!blockInfo) return null;
 
-    const text = `${this.symbols.block_cost} ${this.formatSessionBlockInfo(blockInfo, type)}`;
+    const text = `${this.symbols.block_cost} ${this.formatSessionBlockInfoOld(blockInfo, type)}`;
 
     return {
       text,
       bgColor: colors.blockBg,
       fgColor: colors.blockFg,
+    };
+  }
+
+  private getUsageColors(blockInfo: SessionBlockInfo, colors: any): {bg: string, fg: string} {
+    const percentage = (blockInfo.tokens / blockInfo.tokenLimit) * 100;
+    
+    // Always use black background, only change text color
+    const bg = colors.usageBg; // Black background from theme
+    
+    // Match ccusage exact color thresholds - text color only
+    if (percentage > 100) {
+      // Red text - Over limit (>100%)
+      return { bg, fg: this.hexToAnsi("#dc2626", false) };
+    } else if (percentage > 80) {
+      // Yellow text - Warning zone (80-100%)
+      return { bg, fg: this.hexToAnsi("#ca8a04", false) };
+    } else {
+      // Green text - Normal usage (0-80%)
+      return { bg, fg: this.hexToAnsi("#16a34a", false) };
+    }
+  }
+
+  private hexToAnsi(hex: string, isBackground: boolean): string {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `\x1b[${isBackground ? "48" : "38"};2;${r};${g};${b}m`;
+  }
+
+  renderUsage(
+    blockInfo: SessionBlockInfo | null,
+    colors: any
+  ): SegmentData | null {
+    if (!blockInfo) return null;
+
+    const text = `${this.formatSessionBlockInfo(blockInfo)}`;
+    const usageColors = this.getUsageColors(blockInfo, colors);
+
+    return {
+      text,
+      bgColor: usageColors.bg,
+      fgColor: usageColors.fg,
     };
   }
 
@@ -217,6 +259,31 @@ export class SegmentRenderer {
   }
 
   private formatSessionBlockInfo(
+    blockInfo: SessionBlockInfo,
+    type = "cost"
+  ): string {
+    if (!blockInfo.isActive) {
+      return "No active block";
+    }
+
+    // Format like: "20.7% (3815.7k/18477.3k)"
+    const percentage = ((blockInfo.tokens / blockInfo.tokenLimit) * 100).toFixed(1);
+    const tokensUsed = this.formatTokensCompact(blockInfo.tokens);
+    const tokensLimit = this.formatTokensCompact(blockInfo.tokenLimit);
+    
+    return `${percentage}% (${tokensUsed}/${tokensLimit})`;
+  }
+
+  private formatTokensCompact(tokens: number): string {
+    if (tokens >= 1000000) {
+      return `${(tokens / 1000000).toFixed(1)}M`;
+    } else if (tokens >= 1000) {
+      return `${(tokens / 1000).toFixed(1)}k`;
+    }
+    return tokens.toString();
+  }
+
+  private formatSessionBlockInfoOld(
     blockInfo: SessionBlockInfo,
     type = "cost"
   ): string {

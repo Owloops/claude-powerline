@@ -21,6 +21,7 @@ export interface SessionBlockInfo {
   burnRate: number | null;
   tokenBurnRate: number | null;
   isActive: boolean;
+  tokenLimit: number;
 }
 
 export interface UsageInfo {
@@ -79,6 +80,7 @@ export class UsageProvider {
         burnRate,
         tokenBurnRate,
         isActive: true,
+        tokenLimit: activeBlock.tokenLimit || 18477345, // fallback to typical daily limit
       };
     } catch {
       return null;
