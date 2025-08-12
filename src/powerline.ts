@@ -107,7 +107,8 @@ export class PowerlineRenderer {
 
       case "git":
         const showSha = segment.config?.showSha || false;
-        const gitInfo = this.gitService.getGitInfo(currentDir, showSha);
+        // Use process.cwd() which should be the actual working directory
+        const gitInfo = this.gitService.getGitInfo(process.cwd(), showSha);
         return gitInfo
           ? this.segmentRenderer.renderGit(gitInfo, colors, showSha)
           : null;
