@@ -43,15 +43,14 @@ export class GitService {
     try {
       // Use rev-parse which is more reliable than branch --show-current
       const errorRedirect = this.getErrorRedirection();
-      return (
-        execSync(`git rev-parse --abbrev-ref HEAD ${errorRedirect}`, {
-          cwd: workingDir,
-          encoding: "utf8",
-          timeout: 1000,
-          stdio: ['ignore', 'pipe', 'ignore'],
-        }).trim() || null
-      );
-    } catch {
+      const result = execSync(`git rev-parse --abbrev-ref HEAD ${errorRedirect}`, {
+        cwd: workingDir,
+        encoding: "utf8",
+        timeout: 1000,
+        stdio: ['ignore', 'pipe', 'ignore'],
+      }).trim();
+      return result || null;
+    } catch (e) {
       return null;
     }
   }
