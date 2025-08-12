@@ -51,8 +51,7 @@
   },
   "dependencies": {
     "ccusage": "^15.9.1",
-    "get-stdin": "^9.0.0",
-    "grpstyle-design-system": "file:../GRPstyle"
+    "get-stdin": "^9.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",
