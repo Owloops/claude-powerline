@@ -9,18 +9,12 @@ export interface GitInfo {
 }
 
 export class GitService {
-  private sanitizePath(path: string): string {
-    return path.replace(/[;&|`$(){}[\]<>'"\\]/g, "");
-  }
-
   getGitInfo(workingDir: string, showSha = false): GitInfo | null {
     try {
-      const sanitizedDir = this.sanitizePath(workingDir);
-
-      const branch = this.getBranch(sanitizedDir);
-      const status = this.getStatus(sanitizedDir);
-      const { ahead, behind } = this.getAheadBehind(sanitizedDir);
-      const sha = showSha ? this.getSha(sanitizedDir) || undefined : undefined;
+      const branch = this.getBranch(workingDir);
+      const status = this.getStatus(workingDir);
+      const { ahead, behind } = this.getAheadBehind(workingDir);
+      const sha = showSha ? this.getSha(workingDir) || undefined : undefined;
 
       return {
         branch: branch || "detached",
@@ -37,7 +31,7 @@ export class GitService {
   private getBranch(workingDir: string): string | null {
     try {
       return (
-        execSync("git branch --show-current 2>/dev/null", {
+        execSync("git branch --show-current", {
           cwd: workingDir,
           encoding: "utf8",
           timeout: 1000,
@@ -50,7 +44,7 @@ export class GitService {
 
   private getStatus(workingDir: string): "clean" | "dirty" | "conflicts" {
     try {
-      const gitStatus = execSync("git status --porcelain 2>/dev/null", {
+      const gitStatus = execSync("git status --porcelain", {
         cwd: workingDir,
         encoding: "utf8",
         timeout: 1000,
@@ -77,23 +71,17 @@ export class GitService {
     behind: number;
   } {
     try {
-      const aheadResult = execSync(
-        "git rev-list --count @{u}..HEAD 2>/dev/null",
-        {
-          cwd: workingDir,
-          encoding: "utf8",
-          timeout: 1000,
-        }
-      ).trim();
+      const aheadResult = execSync("git rev-list --count @{u}..HEAD", {
+        cwd: workingDir,
+        encoding: "utf8",
+        timeout: 1000,
+      }).trim();
 
-      const behindResult = execSync(
-        "git rev-list --count HEAD..@{u} 2>/dev/null",
-        {
-          cwd: workingDir,
-          encoding: "utf8",
-          timeout: 1000,
-        }
-      ).trim();
+      const behindResult = execSync("git rev-list --count HEAD..@{u}", {
+        cwd: workingDir,
+        encoding: "utf8",
+        timeout: 1000,
+      }).trim();
 
       return {
         ahead: parseInt(aheadResult) || 0,
@@ -106,7 +94,7 @@ export class GitService {
 
   private getSha(workingDir: string): string | null {
     try {
-      const sha = execSync("git rev-parse --short=7 HEAD 2>/dev/null", {
+      const sha = execSync("git rev-parse --short=7 HEAD", {
         cwd: workingDir,
         encoding: "utf8",
         timeout: 1000,
