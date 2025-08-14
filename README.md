@@ -173,8 +173,21 @@ claude-powerline --session-budget=50
 
 ### Status Indicators
 
+#### Symbols
+
+- **Session**: `§` Section sign for session costs
+- **Block**: `◱` Clock symbol for 5-hour blocks  
+- **Today**: `☉` Sun symbol for daily usage
+- **Git Branch**: `⎇` Branch symbol
+- **Git Tag**: `⌂` House/tag symbol
+- **Git SHA**: `♯` Hash symbol
+- **Git Stash**: `⧇` Double square symbol
+- **Metrics Delta**: `Δ` Delta for last response time
+
+#### Status States
+
 - **Git**: `✓` Clean, `●` Dirty, `⚠` Conflicts, `↑3` Ahead, `↓2` Behind remote
-- **Context**: `⊡ 34,040 (79%)` - Token count and percentage remaining until auto-compact (uses 75% of 200k limit)
+- **Context**: `◔ 34,040 (79%)` - Token count and percentage remaining until auto-compact
 - **Budget**: `25%` Normal (under 50%), `+75%` Moderate (50-79%), `!85%` Warning (80%+)
 
 ## Configuration
@@ -207,8 +220,21 @@ Configuration priority (top overrides bottom):
     "lines": [
       {
         "segments": {
-          "directory": { "enabled": true },
-          "git": { "enabled": true, "showSha": true },
+          "directory": { 
+            "enabled": true,
+            "useBasename": false
+          },
+          "git": { 
+            "enabled": true, 
+            "showSha": true,
+            "showWorkingTree": false,
+            "showOperation": false,
+            "showTag": false,
+            "showTimeSinceCommit": false,
+            "showStashCount": false,
+            "showUpstream": false,
+            "showRepoName": false
+          },
           "model": { "enabled": true },
           "session": { "enabled": true, "type": "tokens" },
           "block": { "enabled": true, "type": "cost" },
@@ -218,6 +244,7 @@ Configuration priority (top overrides bottom):
           "metrics": { 
             "enabled": true,
             "showResponseTime": true,
+            "showLastResponseTime": false,
             "showDuration": true,
             "showMessageCount": true,
             "showCostBurnRate": false,
@@ -232,15 +259,50 @@ Configuration priority (top overrides bottom):
 
 ### Segment Details
 
-- **directory**: Current working directory name
-- **git**: Branch, status (clean/dirty), ahead/behind counts, SHA (optional)
+- **directory**: Current working directory name (supports `useBasename` option)
+- **git**: Branch, status, and extensive repository information (see Git Configuration below)
 - **model**: Current Claude model being used
 - **session**: Token usage and costs for current session
 - **block**: Usage within current 5-hour billing window
 - **today**: Total daily usage with budget monitoring
 - **context**: Context window usage and auto-compact threshold
 - **tmux**: Tmux session name and window info (when in tmux)
-- **metrics**: Performance analytics (response time, session duration, message count, burn rates)
+- **metrics**: Performance analytics (see Metrics Configuration below)
+
+#### Directory Configuration
+
+```json
+"directory": {
+  "enabled": true,
+  "useBasename": false  // Show only folder name instead of full path
+}
+```
+
+#### Git Configuration
+
+The git segment now supports extensive repository information:
+
+```json
+"git": {
+  "enabled": true,
+  "showSha": true,              // Show abbreviated commit SHA (♯ abc123)
+  "showWorkingTree": false,     // Show staged/unstaged/untracked counts ((+1 ~2 ?3))
+  "showOperation": false,        // Show ongoing operations (MERGE/REBASE/CHERRY-PICK)
+  "showTag": false,              // Show nearest tag (⌂ v1.5.0)
+  "showTimeSinceCommit": false, // Show time since last commit (⏰ 2h)
+  "showStashCount": false,      // Show stash count (⧇ 3)
+  "showUpstream": false,        // Show upstream branch (→ origin/main)
+  "showRepoName": false         // Show repository name
+}
+```
+
+**Git Status Indicators:**
+- `✓` Clean working tree
+- `●` Uncommitted changes
+- `⚠` Merge conflicts
+- `↑3` Commits ahead of upstream
+- `↓2` Commits behind upstream
+- `(+1 ~2 ?3)` Staged/Unstaged/Untracked file counts
 
 #### Metrics Configuration
 
@@ -249,21 +311,22 @@ The metrics segment displays performance analytics from your Claude sessions:
 ```json
 "metrics": {
   "enabled": true,
-  "showResponseTime": true,
-  "showDuration": true, 
-  "showMessageCount": true,
-  "showCostBurnRate": false,
-  "showTokenBurnRate": false
+  "showResponseTime": true,      // Average response time (`⧖ 3.2s`)
+  "showLastResponseTime": false, // Last response time (`Δ 2.8s`)
+  "showDuration": true,          // Session duration (`⧗ 28m`)
+  "showMessageCount": true,      // User message count (`⟐ 93`)
+  "showCostBurnRate": false,     // Cost per hour (`⟢ $1.20/h`)
+  "showTokenBurnRate": false     // Tokens per hour (`⟢ 450K/h`)
 }
 ```
 
-**Options:**
-
-- `showResponseTime`: Average response time per message (`⧖ 3.2s`)
-- `showDuration`: Total session duration (`⧗ 28m`)
-- `showMessageCount`: Number of user messages (`⟐ 93`)
-- `showCostBurnRate`: Cost burn rate per hour (`⟢ $1.20/h`)
-- `showTokenBurnRate`: Token burn rate per hour (`⟢ 450K/h`)
+**Metrics Display:**
+- `showResponseTime`: Average response time across all messages
+- `showLastResponseTime`: Time for the last response (shows `0.0s` while waiting)
+- `showDuration`: Total time since session started
+- `showMessageCount`: Number of user messages sent
+- `showCostBurnRate`: Spending rate per hour
+- `showTokenBurnRate`: Token consumption rate per hour
 
 ![Metrics Segment Example](images/claude-powerline-metrics.png)
 

@@ -5,8 +5,18 @@
     "lines": [
       {
         "segments": {
-          "directory": { "enabled": true },
-          "git": { "enabled": true, "showSha": false },
+          "directory": { "enabled": true, "useBasename": false },
+          "git": { 
+            "enabled": true, 
+            "showSha": false,
+            "showWorkingTree": false,
+            "showOperation": false,
+            "showTag": false,
+            "showTimeSinceCommit": false,
+            "showStashCount": false,
+            "showUpstream": false,
+            "showRepoName": false
+          },
           "model": { "enabled": true },
           "session": { "enabled": true, "type": "tokens" },
           "today": { "enabled": true, "type": "cost" },
@@ -20,6 +30,7 @@
           "metrics": { 
             "enabled": true,
             "showResponseTime": true,
+            "showLastResponseTime": false,
             "showDuration": true,
             "showMessageCount": true,
             "showCostBurnRate": true,
