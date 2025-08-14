@@ -178,36 +178,40 @@ export class GitService {
         cwd: workingDir,
         encoding: "utf8",
         timeout: 5000,
-      }).trim();
+      });
 
       let staged = 0;
       let unstaged = 0;
       let untracked = 0;
       let conflicts = 0;
 
-      if (!gitStatus) {
+      if (!gitStatus.trim()) {
         return { staged, unstaged, untracked, conflicts };
       }
 
       const lines = gitStatus.split('\n');
       for (const line of lines) {
-        if (line.length < 2) continue;
-        const indexStatus = line[0];
-        const worktreeStatus = line[1];
+        if (!line || line.length < 2) continue;
+        const indexStatus = line.charAt(0);
+        const worktreeStatus = line.charAt(1);
 
-        // Conflicts
-        if (line.startsWith('UU') || line.startsWith('AA') || line.startsWith('DD')) {
-          conflicts++;
-        }
         // Untracked
-        else if (line.startsWith('??')) {
+        if (indexStatus === '?' && worktreeStatus === '?') {
           untracked++;
+          continue;
         }
-        // Staged (index changes)
-        else if (indexStatus !== ' ' && indexStatus !== '?') {
+        
+        // Conflicts
+        const statusPair = indexStatus + worktreeStatus;
+        if (['DD', 'AU', 'UD', 'UA', 'DU', 'AA', 'UU'].includes(statusPair)) {
+          conflicts++;
+          continue;
+        }
+        
+        // Count staged and unstaged independently
+        if (indexStatus !== ' ' && indexStatus !== '?') {
           staged++;
         }
-        // Unstaged (worktree changes)
         if (worktreeStatus !== ' ' && worktreeStatus !== '?') {
           unstaged++;
         }
