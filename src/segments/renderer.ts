@@ -120,8 +120,7 @@ export class SegmentRenderer {
   ): SegmentData {
     const currentDir = hookData.workspace?.current_dir || hookData.cwd || "/";
     const projectDir = hookData.workspace?.project_dir;
-    
-    // If showBasename is true, just show the last part of the path
+
     if (config?.showBasename) {
       const basename = path.basename(currentDir) || "root";
       return {
@@ -130,12 +129,11 @@ export class SegmentRenderer {
         fgColor: colors.modeFg,
       };
     }
-    
-    // Replace home directory with ~
+
     const homeDir = process.env.HOME || process.env.USERPROFILE;
     let displayDir = currentDir;
     let displayProjectDir = projectDir;
-    
+
     if (homeDir) {
       if (currentDir.startsWith(homeDir)) {
         displayDir = currentDir.replace(homeDir, "~");
@@ -144,7 +142,7 @@ export class SegmentRenderer {
         displayProjectDir = projectDir.replace(homeDir, "~");
       }
     }
-    
+
     const dirName = this.getDisplayDirectoryName(displayDir, displayProjectDir);
 
     return {
@@ -163,36 +161,32 @@ export class SegmentRenderer {
 
     const parts: string[] = [];
 
-    // Repo name (if enabled)
     if (config?.showRepoName && gitInfo.repoName) {
       parts.push(gitInfo.repoName);
       if (gitInfo.isWorktree) {
-        parts.push(this.symbols.git_worktree); // Worktree indicator
+        parts.push(this.symbols.git_worktree);
       }
     }
 
-    // Ongoing operation (if any)
     if (config?.showOperation && gitInfo.operation) {
       parts.push(`[${gitInfo.operation}]`);
     }
 
-    // Branch name
     parts.push(`${this.symbols.branch} ${gitInfo.branch}`);
 
-    // Tag (if enabled)
     if (config?.showTag && gitInfo.tag) {
       parts.push(`${this.symbols.git_tag} ${gitInfo.tag}`);
     }
 
-    // SHA (if enabled)
     if (config?.showSha && gitInfo.sha) {
       parts.push(`${this.symbols.git_sha} ${gitInfo.sha}`);
     }
 
-    // Ahead/Behind (if enabled or by default)
     if (config?.showAheadBehind !== false) {
       if (gitInfo.ahead > 0 && gitInfo.behind > 0) {
-        parts.push(`${this.symbols.git_ahead}${gitInfo.ahead}${this.symbols.git_behind}${gitInfo.behind}`);
+        parts.push(
+          `${this.symbols.git_ahead}${gitInfo.ahead}${this.symbols.git_behind}${gitInfo.behind}`
+        );
       } else if (gitInfo.ahead > 0) {
         parts.push(`${this.symbols.git_ahead}${gitInfo.ahead}`);
       } else if (gitInfo.behind > 0) {
@@ -200,35 +194,38 @@ export class SegmentRenderer {
       }
     }
 
-    // Working tree counts (if enabled)
     if (config?.showWorkingTree) {
       const counts: string[] = [];
-      if (gitInfo.staged && gitInfo.staged > 0) counts.push(`+${gitInfo.staged}`);
-      if (gitInfo.unstaged && gitInfo.unstaged > 0) counts.push(`~${gitInfo.unstaged}`);
-      if (gitInfo.untracked && gitInfo.untracked > 0) counts.push(`?${gitInfo.untracked}`);
-      if (gitInfo.conflicts && gitInfo.conflicts > 0) counts.push(`!${gitInfo.conflicts}`);
+      if (gitInfo.staged && gitInfo.staged > 0)
+        counts.push(`+${gitInfo.staged}`);
+      if (gitInfo.unstaged && gitInfo.unstaged > 0)
+        counts.push(`~${gitInfo.unstaged}`);
+      if (gitInfo.untracked && gitInfo.untracked > 0)
+        counts.push(`?${gitInfo.untracked}`);
+      if (gitInfo.conflicts && gitInfo.conflicts > 0)
+        counts.push(`!${gitInfo.conflicts}`);
       if (counts.length > 0) {
         parts.push(`(${counts.join(" ")})`);
       }
     }
 
-    // Upstream (if enabled)
     if (config?.showUpstream && gitInfo.upstream) {
       parts.push(`${this.symbols.git_upstream}${gitInfo.upstream}`);
     }
 
-    // Stash count (if enabled)
-    if (config?.showStashCount && gitInfo.stashCount && gitInfo.stashCount > 0) {
+    if (
+      config?.showStashCount &&
+      gitInfo.stashCount &&
+      gitInfo.stashCount > 0
+    ) {
       parts.push(`${this.symbols.git_stash} ${gitInfo.stashCount}`);
     }
 
-    // Time since last commit (if enabled)
     if (config?.showTimeSinceCommit && gitInfo.timeSinceCommit !== undefined) {
       const time = this.formatTimeSince(gitInfo.timeSinceCommit);
       parts.push(`${this.symbols.git_time} ${time}`);
     }
 
-    // Status indicator - always show the original icons at the end
     let gitStatusIcon = this.symbols.git_clean;
     if (gitInfo.status === "conflicts") {
       gitStatusIcon = this.symbols.git_conflicts;
@@ -346,8 +343,8 @@ export class SegmentRenderer {
         metricsInfo.lastResponseTime === null
           ? "0.0s"
           : metricsInfo.lastResponseTime < 60
-          ? `${metricsInfo.lastResponseTime.toFixed(1)}s`
-          : `${(metricsInfo.lastResponseTime / 60).toFixed(1)}m`;
+            ? `${metricsInfo.lastResponseTime.toFixed(1)}s`
+            : `${(metricsInfo.lastResponseTime / 60).toFixed(1)}m`;
       parts.push(`${this.symbols.metrics_last_response} ${lastResponseTime}`);
     }
 
@@ -417,18 +414,18 @@ export class SegmentRenderer {
     if (blockInfo.cost === null && blockInfo.tokens === null) {
       displayText = "No active block";
     } else {
-      // Always include time remaining when available
-      const timeStr = blockInfo.timeRemaining !== null 
-        ? (() => {
-            const hours = Math.floor(blockInfo.timeRemaining / 60);
-            const minutes = blockInfo.timeRemaining % 60;
-            return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
-          })()
-        : null;
+      const timeStr =
+        blockInfo.timeRemaining !== null
+          ? (() => {
+              const hours = Math.floor(blockInfo.timeRemaining / 60);
+              const minutes = blockInfo.timeRemaining % 60;
+              return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+            })()
+          : null;
 
       switch (type) {
         case "cost":
-          displayText = timeStr 
+          displayText = timeStr
             ? `${formatCost(blockInfo.cost)} (${timeStr} left)`
             : formatCost(blockInfo.cost);
           break;
@@ -438,8 +435,7 @@ export class SegmentRenderer {
             : formatTokens(blockInfo.tokens);
           break;
         default:
-          // Default to cost display
-          displayText = timeStr 
+          displayText = timeStr
             ? `${formatCost(blockInfo.cost)} (${timeStr} left)`
             : formatCost(blockInfo.cost);
       }
@@ -490,12 +486,10 @@ export class SegmentRenderer {
     currentDir: string,
     projectDir?: string
   ): string {
-    // If we have a tilde path, preserve it
-    if (currentDir.startsWith('~')) {
-      // Return the full path with tilde for better context
+    if (currentDir.startsWith("~")) {
       return currentDir;
     }
-    
+
     if (projectDir && projectDir !== currentDir) {
       if (currentDir.startsWith(projectDir)) {
         const relativePath = currentDir.slice(projectDir.length + 1);

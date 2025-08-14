@@ -18,6 +18,10 @@ interface TranscriptEntry {
   message?: {
     role?: string;
     type?: string;
+    content?: Array<{
+      type?: string;
+      [key: string]: any;
+    }>;
     usage?: {
       input_tokens?: number;
       output_tokens?: number;
@@ -73,7 +77,10 @@ export class MetricsProvider {
     }
   }
 
-  private calculateResponseTimes(entries: TranscriptEntry[]): { average: number | null; last: number | null } {
+  private calculateResponseTimes(entries: TranscriptEntry[]): {
+    average: number | null;
+    last: number | null;
+  } {
     const userMessages: Date[] = [];
     const assistantMessages: Date[] = [];
     let lastUserMessageIndex = -1;
@@ -83,15 +90,17 @@ export class MetricsProvider {
 
     for (let i = 0; i < entries.length; i++) {
       const entry = entries[i];
-      if (!entry.timestamp) continue;
+      if (!entry || !entry.timestamp) continue;
 
       try {
         const timestamp = new Date(entry.timestamp);
-        const messageType = entry.type || entry.message?.role || entry.message?.type;
-        
-        const isToolResult = entry.type === "user" && 
+        const messageType =
+          entry.type || entry.message?.role || entry.message?.type;
+
+        const isToolResult =
+          entry.type === "user" &&
           entry.message?.content?.[0]?.type === "tool_result";
-        
+
         const isRealUserMessage = messageType === "user" && !isToolResult;
 
         if (isRealUserMessage) {
@@ -100,26 +109,33 @@ export class MetricsProvider {
           lastUserMessageIndex = i;
           lastResponseEndTime = null;
           lastResponseEndIndex = -1;
-          debug(`Found user message at index ${i}, timestamp ${timestamp.toISOString()}`);
+          debug(
+            `Found user message at index ${i}, timestamp ${timestamp.toISOString()}`
+          );
         } else if (lastUserMessageIndex >= 0) {
-          const isPartOfResponse = 
-            messageType === "assistant" || 
+          const isPartOfResponse =
+            messageType === "assistant" ||
             isToolResult ||
             messageType === "system" ||
             entry.message?.usage;
-          
+
           if (isPartOfResponse) {
-            // Update the end time for the current response sequence
             lastResponseEndTime = timestamp;
             lastResponseEndIndex = i;
-            
+
             if (messageType === "assistant" || entry.message?.usage) {
               assistantMessages.push(timestamp);
-              debug(`Found assistant message at index ${i}, timestamp ${timestamp.toISOString()}`);
+              debug(
+                `Found assistant message at index ${i}, timestamp ${timestamp.toISOString()}`
+              );
             } else if (isToolResult) {
-              debug(`Found tool result at index ${i}, timestamp ${timestamp.toISOString()}`);
+              debug(
+                `Found tool result at index ${i}, timestamp ${timestamp.toISOString()}`
+              );
             } else {
-              debug(`Found ${messageType} message at index ${i}, timestamp ${timestamp.toISOString()}`);
+              debug(
+                `Found ${messageType} message at index ${i}, timestamp ${timestamp.toISOString()}`
+              );
             }
           }
         }
@@ -158,37 +174,50 @@ export class MetricsProvider {
     }
 
     let lastResponseTime: number | null = null;
-    if (lastUserMessageTime && lastResponseEndTime && lastResponseEndIndex > lastUserMessageIndex) {
-      const timeDiff = lastResponseEndTime.getTime() - lastUserMessageTime.getTime();
+    if (
+      lastUserMessageTime &&
+      lastResponseEndTime &&
+      lastResponseEndIndex > lastUserMessageIndex
+    ) {
+      const timeDiff =
+        lastResponseEndTime.getTime() - lastUserMessageTime.getTime();
       const positionDiff = lastResponseEndIndex - lastUserMessageIndex;
-      
+
       if (timeDiff === 0 && positionDiff > 0) {
         lastResponseTime = positionDiff * 0.1;
-        debug(`Estimated last response time from position difference: ${lastResponseTime.toFixed(2)}s (${positionDiff} messages)`);
+        debug(
+          `Estimated last response time from position difference: ${lastResponseTime.toFixed(2)}s (${positionDiff} messages)`
+        );
       } else if (timeDiff > 0) {
         lastResponseTime = timeDiff / 1000;
-        debug(`Last response time from timestamps: ${lastResponseTime.toFixed(2)}s`);
+        debug(
+          `Last response time from timestamps: ${lastResponseTime.toFixed(2)}s`
+        );
       }
-      
-      debug(`Last user message at index ${lastUserMessageIndex}, timestamp ${lastUserMessageTime.toISOString()}`);
-      debug(`Last response end at index ${lastResponseEndIndex}, timestamp ${lastResponseEndTime.toISOString()}`);
+
+      debug(
+        `Last user message at index ${lastUserMessageIndex}, timestamp ${lastUserMessageTime.toISOString()}`
+      );
+      debug(
+        `Last response end at index ${lastResponseEndIndex}, timestamp ${lastResponseEndTime.toISOString()}`
+      );
     }
 
     if (responseTimes.length === 0 && lastResponseTime === null) {
       return { average: null, last: null };
     }
 
-    const avgResponseTime = responseTimes.length > 0
-      ? responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length
-      : null;
-    
+    const avgResponseTime =
+      responseTimes.length > 0
+        ? responseTimes.reduce((sum, time) => sum + time, 0) /
+          responseTimes.length
+        : null;
+
     debug(
       `Calculated average response time: ${avgResponseTime?.toFixed(2) || "null"}s from ${responseTimes.length} measurements`
     );
-    debug(
-      `Last response time: ${lastResponseTime?.toFixed(2) || "null"}s`
-    );
-    
+    debug(`Last response time: ${lastResponseTime?.toFixed(2) || "null"}s`);
+
     return { average: avgResponseTime, last: lastResponseTime };
   }
 
@@ -251,7 +280,8 @@ export class MetricsProvider {
     return entries.filter((entry) => {
       const messageType =
         entry.type || entry.message?.role || entry.message?.type;
-      const isToolResult = entry.type === "user" && 
+      const isToolResult =
+        entry.type === "user" &&
         entry.message?.content?.[0]?.type === "tool_result";
       return messageType === "user" && !isToolResult;
     }).length;

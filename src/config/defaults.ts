@@ -7,10 +7,20 @@ export const DEFAULT_CONFIG: PowerlineConfig = {
     lines: [
       {
         segments: {
-          directory: { enabled: true },
+          directory: { 
+            enabled: true,
+            showBasename: false
+          },
           git: {
             enabled: true,
             showSha: false,
+            showWorkingTree: false,
+            showOperation: false,
+            showTag: false,
+            showTimeSinceCommit: false,
+            showStashCount: false,
+            showUpstream: false,
+            showRepoName: false,
           },
           model: { enabled: true },
           session: { enabled: true, type: "tokens" },
@@ -18,7 +28,15 @@ export const DEFAULT_CONFIG: PowerlineConfig = {
           block: { enabled: true, type: "cost" },
           tmux: { enabled: false },
           context: { enabled: true },
-          metrics: { enabled: false },
+          metrics: { 
+            enabled: false,
+            showResponseTime: true,
+            showLastResponseTime: false,
+            showDuration: true,
+            showMessageCount: true,
+            showCostBurnRate: false,
+            showTokenBurnRate: false,
+          },
         },
       },
     ],

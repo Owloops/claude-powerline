@@ -9,16 +9,13 @@ export interface GitInfo {
   ahead: number;
   behind: number;
   sha?: string;
-  // Working tree counts
   staged?: number;
   unstaged?: number;
   untracked?: number;
   conflicts?: number;
-  // Operation status
-  operation?: string; // REBASE, MERGE, CHERRY-PICK, etc
-  // Additional info
+  operation?: string;
   tag?: string;
-  timeSinceCommit?: number; // seconds
+  timeSinceCommit?: number;
   stashCount?: number;
   upstream?: string;
   repoName?: string;
@@ -73,7 +70,7 @@ export class GitService {
       const branch = this.getBranch(gitDir);
       const status = this.getStatus(gitDir);
       const { ahead, behind } = this.getAheadBehind(gitDir);
-      
+
       const result: GitInfo = {
         branch: branch || "detached",
         status,
@@ -81,7 +78,6 @@ export class GitService {
         behind,
       };
 
-      // Add optional fields based on options
       if (options.showSha) {
         result.sha = this.getSha(gitDir) || undefined;
       }
@@ -103,7 +99,8 @@ export class GitService {
       }
 
       if (options.showTimeSinceCommit) {
-        result.timeSinceCommit = this.getTimeSinceLastCommit(gitDir) || undefined;
+        result.timeSinceCommit =
+          this.getTimeSinceLastCommit(gitDir) || undefined;
       }
 
       if (options.showStashCount) {
@@ -189,30 +186,27 @@ export class GitService {
         return { staged, unstaged, untracked, conflicts };
       }
 
-      const lines = gitStatus.split('\n');
+      const lines = gitStatus.split("\n");
       for (const line of lines) {
         if (!line || line.length < 2) continue;
         const indexStatus = line.charAt(0);
         const worktreeStatus = line.charAt(1);
 
-        // Untracked
-        if (indexStatus === '?' && worktreeStatus === '?') {
+        if (indexStatus === "?" && worktreeStatus === "?") {
           untracked++;
           continue;
         }
-        
-        // Conflicts
+
         const statusPair = indexStatus + worktreeStatus;
-        if (['DD', 'AU', 'UD', 'UA', 'DU', 'AA', 'UU'].includes(statusPair)) {
+        if (["DD", "AU", "UD", "UA", "DU", "AA", "UU"].includes(statusPair)) {
           conflicts++;
           continue;
         }
-        
-        // Count staged and unstaged independently
-        if (indexStatus !== ' ' && indexStatus !== '?') {
+
+        if (indexStatus !== " " && indexStatus !== "?") {
           staged++;
         }
-        if (worktreeStatus !== ' ' && worktreeStatus !== '?') {
+        if (worktreeStatus !== " " && worktreeStatus !== "?") {
           unstaged++;
         }
       }
@@ -268,15 +262,18 @@ export class GitService {
   private getOngoingOperation(workingDir: string): string | null {
     try {
       const gitDir = path.join(workingDir, ".git");
-      
-      // Check for various operation files in .git
+
       if (fs.existsSync(path.join(gitDir, "MERGE_HEAD"))) return "MERGE";
-      if (fs.existsSync(path.join(gitDir, "CHERRY_PICK_HEAD"))) return "CHERRY-PICK";
+      if (fs.existsSync(path.join(gitDir, "CHERRY_PICK_HEAD")))
+        return "CHERRY-PICK";
       if (fs.existsSync(path.join(gitDir, "REVERT_HEAD"))) return "REVERT";
       if (fs.existsSync(path.join(gitDir, "BISECT_LOG"))) return "BISECT";
-      if (fs.existsSync(path.join(gitDir, "rebase-merge")) || 
-          fs.existsSync(path.join(gitDir, "rebase-apply"))) return "REBASE";
-      
+      if (
+        fs.existsSync(path.join(gitDir, "rebase-merge")) ||
+        fs.existsSync(path.join(gitDir, "rebase-apply"))
+      )
+        return "REBASE";
+
       return null;
     } catch {
       return null;
@@ -288,7 +285,7 @@ export class GitService {
       const tag = execSync("git describe --tags --abbrev=0", {
         cwd: workingDir,
         encoding: "utf8",
-        timeout: 5000
+        timeout: 5000,
       }).trim();
 
       return tag || null;
@@ -306,10 +303,10 @@ export class GitService {
       }).trim();
 
       if (!timestamp) return null;
-      
-      const commitTime = parseInt(timestamp) * 1000; // Convert to milliseconds
+
+      const commitTime = parseInt(timestamp) * 1000;
       const now = Date.now();
-      return Math.floor((now - commitTime) / 1000); // Return in seconds
+      return Math.floor((now - commitTime) / 1000);
     } catch {
       return null;
     }
@@ -324,7 +321,7 @@ export class GitService {
       }).trim();
 
       if (!stashList) return 0;
-      return stashList.split('\n').length;
+      return stashList.split("\n").length;
     } catch {
       return 0;
     }
@@ -353,10 +350,9 @@ export class GitService {
       }).trim();
 
       if (!remoteUrl) return path.basename(workingDir);
-      
-      // Extract repo name from URL
+
       const match = remoteUrl.match(/\/([^/]+?)(\.git)?$/);
-      return match ? match[1] : path.basename(workingDir);
+      return match?.[1] || path.basename(workingDir);
     } catch {
       return path.basename(workingDir);
     }
@@ -365,7 +361,6 @@ export class GitService {
   private isWorktree(workingDir: string): boolean {
     try {
       const gitDir = path.join(workingDir, ".git");
-      // If .git is a file (not directory), it's a worktree
       if (fs.existsSync(gitDir) && fs.statSync(gitDir).isFile()) {
         return true;
       }

@@ -121,15 +121,15 @@ Options are specified by command line flags. Overall configuration can also use 
 
 ## Command Line Options
 
-| Option | Values | Description |
-|--------|--------|-------------|
-| `--theme` | `dark` (default), `light`, `nord`, `tokyo-night`, `rose-pine`, `custom` | Set color theme |
-| `--style` | `minimal` (default), `powerline` | Set separator style |
-| `--usage` | `cost`, `tokens`, `both`, `breakdown` | Set usage display format |
-| `--session-budget` | `AMOUNT` | Set session budget limit in USD |
-| `--config` | `PATH` | Use custom config file path |
-| `--install-fonts` | - | Install powerline fonts to system |
-| `-h, --help` | - | Show help message |
+| Option             | Values                                                                  | Description                       |
+| ------------------ | ----------------------------------------------------------------------- | --------------------------------- |
+| `--theme`          | `dark` (default), `light`, `nord`, `tokyo-night`, `rose-pine`, `custom` | Set color theme                   |
+| `--style`          | `minimal` (default), `powerline`                                        | Set separator style               |
+| `--usage`          | `cost`, `tokens`, `both`, `breakdown`                                   | Set usage display format          |
+| `--session-budget` | `AMOUNT`                                                                | Set session budget limit in USD   |
+| `--config`         | `PATH`                                                                  | Use custom config file path       |
+| `--install-fonts`  | -                                                                       | Install powerline fonts to system |
+| `-h, --help`       | -                                                                       | Show help message                 |
 
 > [!NOTE]  
 > Global options have CLI flags and environment variables. Individual segments are configured through config files.
@@ -297,6 +297,7 @@ The git segment now supports extensive repository information:
 ```
 
 **Git Status Indicators:**
+
 - `✓` Clean working tree
 - `●` Uncommitted changes
 - `⚠` Merge conflicts
@@ -321,6 +322,7 @@ The metrics segment displays performance analytics from your Claude sessions:
 ```
 
 **Metrics Display:**
+
 - `showResponseTime`: Average response time across all messages
 - `showLastResponseTime`: Time for the last response (shows `0.0s` while waiting)
 - `showDuration`: Total time since session started
@@ -357,12 +359,14 @@ The powerline includes three complementary usage segments:
 **Display Options:**
 
 **Session & Today segments:**
+
 - `cost`: Show dollar amounts (`$0.05`)
 - `tokens`: Show token counts (`1.2K tokens`)
 - `both`: Show both (`$0.05 (1.2K)`)
 - `breakdown`: Show token breakdown (`1.2Kin + 0.8Kout + 1.5Kcached`)
 
 **Block segment** (always shows time remaining):
+
 - `cost`: Show cost + time (`$0.05 (2h 30m left)`)
 - `tokens`: Show tokens + time (`1.2K tokens (2h 30m left)`)
 

@@ -198,7 +198,7 @@ export class PowerlineRenderer {
     switch (segment.type) {
       case "directory":
         return this.segmentRenderer.renderDirectory(
-          hookData, 
+          hookData,
           colors,
           segment.config as DirectorySegmentConfig
         );
