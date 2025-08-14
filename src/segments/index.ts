@@ -13,6 +13,7 @@ export {
   SegmentRenderer,
   PowerlineSymbols,
   AnySegmentConfig,
+  DirectorySegmentConfig,
   GitSegmentConfig,
   UsageSegmentConfig,
   MetricsSegmentConfig,

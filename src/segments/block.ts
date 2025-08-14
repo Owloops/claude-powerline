@@ -64,11 +64,6 @@ export class BlockProvider {
     let entriesInBlock = 0;
 
     for (const entry of parsedEntries) {
-      if (entry.timestamp < blockStart) {
-        debug(`Block segment: Early exit at ${entry.timestamp.toISOString()}`);
-        break;
-      }
-
       if (
         entry.message?.usage &&
         entry.timestamp >= blockStart &&

@@ -5,6 +5,7 @@ import { DEFAULT_CONFIG } from "./defaults";
 import type { ColorTheme } from "../themes";
 import type {
   SegmentConfig,
+  DirectorySegmentConfig,
   GitSegmentConfig,
   UsageSegmentConfig,
   TmuxSegmentConfig,
@@ -16,7 +17,7 @@ import type {
 
 export interface LineConfig {
   segments: {
-    directory?: SegmentConfig;
+    directory?: DirectorySegmentConfig;
     git?: GitSegmentConfig;
     model?: SegmentConfig;
     session?: UsageSegmentConfig;

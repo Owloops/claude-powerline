@@ -9,6 +9,20 @@ export interface GitInfo {
   ahead: number;
   behind: number;
   sha?: string;
+  // Working tree counts
+  staged?: number;
+  unstaged?: number;
+  untracked?: number;
+  conflicts?: number;
+  // Operation status
+  operation?: string; // REBASE, MERGE, CHERRY-PICK, etc
+  // Additional info
+  tag?: string;
+  timeSinceCommit?: number; // seconds
+  stashCount?: number;
+  upstream?: string;
+  repoName?: string;
+  isWorktree?: boolean;
 }
 
 export class GitService {
@@ -26,13 +40,23 @@ export class GitService {
 
   getGitInfo(
     workingDir: string,
-    showSha = false,
+    options: {
+      showSha?: boolean;
+      showWorkingTree?: boolean;
+      showOperation?: boolean;
+      showTag?: boolean;
+      showTimeSinceCommit?: boolean;
+      showStashCount?: boolean;
+      showUpstream?: boolean;
+      showRepoName?: boolean;
+    } = {},
     projectDir?: string
   ): GitInfo | null {
     const gitDir =
       projectDir && this.isGitRepo(projectDir) ? projectDir : workingDir;
 
-    const cacheKey = `${gitDir}:${showSha}`;
+    const optionsKey = JSON.stringify(options);
+    const cacheKey = `${gitDir}:${optionsKey}`;
     const cached = this.cache.get(cacheKey);
     const now = Date.now();
 
@@ -41,30 +65,59 @@ export class GitService {
     }
 
     if (!this.isGitRepo(gitDir)) {
-      const result = {
-        branch: "detached",
-        status: "clean" as const,
-        ahead: 0,
-        behind: 0,
-        sha: undefined,
-      };
-      this.cache.set(cacheKey, { data: result, timestamp: now });
-      return result;
+      this.cache.set(cacheKey, { data: null, timestamp: now });
+      return null;
     }
 
     try {
       const branch = this.getBranch(gitDir);
       const status = this.getStatus(gitDir);
       const { ahead, behind } = this.getAheadBehind(gitDir);
-      const sha = showSha ? this.getSha(gitDir) || undefined : undefined;
-
-      const result = {
+      
+      const result: GitInfo = {
         branch: branch || "detached",
         status,
         ahead,
         behind,
-        sha,
       };
+
+      // Add optional fields based on options
+      if (options.showSha) {
+        result.sha = this.getSha(gitDir) || undefined;
+      }
+
+      if (options.showWorkingTree) {
+        const counts = this.getWorkingTreeCounts(gitDir);
+        result.staged = counts.staged;
+        result.unstaged = counts.unstaged;
+        result.untracked = counts.untracked;
+        result.conflicts = counts.conflicts;
+      }
+
+      if (options.showOperation) {
+        result.operation = this.getOngoingOperation(gitDir) || undefined;
+      }
+
+      if (options.showTag) {
+        result.tag = this.getNearestTag(gitDir) || undefined;
+      }
+
+      if (options.showTimeSinceCommit) {
+        result.timeSinceCommit = this.getTimeSinceLastCommit(gitDir) || undefined;
+      }
+
+      if (options.showStashCount) {
+        result.stashCount = this.getStashCount(gitDir);
+      }
+
+      if (options.showUpstream) {
+        result.upstream = this.getUpstream(gitDir) || undefined;
+      }
+
+      if (options.showRepoName) {
+        result.repoName = this.getRepoName(gitDir) || undefined;
+        result.isWorktree = this.isWorktree(gitDir);
+      }
 
       this.cache.set(cacheKey, { data: result, timestamp: now });
       return result;
@@ -114,6 +167,59 @@ export class GitService {
     }
   }
 
+  private getWorkingTreeCounts(workingDir: string): {
+    staged: number;
+    unstaged: number;
+    untracked: number;
+    conflicts: number;
+  } {
+    try {
+      const gitStatus = execSync("git status --porcelain=v1", {
+        cwd: workingDir,
+        encoding: "utf8",
+        timeout: 5000,
+      }).trim();
+
+      let staged = 0;
+      let unstaged = 0;
+      let untracked = 0;
+      let conflicts = 0;
+
+      if (!gitStatus) {
+        return { staged, unstaged, untracked, conflicts };
+      }
+
+      const lines = gitStatus.split('\n');
+      for (const line of lines) {
+        if (line.length < 2) continue;
+        const indexStatus = line[0];
+        const worktreeStatus = line[1];
+
+        // Conflicts
+        if (line.startsWith('UU') || line.startsWith('AA') || line.startsWith('DD')) {
+          conflicts++;
+        }
+        // Untracked
+        else if (line.startsWith('??')) {
+          untracked++;
+        }
+        // Staged (index changes)
+        else if (indexStatus !== ' ' && indexStatus !== '?') {
+          staged++;
+        }
+        // Unstaged (worktree changes)
+        if (worktreeStatus !== ' ' && worktreeStatus !== '?') {
+          unstaged++;
+        }
+      }
+
+      return { staged, unstaged, untracked, conflicts };
+    } catch (error) {
+      debug(`Git working tree counts failed in ${workingDir}:`, error);
+      return { staged: 0, unstaged: 0, untracked: 0, conflicts: 0 };
+    }
+  }
+
   private getAheadBehind(workingDir: string): {
     ahead: number;
     behind: number;
@@ -152,6 +258,116 @@ export class GitService {
       return sha || null;
     } catch {
       return null;
+    }
+  }
+
+  private getOngoingOperation(workingDir: string): string | null {
+    try {
+      const gitDir = path.join(workingDir, ".git");
+      
+      // Check for various operation files in .git
+      if (fs.existsSync(path.join(gitDir, "MERGE_HEAD"))) return "MERGE";
+      if (fs.existsSync(path.join(gitDir, "CHERRY_PICK_HEAD"))) return "CHERRY-PICK";
+      if (fs.existsSync(path.join(gitDir, "REVERT_HEAD"))) return "REVERT";
+      if (fs.existsSync(path.join(gitDir, "BISECT_LOG"))) return "BISECT";
+      if (fs.existsSync(path.join(gitDir, "rebase-merge")) || 
+          fs.existsSync(path.join(gitDir, "rebase-apply"))) return "REBASE";
+      
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  private getNearestTag(workingDir: string): string | null {
+    try {
+      const tag = execSync("git describe --tags --abbrev=0", {
+        cwd: workingDir,
+        encoding: "utf8",
+        timeout: 5000
+      }).trim();
+
+      return tag || null;
+    } catch {
+      return null;
+    }
+  }
+
+  private getTimeSinceLastCommit(workingDir: string): number | null {
+    try {
+      const timestamp = execSync("git log -1 --format=%ct", {
+        cwd: workingDir,
+        encoding: "utf8",
+        timeout: 5000,
+      }).trim();
+
+      if (!timestamp) return null;
+      
+      const commitTime = parseInt(timestamp) * 1000; // Convert to milliseconds
+      const now = Date.now();
+      return Math.floor((now - commitTime) / 1000); // Return in seconds
+    } catch {
+      return null;
+    }
+  }
+
+  private getStashCount(workingDir: string): number {
+    try {
+      const stashList = execSync("git stash list", {
+        cwd: workingDir,
+        encoding: "utf8",
+        timeout: 5000,
+      }).trim();
+
+      if (!stashList) return 0;
+      return stashList.split('\n').length;
+    } catch {
+      return 0;
+    }
+  }
+
+  private getUpstream(workingDir: string): string | null {
+    try {
+      const upstream = execSync("git rev-parse --abbrev-ref @{u}", {
+        cwd: workingDir,
+        encoding: "utf8",
+        timeout: 5000,
+      }).trim();
+
+      return upstream || null;
+    } catch {
+      return null;
+    }
+  }
+
+  private getRepoName(workingDir: string): string | null {
+    try {
+      const remoteUrl = execSync("git config --get remote.origin.url", {
+        cwd: workingDir,
+        encoding: "utf8",
+        timeout: 5000,
+      }).trim();
+
+      if (!remoteUrl) return path.basename(workingDir);
+      
+      // Extract repo name from URL
+      const match = remoteUrl.match(/\/([^/]+?)(\.git)?$/);
+      return match ? match[1] : path.basename(workingDir);
+    } catch {
+      return path.basename(workingDir);
+    }
+  }
+
+  private isWorktree(workingDir: string): boolean {
+    try {
+      const gitDir = path.join(workingDir, ".git");
+      // If .git is a file (not directory), it's a worktree
+      if (fs.existsSync(gitDir) && fs.statSync(gitDir).isFile()) {
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
     }
   }
 }

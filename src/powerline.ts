@@ -15,6 +15,7 @@ import {
   SegmentRenderer,
   PowerlineSymbols,
   AnySegmentConfig,
+  DirectorySegmentConfig,
   GitSegmentConfig,
   UsageSegmentConfig,
   MetricsSegmentConfig,
@@ -196,18 +197,31 @@ export class PowerlineRenderer {
   ) {
     switch (segment.type) {
       case "directory":
-        return this.segmentRenderer.renderDirectory(hookData, colors);
+        return this.segmentRenderer.renderDirectory(
+          hookData, 
+          colors,
+          segment.config as DirectorySegmentConfig
+        );
 
       case "git":
         if (!this.needsGitInfo()) return null;
-        const showSha = (segment.config as GitSegmentConfig)?.showSha || false;
+        const gitConfig = segment.config as GitSegmentConfig;
         const gitInfo = this.gitService.getGitInfo(
           currentDir,
-          showSha,
+          {
+            showSha: gitConfig?.showSha,
+            showWorkingTree: gitConfig?.showWorkingTree,
+            showOperation: gitConfig?.showOperation,
+            showTag: gitConfig?.showTag,
+            showTimeSinceCommit: gitConfig?.showTimeSinceCommit,
+            showStashCount: gitConfig?.showStashCount,
+            showUpstream: gitConfig?.showUpstream,
+            showRepoName: gitConfig?.showRepoName,
+          },
           hookData.workspace?.project_dir
         );
         return gitInfo
-          ? this.segmentRenderer.renderGit(gitInfo, colors, showSha)
+          ? this.segmentRenderer.renderGit(gitInfo, colors, gitConfig)
           : null;
 
       case "model":
@@ -260,18 +274,25 @@ export class PowerlineRenderer {
 
     return {
       right: isMinimalStyle ? "" : "\uE0B0",
-      branch: "⑂",
+      branch: "⎇",
       model: "⚡",
       git_clean: "✓",
       git_dirty: "●",
       git_conflicts: "⚠",
       git_ahead: "↑",
       git_behind: "↓",
-      session_cost: "⊡",
-      block_cost: "⏲",
-      today_cost: "⊙",
-      context_time: "◷",
+      git_worktree: "⧉",
+      git_tag: "⌂",
+      git_sha: "♯",
+      git_upstream: "→",
+      git_stash: "⧇",
+      git_time: "◷",
+      session_cost: "§",
+      block_cost: "◱",
+      today_cost: "☉",
+      context_time: "◔",
       metrics_response: "⧖",
+      metrics_last_response: "Δ",
       metrics_duration: "⧗",
       metrics_messages: "⟐",
       metrics_burn: "⟢",

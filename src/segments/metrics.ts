@@ -5,6 +5,7 @@ import { findTranscriptFile } from "../utils/claude";
 
 export interface MetricsInfo {
   responseTime: number | null;
+  lastResponseTime: number | null;
   sessionDuration: number | null;
   messageCount: number | null;
   costBurnRate: number | null;
@@ -72,34 +73,55 @@ export class MetricsProvider {
     }
   }
 
-  private calculateResponseTimes(entries: TranscriptEntry[]): number | null {
+  private calculateResponseTimes(entries: TranscriptEntry[]): { average: number | null; last: number | null } {
     const userMessages: Date[] = [];
     const assistantMessages: Date[] = [];
+    let lastUserMessageIndex = -1;
+    let lastUserMessageTime: Date | null = null;
+    let lastResponseEndTime: Date | null = null;
+    let lastResponseEndIndex = -1;
 
-    for (const entry of entries) {
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i];
       if (!entry.timestamp) continue;
 
       try {
         const timestamp = new Date(entry.timestamp);
+        const messageType = entry.type || entry.message?.role || entry.message?.type;
+        
+        const isToolResult = entry.type === "user" && 
+          entry.message?.content?.[0]?.type === "tool_result";
+        
+        const isRealUserMessage = messageType === "user" && !isToolResult;
 
-        const messageType =
-          entry.type || entry.message?.role || entry.message?.type;
-
-        if (messageType === "user" || messageType === "human") {
+        if (isRealUserMessage) {
           userMessages.push(timestamp);
-          debug(`Found user message at ${timestamp.toISOString()}`);
-        } else if (messageType === "assistant" || messageType === "ai") {
-          assistantMessages.push(timestamp);
-          debug(`Found assistant message at ${timestamp.toISOString()}`);
-        } else if (entry.message?.usage) {
-          assistantMessages.push(timestamp);
-          debug(
-            `Found assistant message with usage at ${timestamp.toISOString()}`
-          );
-        } else {
-          debug(
-            `Unknown message type: ${messageType}, has usage: ${!!entry.message?.usage}`
-          );
+          lastUserMessageTime = timestamp;
+          lastUserMessageIndex = i;
+          lastResponseEndTime = null;
+          lastResponseEndIndex = -1;
+          debug(`Found user message at index ${i}, timestamp ${timestamp.toISOString()}`);
+        } else if (lastUserMessageIndex >= 0) {
+          const isPartOfResponse = 
+            messageType === "assistant" || 
+            isToolResult ||
+            messageType === "system" ||
+            entry.message?.usage;
+          
+          if (isPartOfResponse) {
+            // Update the end time for the current response sequence
+            lastResponseEndTime = timestamp;
+            lastResponseEndIndex = i;
+            
+            if (messageType === "assistant" || entry.message?.usage) {
+              assistantMessages.push(timestamp);
+              debug(`Found assistant message at index ${i}, timestamp ${timestamp.toISOString()}`);
+            } else if (isToolResult) {
+              debug(`Found tool result at index ${i}, timestamp ${timestamp.toISOString()}`);
+            } else {
+              debug(`Found ${messageType} message at index ${i}, timestamp ${timestamp.toISOString()}`);
+            }
+          }
         }
       } catch {
         continue;
@@ -107,7 +129,7 @@ export class MetricsProvider {
     }
 
     if (userMessages.length === 0 || assistantMessages.length === 0) {
-      return null;
+      return { average: null, last: null };
     }
 
     const responseTimes: number[] = [];
@@ -135,19 +157,39 @@ export class MetricsProvider {
       }
     }
 
-    if (responseTimes.length === 0) {
-      return null;
+    let lastResponseTime: number | null = null;
+    if (lastUserMessageTime && lastResponseEndTime && lastResponseEndIndex > lastUserMessageIndex) {
+      const timeDiff = lastResponseEndTime.getTime() - lastUserMessageTime.getTime();
+      const positionDiff = lastResponseEndIndex - lastUserMessageIndex;
+      
+      if (timeDiff === 0 && positionDiff > 0) {
+        lastResponseTime = positionDiff * 0.1;
+        debug(`Estimated last response time from position difference: ${lastResponseTime.toFixed(2)}s (${positionDiff} messages)`);
+      } else if (timeDiff > 0) {
+        lastResponseTime = timeDiff / 1000;
+        debug(`Last response time from timestamps: ${lastResponseTime.toFixed(2)}s`);
+      }
+      
+      debug(`Last user message at index ${lastUserMessageIndex}, timestamp ${lastUserMessageTime.toISOString()}`);
+      debug(`Last response end at index ${lastResponseEndIndex}, timestamp ${lastResponseEndTime.toISOString()}`);
     }
 
-    const avgResponseTime =
-      responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length;
+    if (responseTimes.length === 0 && lastResponseTime === null) {
+      return { average: null, last: null };
+    }
+
+    const avgResponseTime = responseTimes.length > 0
+      ? responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length
+      : null;
+    
     debug(
-      `Calculated average response time: ${avgResponseTime.toFixed(2)}s from ${responseTimes.length} measurements`
+      `Calculated average response time: ${avgResponseTime?.toFixed(2) || "null"}s from ${responseTimes.length} measurements`
     );
     debug(
-      `Response times: [${responseTimes.map((t) => t.toFixed(1)).join(", ")}]`
+      `Last response time: ${lastResponseTime?.toFixed(2) || "null"}s`
     );
-    return avgResponseTime;
+    
+    return { average: avgResponseTime, last: lastResponseTime };
   }
 
   private calculateSessionDuration(entries: TranscriptEntry[]): number | null {
@@ -209,7 +251,9 @@ export class MetricsProvider {
     return entries.filter((entry) => {
       const messageType =
         entry.type || entry.message?.role || entry.message?.type;
-      return messageType === "user" || messageType === "human";
+      const isToolResult = entry.type === "user" && 
+        entry.message?.content?.[0]?.type === "tool_result";
+      return messageType === "user" && !isToolResult;
     }).length;
   }
 
@@ -273,6 +317,7 @@ export class MetricsProvider {
       if (entries.length === 0) {
         return {
           responseTime: null,
+          lastResponseTime: null,
           sessionDuration: null,
           messageCount: null,
           costBurnRate: null,
@@ -280,7 +325,7 @@ export class MetricsProvider {
         };
       }
 
-      const responseTime = this.calculateResponseTimes(entries);
+      const responseTimes = this.calculateResponseTimes(entries);
       const sessionDuration = this.calculateSessionDuration(entries);
       const messageCount = this.calculateMessageCount(entries);
 
@@ -314,11 +359,12 @@ export class MetricsProvider {
       }
 
       debug(
-        `Metrics calculated: responseTime=${responseTime?.toFixed(2) || "null"}s, sessionDuration=${sessionDuration?.toFixed(0) || "null"}s, messageCount=${messageCount}`
+        `Metrics calculated: avgResponseTime=${responseTimes.average?.toFixed(2) || "null"}s, lastResponseTime=${responseTimes.last?.toFixed(2) || "null"}s, sessionDuration=${sessionDuration?.toFixed(0) || "null"}s, messageCount=${messageCount}`
       );
 
       return {
-        responseTime,
+        responseTime: responseTimes.average,
+        lastResponseTime: responseTimes.last,
         sessionDuration,
         messageCount,
         costBurnRate,
@@ -328,6 +374,7 @@ export class MetricsProvider {
       debug(`Error calculating metrics for session ${sessionId}:`, error);
       return {
         responseTime: null,
+        lastResponseTime: null,
         sessionDuration: null,
         messageCount: null,
         costBurnRate: null,
