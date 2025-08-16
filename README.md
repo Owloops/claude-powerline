@@ -545,8 +545,8 @@ export CLAUDE_POWERLINE_DEBUG=1  # Enable debug logging
 
 ## Related Projects
 
-- [**tweakcc**]([https://github.com/Piebald-AI/tweakcc](https://github.com/Piebald-AI/tweakcc) - Customize Claude Code themes, thinking verbs, and more.
-- [**ccstatusline**]([https://github.com](https://github.com/sirmalloc/ccstatusline)) - Simpler Claude Code statusline customization.
+- [**tweakcc**](https://github.com/Piebald-AI/tweakcc) - Customize Claude Code themes, thinking verbs, and more.
+- [**ccstatusline**](https://github.com/sirmalloc/ccstatusline) - Simpler Claude Code statusline customization.
 
 ## Contributing
 
