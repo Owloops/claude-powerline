@@ -105,7 +105,7 @@ npx -y @owloops/claude-powerline --install-fonts
 {
   "statusLine": {
     "type": "command", 
-    "command": "npx -y @owloops/claude-powerline@latest --style=powerline",
+    "command": "npx -y @owloops/claude-powerline@latest --style=powerline"
   }
 }
 ```
