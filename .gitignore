@@ -8,3 +8,8 @@ coverage/
 *.local.md
 *.local.sh
 *.local.txt
+
+# SEA build artifacts
+dist-sea/
+*.blob
+claude-powerline-*
