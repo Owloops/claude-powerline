@@ -1,3 +1,10 @@
+## [1.9.10](https://github.com/Owloops/claude-powerline/compare/v1.9.9...v1.9.10) (2025-09-01)
+
+
+### Bug Fixes
+
+* add sea build in gitignore ([96bd0e4](https://github.com/Owloops/claude-powerline/commit/96bd0e488701db5455d96295bb85613ecdc58cd4))
+
 ## [1.9.9](https://github.com/Owloops/claude-powerline/compare/v1.9.8...v1.9.9) (2025-08-27)
 
 
