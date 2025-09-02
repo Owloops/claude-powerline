@@ -34,6 +34,20 @@ export class GitService {
     }
   }
 
+  private async findGitRoot(workingDir: string): Promise<string | null> {
+    try {
+      const result = await execAsync("git rev-parse --show-toplevel", {
+        cwd: workingDir,
+        encoding: "utf8",
+        timeout: 2000,
+      });
+      const gitRoot = result.stdout.trim();
+      return gitRoot || null;
+    } catch {
+      return null;
+    }
+  }
+
   async getGitInfo(
     workingDir: string,
     options: {
@@ -48,11 +62,18 @@ export class GitService {
     } = {},
     projectDir?: string
   ): Promise<GitInfo | null> {
-    const gitDir =
-      projectDir && this.isGitRepo(projectDir) ? projectDir : workingDir;
+    let gitDir: string;
 
-    if (!this.isGitRepo(gitDir)) {
-      return null;
+    if (projectDir && this.isGitRepo(projectDir)) {
+      gitDir = projectDir;
+    } else if (this.isGitRepo(workingDir)) {
+      gitDir = workingDir;
+    } else {
+      const foundGitRoot = await this.findGitRoot(workingDir);
+      if (!foundGitRoot) {
+        return null;
+      }
+      gitDir = foundGitRoot;
     }
 
     try {
