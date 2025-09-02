@@ -1,3 +1,10 @@
+## [1.9.11](https://github.com/Owloops/claude-powerline/compare/v1.9.10...v1.9.11) (2025-09-02)
+
+
+### Bug Fixes
+
+* add git repository detection from subdirectories ([fe0b89c](https://github.com/Owloops/claude-powerline/commit/fe0b89ca3cb19adb4808f336f97bc8df3f887aa6))
+
 ## [1.9.10](https://github.com/Owloops/claude-powerline/compare/v1.9.9...v1.9.10) (2025-09-01)
 
 
