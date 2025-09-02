@@ -1,3 +1,10 @@
+## [1.9.12](https://github.com/Owloops/claude-powerline/compare/v1.9.11...v1.9.12) (2025-09-02)
+
+
+### Bug Fixes
+
+* add capsule style with pill-shaped segments ([46ace72](https://github.com/Owloops/claude-powerline/commit/46ace720cac0202f47d8eac58d6893ae838dff85))
+
 ## [1.9.11](https://github.com/Owloops/claude-powerline/compare/v1.9.10...v1.9.11) (2025-09-02)
 
 
