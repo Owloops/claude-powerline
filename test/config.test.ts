@@ -62,6 +62,12 @@ describe("config", () => {
       expect(config.theme).toBe("dark");
     });
 
+    it("should parse capsule style from CLI", () => {
+      mockFs.existsSync.mockReturnValue(false);
+      const config = loadConfigFromCLI(["node", "script", "--style=capsule"]);
+      expect(config.display.style).toBe("capsule");
+    });
+
     it("should preserve display lines when setting style via CLI", () => {
       mockFs.existsSync.mockReturnValue(false);
       const config = loadConfigFromCLI(["node", "script", "--style=powerline"]);
@@ -100,6 +106,16 @@ describe("config", () => {
       process.env.CLAUDE_POWERLINE_STYLE = "powerline";
       const config = loadConfig();
       expect(config.display.style).toBe("powerline");
+      expect(config.display.lines).toHaveLength(
+        DEFAULT_CONFIG.display.lines.length
+      );
+    });
+
+    it("should handle capsule style from environment", () => {
+      mockFs.existsSync.mockReturnValue(false);
+      process.env.CLAUDE_POWERLINE_STYLE = "capsule";
+      const config = loadConfig();
+      expect(config.display.style).toBe("capsule");
       expect(config.display.lines).toHaveLength(
         DEFAULT_CONFIG.display.lines.length
       );
@@ -183,6 +199,18 @@ describe("config", () => {
         expect.stringContaining("Invalid display style")
       );
       consoleSpy.mockRestore();
+    });
+
+    it("should accept capsule style in config file", () => {
+      mockFs.existsSync.mockImplementation(
+        (path) => path === "/project/.claude-powerline.json"
+      );
+      mockFs.readFileSync.mockReturnValue(
+        JSON.stringify({ display: { style: "capsule" } })
+      );
+
+      const config = loadConfig();
+      expect(config.display.style).toBe("capsule");
     });
   });
 });

@@ -116,7 +116,7 @@ Debugging:
 
 Claude Code Options (for settings.json):
   --theme=THEME            Set theme: dark, light, nord, tokyo-night, rose-pine, custom
-  --style=STYLE            Set separator style: minimal, powerline
+  --style=STYLE            Set separator style: minimal, powerline, capsule
   --config=PATH            Use custom config file path
 
 See example config at: https://github.com/Owloops/claude-powerline/blob/main/.claude-powerline.json

@@ -170,12 +170,14 @@ export class PowerlineRenderer {
       )
       .map(([type, config]: [string, AnySegmentConfig]) => ({ type, config }));
 
+    const isCapsuleStyle = this.config.display.style === "capsule";
     let line = colors.reset;
 
     for (let i = 0; i < segments.length; i++) {
       const segment = segments[i];
       if (!segment) continue;
 
+      const isFirst = i === 0;
       const isLast = i === segments.length - 1;
       const nextSegment = !isLast ? segments[i + 1] : null;
       const nextBgColor = nextSegment
@@ -195,6 +197,10 @@ export class PowerlineRenderer {
       );
 
       if (segmentData) {
+        if (isCapsuleStyle && !isFirst) {
+          line += " ";
+        }
+        
         line += this.formatSegment(
           segmentData.bgColor,
           segmentData.fgColor,
@@ -388,10 +394,13 @@ export class PowerlineRenderer {
   }
 
   private initializeSymbols(): PowerlineSymbols {
-    const isMinimalStyle = this.config.display.style === "minimal";
+    const style = this.config.display.style;
+    const isMinimalStyle = style === "minimal";
+    const isCapsuleStyle = style === "capsule";
 
     return {
-      right: isMinimalStyle ? "" : SYMBOLS.right,
+      right: isMinimalStyle ? "" : (isCapsuleStyle ? SYMBOLS.right_rounded : SYMBOLS.right),
+      left: isCapsuleStyle ? SYMBOLS.left_rounded : "",
       branch: SYMBOLS.branch,
       model: SYMBOLS.model,
       git_clean: SYMBOLS.git_clean,
@@ -539,6 +548,24 @@ export class PowerlineRenderer {
     text: string,
     nextBgColor?: string
   ): string {
+    const isCapsuleStyle = this.config.display.style === "capsule";
+
+    if (isCapsuleStyle) {
+      const colorMode = this.config.display.colorCompatibility || "auto";
+      const colorSupport = colorMode === "auto" ? getColorSupport() : colorMode;
+      const isBasicMode = colorSupport === "ansi";
+      
+      const capFgColor = extractBgToFg(bgColor, isBasicMode);
+      
+      const leftCap = `${capFgColor}${this.symbols.left}${RESET_CODE}`;
+      
+      const content = `${bgColor}${fgColor} ${text} ${RESET_CODE}`;
+      
+      const rightCap = `${capFgColor}${this.symbols.right}${RESET_CODE}`;
+      
+      return `${leftCap}${content}${rightCap}`;
+    }
+
     let output = `${bgColor}${fgColor} ${text} `;
 
     const colorMode = this.config.display.colorCompatibility || "auto";

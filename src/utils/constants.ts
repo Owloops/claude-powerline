@@ -1,8 +1,10 @@
 export const RESET_CODE = "\x1b[0m";
 export const SYMBOLS = {
   right: "\uE0B0",
+  left_rounded: "\uE0B6",
+  right_rounded: "\uE0B4",
   branch: "⎇",
-  model: "⚡",
+  model: "✱",
   git_clean: "✓",
   git_dirty: "●",
   git_conflicts: "⚠",

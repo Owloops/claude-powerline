@@ -79,7 +79,7 @@
 
 - 5 built-in themes (dark, light, nord, tokyo-night, rose-pine)
 - Custom color configuration
-- Powerline and minimal separator styles
+- Three separator styles: minimal, powerline, and capsule
 - Multi-line layouts to prevent cutoff
 
 ### Performance Metrics
@@ -105,6 +105,8 @@ Requires Node.js 18+, Claude Code, and Git 2.0+.
 npx -y @owloops/claude-powerline --install-fonts
 ```
 
+> **Note:** The capsule style works best with [Nerd Fonts](https://www.nerdfonts.com) for properly rounded segment ends.
+
 **2. Add to your Claude Code `settings.json`:**
 
 ```json
@@ -129,7 +131,7 @@ Once added to Claude Code settings, the statusline runs automatically. For custo
 **CLI Options:**
 
 - `--theme` - `dark` (default), `light`, `nord`, `tokyo-night`, `rose-pine`, `custom`
-- `--style` - `minimal` (default), `powerline`
+- `--style` - `minimal` (default), `powerline`, `capsule`
 - `--config` - Custom config file path
 - `--install-fonts` - Install powerline fonts
 - `--help` - Show help
@@ -138,6 +140,7 @@ Once added to Claude Code settings, the statusline runs automatically. For custo
 
 ```bash
 claude-powerline --theme=nord --style=powerline
+claude-powerline --theme=dark --style=capsule
 claude-powerline --config=/path/to/config.json
 ```
 
@@ -149,6 +152,10 @@ export CLAUDE_POWERLINE_STYLE=powerline
 export CLAUDE_POWERLINE_CONFIG=/path/to/config.json
 export CLAUDE_POWERLINE_DEBUG=1  # Enable debug logging
 ```
+
+## Styles
+
+<img src="images/claude-powerline-styles.png" alt="Claude Powerline Styles" width="600">
 
 ## Configuration
 

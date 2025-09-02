@@ -12,4 +12,4 @@ coverage/
 # SEA build artifacts
 dist-sea/
 *.blob
-claude-powerline-*
+claude-powerline-sea-*

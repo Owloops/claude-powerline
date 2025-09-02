@@ -33,7 +33,7 @@ export interface LineConfig {
 
 export interface DisplayConfig {
   lines: LineConfig[];
-  style?: "minimal" | "powerline";
+  style?: "minimal" | "powerline" | "capsule";
   colorCompatibility?: "auto" | "ansi" | "ansi256" | "truecolor";
 }
 
@@ -70,8 +70,8 @@ function isValidTheme(theme: string): theme is PowerlineConfig["theme"] {
   ].includes(theme);
 }
 
-function isValidStyle(style: string): style is "minimal" | "powerline" {
-  return style === "minimal" || style === "powerline";
+function isValidStyle(style: string): style is "minimal" | "powerline" | "capsule" {
+  return style === "minimal" || style === "powerline" || style === "capsule";
 }
 
 function deepMerge<T extends Record<string, any>>(

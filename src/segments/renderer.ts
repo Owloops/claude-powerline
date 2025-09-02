@@ -87,6 +87,7 @@ import type { TodayInfo } from "./today";
 
 export interface PowerlineSymbols {
   right: string;
+  left: string;
   branch: string;
   model: string;
   git_clean: string;
