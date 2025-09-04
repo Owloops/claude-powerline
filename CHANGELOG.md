@@ -1,3 +1,10 @@
+## [1.9.13](https://github.com/Owloops/claude-powerline/compare/v1.9.12...v1.9.13) (2025-09-04)
+
+
+### Bug Fixes
+
+* remove font installer and document nerd fonts as requirement ([1ffdbba](https://github.com/Owloops/claude-powerline/commit/1ffdbba9ebd3ef38e7f8243c67d75ab285473d59))
+
 ## [1.9.12](https://github.com/Owloops/claude-powerline/compare/v1.9.11...v1.9.12) (2025-09-02)
 
 
