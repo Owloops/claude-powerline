@@ -16,7 +16,7 @@
 
 <img src="images/demo.gif" alt="Claude Powerline Demo" width="600"/>
 
-*Live demonstration: real-time usage tracking, git integration, and theme showcase*
+_Live demonstration: real-time usage tracking, git integration, and theme showcase_
 
 <table>
    <tr>
@@ -97,28 +97,20 @@
 
 ### Setup
 
-Requires Node.js 18+, Claude Code, and Git 2.0+.
+Requires Node.js 18+, Claude Code, Git 2.0+, and terminal with [Nerd Font](https://www.nerdfonts.com/) for proper icon display.
 
-**1. Install powerline fonts:**
-
-```bash
-npx -y @owloops/claude-powerline --install-fonts
-```
-
-> **Note:** The capsule style works best with [Nerd Fonts](https://www.nerdfonts.com) for properly rounded segment ends.
-
-**2. Add to your Claude Code `settings.json`:**
+**1. Add to your Claude Code `settings.json`:**
 
 ```json
 {
   "statusLine": {
-    "type": "command", 
+    "type": "command",
     "command": "npx -y @owloops/claude-powerline@latest --style=powerline"
   }
 }
 ```
 
-**3. Start a Claude session** - the statusline appears at the bottom during conversations.
+**2. Start a Claude session** - the statusline appears at the bottom during conversations.
 
 ![Claude Code with powerline](images/claude-interface-with-powerline.png)
 
@@ -133,7 +125,6 @@ Once added to Claude Code settings, the statusline runs automatically. For custo
 - `--theme` - `dark` (default), `light`, `nord`, `tokyo-night`, `rose-pine`, `custom`
 - `--style` - `minimal` (default), `powerline`, `capsule`
 - `--config` - Custom config file path
-- `--install-fonts` - Install powerline fonts
 - `--help` - Show help
 
 **Examples:**
@@ -169,7 +160,7 @@ curl -o ~/.claude/claude-powerline.json https://raw.githubusercontent.com/Owloop
 **Config locations** (in priority order):
 
 - `./.claude-powerline.json` - Project-specific
-- `~/.claude/claude-powerline.json` - User config  
+- `~/.claude/claude-powerline.json` - User config
 - `~/.config/claude-powerline/config.json` - XDG standard
 
 **Override priority:** CLI flags → Environment variables → Config files → Defaults
@@ -299,7 +290,7 @@ Configure context window limits for different model types. Defaults to 200K toke
 **Available Model Types:**
 
 - `sonnet`: Claude Sonnet models (3.5, 4, etc.)
-- `opus`: Claude Opus models  
+- `opus`: Claude Opus models
 - `default`: Fallback for unrecognized models (200K)
 
 **Note:** Sonnet 4's 1M context window is currently in beta for tier 4+ users. Set `"sonnet": 1000000` when you have access.
@@ -477,18 +468,18 @@ Execution times for different configurations:
 <details>
 <summary><strong>Detailed Segment Timings</strong></summary>
 
-| Segment | Timing | Notes |
-|---------|--------|-------|
-| `directory` | ~40ms | No external commands |
-| `model` | ~40ms | Uses hook data |
-| `session` | ~40ms | Minimal transcript parsing |
-| `context` | ~40ms | Hook data calculation |
-| `metrics` | ~40ms | Transcript analysis |
-| `git` | ~60ms | No caching for fresh data |
-| `tmux` | ~50ms | Environment check + command |
-| `block` | ~180ms | 5-hour window transcript load |
-| `today` | ~250ms | Full daily transcript load (cached: ~50ms) |
-| `version` | ~40ms | Uses hook data |
+| Segment     | Timing | Notes                                      |
+| ----------- | ------ | ------------------------------------------ |
+| `directory` | ~40ms  | No external commands                       |
+| `model`     | ~40ms  | Uses hook data                             |
+| `session`   | ~40ms  | Minimal transcript parsing                 |
+| `context`   | ~40ms  | Hook data calculation                      |
+| `metrics`   | ~40ms  | Transcript analysis                        |
+| `git`       | ~60ms  | No caching for fresh data                  |
+| `tmux`      | ~50ms  | Environment check + command                |
+| `block`     | ~180ms | 5-hour window transcript load              |
+| `today`     | ~250ms | Full daily transcript load (cached: ~50ms) |
+| `version`   | ~40ms  | Uses hook data                             |
 
 **Benchmark:** `npm run benchmark:timing`
 
