@@ -81,7 +81,6 @@ import type {
   GitInfo,
   ContextInfo,
   MetricsInfo,
-  SessionInfo,
 } from ".";
 import type { TodayInfo } from "./today";
 
@@ -274,17 +273,21 @@ export class SegmentRenderer {
     const costSource = config?.costSource;
     const sessionBudget = this.config.budget?.session;
 
-    const formattedUsage = costSource
-      ? this.formatSessionUsageDisplay(usageInfo.session, type, costSource)
-      : this.formatUsageWithBudget(
-          usageInfo.session.cost,
-          usageInfo.session.tokens,
-          usageInfo.session.tokenBreakdown,
-          type,
-          sessionBudget?.amount,
-          sessionBudget?.warningThreshold || 80,
-          sessionBudget?.type
-        );
+    const getCost = () => {
+      if (costSource === "calculated") return usageInfo.session.calculatedCost;
+      if (costSource === "official") return usageInfo.session.officialCost;
+      return usageInfo.session.cost;
+    };
+
+    const formattedUsage = this.formatUsageWithBudget(
+      getCost(),
+      usageInfo.session.tokens,
+      usageInfo.session.tokenBreakdown,
+      type,
+      sessionBudget?.amount,
+      sessionBudget?.warningThreshold || 80,
+      sessionBudget?.type
+    );
 
     const text = `${this.symbols.session_cost} ${formattedUsage}`;
 
@@ -453,34 +456,26 @@ export class SegmentRenderer {
       let mainContent: string;
       switch (type) {
         case "cost":
-          if (blockBudget?.amount && blockBudget?.type === "cost") {
-            mainContent = this.formatUsageWithBudget(
-              blockInfo.cost,
-              null,
-              null,
-              "cost",
-              blockBudget.amount,
-              blockBudget.warningThreshold,
-              blockBudget.type
-            );
-          } else {
-            mainContent = formatCost(blockInfo.cost);
-          }
+          mainContent = this.formatUsageWithBudget(
+            blockInfo.cost,
+            null,
+            null,
+            "cost",
+            blockBudget?.amount,
+            blockBudget?.warningThreshold,
+            blockBudget?.type
+          );
           break;
         case "tokens":
-          if (blockBudget?.amount && blockBudget?.type === "tokens") {
-            mainContent = this.formatUsageWithBudget(
-              null,
-              blockInfo.tokens,
-              null,
-              "tokens",
-              blockBudget.amount,
-              blockBudget.warningThreshold,
-              blockBudget.type
-            );
-          } else {
-            mainContent = formatTokens(blockInfo.tokens);
-          }
+          mainContent = this.formatUsageWithBudget(
+            null,
+            blockInfo.tokens,
+            null,
+            "tokens",
+            blockBudget?.amount,
+            blockBudget?.warningThreshold,
+            blockBudget?.type
+          );
           break;
         case "weighted":
           const rateLimit =
@@ -498,37 +493,29 @@ export class SegmentRenderer {
           }
           break;
         case "both":
-          if (blockBudget?.amount) {
-            mainContent = this.formatUsageWithBudget(
-              blockInfo.cost,
-              blockInfo.tokens,
-              null,
-              "both",
-              blockBudget.amount,
-              blockBudget.warningThreshold,
-              blockBudget.type
-            );
-          } else {
-            mainContent = `${formatCost(blockInfo.cost)} / ${formatTokens(blockInfo.tokens)}`;
-          }
+          mainContent = this.formatUsageWithBudget(
+            blockInfo.cost,
+            blockInfo.tokens,
+            null,
+            "both",
+            blockBudget?.amount,
+            blockBudget?.warningThreshold,
+            blockBudget?.type
+          );
           break;
         case "time":
           mainContent = timeStr || "N/A";
           break;
         default:
-          if (blockBudget?.amount && blockBudget?.type === "cost") {
-            mainContent = this.formatUsageWithBudget(
-              blockInfo.cost,
-              null,
-              null,
-              "cost",
-              blockBudget.amount,
-              blockBudget.warningThreshold,
-              blockBudget.type
-            );
-          } else {
-            mainContent = formatCost(blockInfo.cost);
-          }
+          mainContent = this.formatUsageWithBudget(
+            blockInfo.cost,
+            null,
+            null,
+            "cost",
+            blockBudget?.amount,
+            blockBudget?.warningThreshold,
+            blockBudget?.type
+          );
       }
 
       let burnContent = "";
@@ -644,30 +631,6 @@ export class SegmentRenderer {
     }
   }
 
-  private formatSessionUsageDisplay(
-    sessionInfo: SessionInfo,
-    type: string,
-    costSource?: string
-  ): string {
-    const getCost = () => {
-      if (costSource === "calculated") return sessionInfo.calculatedCost;
-      if (costSource === "official") return sessionInfo.officialCost;
-      return sessionInfo.cost;
-    };
-
-    switch (type) {
-      case "cost":
-        return formatCost(getCost());
-      case "tokens":
-        return formatTokens(sessionInfo.tokens);
-      case "both":
-        return `${formatCost(getCost())} (${formatTokens(sessionInfo.tokens)})`;
-      case "breakdown":
-        return formatTokenBreakdown(sessionInfo.tokenBreakdown);
-      default:
-        return formatCost(getCost());
-    }
-  }
 
   private formatUsageWithBudget(
     cost: number | null,
