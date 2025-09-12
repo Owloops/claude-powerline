@@ -1,3 +1,10 @@
+## [1.9.14](https://github.com/Owloops/claude-powerline/compare/v1.9.13...v1.9.14) (2025-09-12)
+
+
+### Bug Fixes
+
+* ensure budget limit percentages display consistently across session and block segments ([9ad393f](https://github.com/Owloops/claude-powerline/commit/9ad393fb749275a2f49a89cc7419605b54bd3343))
+
 ## [1.9.13](https://github.com/Owloops/claude-powerline/compare/v1.9.12...v1.9.13) (2025-09-04)
 
 
