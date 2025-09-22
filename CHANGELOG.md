@@ -1,3 +1,10 @@
+## [1.9.15](https://github.com/Owloops/claude-powerline/compare/v1.9.14...v1.9.15) (2025-09-22)
+
+
+### Bug Fixes
+
+* demo gif ([60f13f1](https://github.com/Owloops/claude-powerline/commit/60f13f177d94ee53d982f5d8eeff0c8568c3fcee))
+
 ## [1.9.14](https://github.com/Owloops/claude-powerline/compare/v1.9.13...v1.9.14) (2025-09-12)
 
 
