@@ -36,6 +36,22 @@ const OFFLINE_PRICING_DATA: Record<string, ModelPricing> = {
     cache_write_1h: 2.0,
     cache_read: 0.1,
   },
+  "claude-haiku-4-5-20251001": {
+    name: "Claude Haiku 4.5",
+    input: 1.0,
+    output: 5.0,
+    cache_write_5m: 1.25,
+    cache_write_1h: 2.0,
+    cache_read: 0.1,
+  },
+  "claude-haiku-4-5": {
+    name: "Claude Haiku 4.5",
+    input: 1.0,
+    output: 5.0,
+    cache_write_5m: 1.25,
+    cache_write_1h: 2.0,
+    cache_read: 0.1,
+  },
   "claude-3-opus-latest": {
     name: "Claude 3 Opus Latest",
     input: 15.0,
@@ -118,6 +134,22 @@ const OFFLINE_PRICING_DATA: Record<string, ModelPricing> = {
   },
   "claude-4-sonnet-20250514": {
     name: "Claude 4 Sonnet",
+    input: 3.0,
+    output: 15.0,
+    cache_write_5m: 3.75,
+    cache_write_1h: 6.0,
+    cache_read: 0.3,
+  },
+  "claude-sonnet-4-5": {
+    name: "Claude Sonnet 4.5",
+    input: 3.0,
+    output: 15.0,
+    cache_write_5m: 3.75,
+    cache_write_1h: 6.0,
+    cache_read: 0.3,
+  },
+  "claude-sonnet-4-5-20250929": {
+    name: "Claude Sonnet 4.5",
     input: 3.0,
     output: 15.0,
     cache_write_5m: 3.75,
@@ -358,6 +390,10 @@ export class PricingService {
         fallback: "claude-opus-4-20250514",
       },
       {
+        pattern: ["sonnet-4.5", "4-5-sonnet", "sonnet-4-5"],
+        fallback: "claude-sonnet-4-5-20250929",
+      },
+      {
         pattern: ["sonnet-4", "claude-sonnet-4"],
         fallback: "claude-sonnet-4-20250514",
       },
@@ -368,6 +404,10 @@ export class PricingService {
       {
         pattern: ["3-5-sonnet", "sonnet-3.5"],
         fallback: "claude-3-5-sonnet-20241022",
+      },
+      {
+        pattern: ["haiku-4.5", "4-5-haiku", "haiku-4-5"],
+        fallback: "claude-haiku-4-5-20251001",
       },
       {
         pattern: ["3-5-haiku", "haiku-3.5"],
