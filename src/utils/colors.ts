@@ -19,6 +19,10 @@ export function extractBgToFg(
   ansiCode: string,
   useTextOnly: boolean = false
 ): string {
+  if (!ansiCode || ansiCode === "") {
+    return "";
+  }
+
   const truecolorMatch = ansiCode.match(/48;2;(\d+);(\d+);(\d+)/);
   if (truecolorMatch) {
     return `\x1b[38;2;${truecolorMatch[1]};${truecolorMatch[2]};${truecolorMatch[3]}m`;
@@ -49,22 +53,31 @@ export function extractBgToFg(
 export function getColorSupport(): "none" | "ansi" | "ansi256" | "truecolor" {
   const { env } = process;
 
-  if (env.NO_COLOR) {
-    return "none";
+  let colorEnabled = true;
+
+  if (env.NO_COLOR && env.NO_COLOR !== "") {
+    colorEnabled = false;
   }
 
   const forceColor = env.FORCE_COLOR;
-  if (forceColor === "false" || forceColor === "0") {
-    return "none";
-  }
-  if (forceColor === "true" || forceColor === "1") {
+  if (forceColor && forceColor !== "") {
+    if (forceColor === "false" || forceColor === "0") {
+      return "none";
+    }
+    if (forceColor === "true" || forceColor === "1") {
+      return "ansi";
+    }
+    if (forceColor === "2") {
+      return "ansi256";
+    }
+    if (forceColor === "3") {
+      return "truecolor";
+    }
     return "ansi";
   }
-  if (forceColor === "2") {
-    return "ansi256";
-  }
-  if (forceColor === "3") {
-    return "truecolor";
+
+  if (!colorEnabled) {
+    return "none";
   }
 
   if (env.TERM === "dumb") {

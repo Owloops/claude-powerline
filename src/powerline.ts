@@ -205,7 +205,8 @@ export class PowerlineRenderer {
           segmentData.bgColor,
           segmentData.fgColor,
           segmentData.text,
-          isLast ? undefined : nextBgColor
+          isLast ? undefined : nextBgColor,
+          colors
         );
       }
     }
@@ -458,7 +459,12 @@ export class PowerlineRenderer {
     const getSegmentColors = (segment: keyof ColorTheme) => {
       const colors = colorTheme[segment] || fallbackTheme[segment];
 
-      if (colorSupport === "ansi") {
+      if (colorSupport === "none") {
+        return {
+          bg: "",
+          fg: "",
+        };
+      } else if (colorSupport === "ansi") {
         return {
           bg: hexToBasicAnsi(colors.bg, true),
           fg: hexToBasicAnsi(colors.fg, false),
@@ -488,7 +494,7 @@ export class PowerlineRenderer {
     const version = getSegmentColors("version");
 
     return {
-      reset: RESET_CODE,
+      reset: colorSupport === "none" ? "" : RESET_CODE,
       modeBg: directory.bg,
       modeFg: directory.fg,
       gitBg: git.bg,
@@ -546,7 +552,8 @@ export class PowerlineRenderer {
     bgColor: string,
     fgColor: string,
     text: string,
-    nextBgColor?: string
+    nextBgColor: string | undefined,
+    colors: PowerlineColors
   ): string {
     const isCapsuleStyle = this.config.display.style === "capsule";
 
@@ -554,15 +561,15 @@ export class PowerlineRenderer {
       const colorMode = this.config.display.colorCompatibility || "auto";
       const colorSupport = colorMode === "auto" ? getColorSupport() : colorMode;
       const isBasicMode = colorSupport === "ansi";
-      
+
       const capFgColor = extractBgToFg(bgColor, isBasicMode);
-      
-      const leftCap = `${capFgColor}${this.symbols.left}${RESET_CODE}`;
-      
-      const content = `${bgColor}${fgColor} ${text} ${RESET_CODE}`;
-      
-      const rightCap = `${capFgColor}${this.symbols.right}${RESET_CODE}`;
-      
+
+      const leftCap = `${capFgColor}${this.symbols.left}${colors.reset}`;
+
+      const content = `${bgColor}${fgColor} ${text} ${colors.reset}`;
+
+      const rightCap = `${capFgColor}${this.symbols.right}${colors.reset}`;
+
       return `${leftCap}${content}${rightCap}`;
     }
 
@@ -574,9 +581,9 @@ export class PowerlineRenderer {
 
     if (nextBgColor) {
       const arrowFgColor = extractBgToFg(bgColor, isBasicMode);
-      output += `${RESET_CODE}${nextBgColor}${arrowFgColor}${this.symbols.right}`;
+      output += `${colors.reset}${nextBgColor}${arrowFgColor}${this.symbols.right}`;
     } else {
-      output += `${RESET_CODE}${extractBgToFg(bgColor, isBasicMode)}${this.symbols.right}${RESET_CODE}`;
+      output += `${colors.reset}${extractBgToFg(bgColor, isBasicMode)}${this.symbols.right}${colors.reset}`;
     }
 
     return output;

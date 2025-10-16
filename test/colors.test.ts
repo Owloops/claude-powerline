@@ -62,6 +62,54 @@ describe("Colors", () => {
       expect(getColorSupport()).toBe("none");
     });
 
+    it("should respect NO_COLOR standard (any non-empty value)", () => {
+      process.env = {};
+      process.env.NO_COLOR = "potato";
+      expect(getColorSupport()).toBe("none");
+
+      process.env = {};
+      process.env.NO_COLOR = "";
+      expect(getColorSupport()).not.toBe("none");
+    });
+
+    it("should respect FORCE_COLOR standard (overrides NO_COLOR)", () => {
+      process.env = {};
+      process.env.NO_COLOR = "1";
+      process.env.FORCE_COLOR = "1";
+      expect(getColorSupport()).toBe("ansi");
+
+      process.env = {};
+      process.env.NO_COLOR = "1";
+      process.env.FORCE_COLOR = "3";
+      expect(getColorSupport()).toBe("truecolor");
+    });
+
+    it("should handle FORCE_COLOR values correctly", () => {
+      process.env = {};
+      process.env.FORCE_COLOR = "0";
+      expect(getColorSupport()).toBe("none");
+
+      process.env = {};
+      process.env.FORCE_COLOR = "1";
+      expect(getColorSupport()).toBe("ansi");
+
+      process.env = {};
+      process.env.FORCE_COLOR = "2";
+      expect(getColorSupport()).toBe("ansi256");
+
+      process.env = {};
+      process.env.FORCE_COLOR = "3";
+      expect(getColorSupport()).toBe("truecolor");
+
+      process.env = {};
+      process.env.FORCE_COLOR = "yes";
+      expect(getColorSupport()).toBe("ansi");
+
+      process.env = {};
+      process.env.FORCE_COLOR = "";
+      expect(getColorSupport()).not.toBe("ansi");
+    });
+
     it("should generate correct ANSI codes for different modes", () => {
       const ansi256 = hexTo256Ansi("#FF0000", false);
       expect(ansi256.startsWith("\u001b[38;5;")).toBe(true);

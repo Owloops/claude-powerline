@@ -456,7 +456,20 @@ Create custom themes and configure color compatibility:
 
 **Color Options:** `bg` (hex, `transparent`, `none`) • `fg` (hex)
 
-**Compatibility Modes:** `auto` (default), `ansi`, `ansi256`, `truecolor`. Respects `NO_COLOR`, `FORCE_COLOR`, and `COLORTERM` environment variables.
+**Compatibility Modes:** `auto` (default), `ansi`, `ansi256`, `truecolor`
+
+**Environment Variables:**
+
+- `NO_COLOR` - Disable all colors when set to any non-empty value (follows [NO_COLOR standard](https://no-color.org/))
+- `FORCE_COLOR` - Force enable color output (follows [FORCE_COLOR standard](https://force-color.org/)):
+  - `0` or `false` - Disable colors
+  - `1` or `true` - Force basic 16 colors (ANSI)
+  - `2` - Force 256 colors
+  - `3` - Force truecolor (16 million colors)
+  - Any other non-empty value - Force basic colors
+- `COLORTERM` - Auto-detected for truecolor support
+
+**Priority:** `FORCE_COLOR` overrides `NO_COLOR` (allowing color to be forced on even when NO_COLOR is set)
 
 ## Performance
 
