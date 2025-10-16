@@ -1,3 +1,10 @@
+## [1.9.16](https://github.com/Owloops/claude-powerline/compare/v1.9.15...v1.9.16) (2025-10-16)
+
+
+### Bug Fixes
+
+* **pricing:** add haiku 4.5 and sonnet 4.5 model support ([a82f557](https://github.com/Owloops/claude-powerline/commit/a82f5571f2aac67978a60355033622a4d86085bc))
+
 ## [1.9.15](https://github.com/Owloops/claude-powerline/compare/v1.9.14...v1.9.15) (2025-09-22)
 
 
