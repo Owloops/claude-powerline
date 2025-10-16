@@ -1,7 +1,7 @@
 {
   "_meta": {
     "source": "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json",
-    "updated": "2025-10-12",
+    "updated": "2025-10-16",
     "currency": "USD",
     "unit": "per_million_tokens"
   },
@@ -15,6 +15,22 @@
   },
   "claude-3-5-haiku-latest": {
     "name": "claude-3-5-haiku-latest",
+    "input": 1,
+    "output": 5,
+    "cache_write_5m": 1.25,
+    "cache_write_1h": 2,
+    "cache_read": 0.1
+  },
+  "claude-haiku-4-5-20251001": {
+    "name": "claude-haiku-4-5-20251001",
+    "input": 1,
+    "output": 5,
+    "cache_write_5m": 1.25,
+    "cache_write_1h": 2,
+    "cache_read": 0.1
+  },
+  "claude-haiku-4-5": {
+    "name": "claude-haiku-4-5",
     "input": 1,
     "output": 5,
     "cache_write_5m": 1.25,
