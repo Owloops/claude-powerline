@@ -1,3 +1,10 @@
+## [1.9.17](https://github.com/Owloops/claude-powerline/compare/v1.9.16...v1.9.17) (2025-10-16)
+
+
+### Bug Fixes
+
+* **colors:** implement NO_COLOR and FORCE_COLOR standards compliance ([6fbc322](https://github.com/Owloops/claude-powerline/commit/6fbc32221f7a2989c88efd067a6cc413a437b5c3))
+
 ## [1.9.16](https://github.com/Owloops/claude-powerline/compare/v1.9.15...v1.9.16) (2025-10-16)
 
 
