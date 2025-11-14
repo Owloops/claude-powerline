@@ -34,9 +34,19 @@ export class GitService {
     }
   }
 
+  private async execGitAsync(
+    command: string,
+    options: { cwd: string; encoding: string; timeout: number }
+  ): Promise<{ stdout: string }> {
+    return execAsync(command, {
+      ...options,
+      env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" },
+    });
+  }
+
   private async findGitRoot(workingDir: string): Promise<string | null> {
     try {
-      const result = await execAsync("git rev-parse --show-toplevel", {
+      const result = await this.execGitAsync("git rev-parse --show-toplevel", {
         cwd: workingDir,
         encoding: "utf8",
         timeout: 2000,
@@ -183,7 +193,7 @@ export class GitService {
 
   private async getShaAsync(workingDir: string): Promise<string | null> {
     try {
-      const result = await execAsync("git rev-parse --short=7 HEAD", {
+      const result = await this.execGitAsync("git rev-parse --short=7 HEAD", {
         cwd: workingDir,
         encoding: "utf8",
         timeout: 2000,
@@ -219,7 +229,7 @@ export class GitService {
 
   private async getNearestTagAsync(workingDir: string): Promise<string | null> {
     try {
-      const result = await execAsync("git describe --tags --abbrev=0", {
+      const result = await this.execGitAsync("git describe --tags --abbrev=0", {
         cwd: workingDir,
         encoding: "utf8",
         timeout: 2000,
@@ -236,7 +246,7 @@ export class GitService {
     workingDir: string
   ): Promise<number | null> {
     try {
-      const result = await execAsync("git log -1 --format=%ct", {
+      const result = await this.execGitAsync("git log -1 --format=%ct", {
         cwd: workingDir,
         encoding: "utf8",
         timeout: 2000,
@@ -255,7 +265,7 @@ export class GitService {
 
   private async getStashCountAsync(workingDir: string): Promise<number> {
     try {
-      const result = await execAsync("git stash list", {
+      const result = await this.execGitAsync("git stash list", {
         cwd: workingDir,
         encoding: "utf8",
         timeout: 2000,
@@ -271,7 +281,7 @@ export class GitService {
 
   private async getUpstreamAsync(workingDir: string): Promise<string | null> {
     try {
-      const result = await execAsync("git rev-parse --abbrev-ref @{u}", {
+      const result = await this.execGitAsync("git rev-parse --abbrev-ref @{u}", {
         cwd: workingDir,
         encoding: "utf8",
         timeout: 2000,
@@ -286,7 +296,7 @@ export class GitService {
 
   private async getRepoNameAsync(workingDir: string): Promise<string | null> {
     try {
-      const result = await execAsync("git config --get remote.origin.url", {
+      const result = await this.execGitAsync("git config --get remote.origin.url", {
         cwd: workingDir,
         encoding: "utf8",
         timeout: 2000,
@@ -326,7 +336,7 @@ export class GitService {
   }> {
     try {
       debug(`[GIT-EXEC] Running git status in ${workingDir}`);
-      const result = await execAsync("git status --porcelain -b", {
+      const result = await this.execGitAsync("git status --porcelain -b", {
         cwd: workingDir,
         encoding: "utf8",
         timeout: 2000,
@@ -397,7 +407,7 @@ export class GitService {
 
   private async getFallbackBranch(workingDir: string): Promise<string | null> {
     try {
-      const result = await execAsync("git branch --show-current", {
+      const result = await this.execGitAsync("git branch --show-current", {
         cwd: workingDir,
         encoding: "utf8",
         timeout: 2000,
@@ -408,7 +418,7 @@ export class GitService {
       }
     } catch {
       try {
-        const result = await execAsync("git symbolic-ref --short HEAD", {
+        const result = await this.execGitAsync("git symbolic-ref --short HEAD", {
           cwd: workingDir,
           encoding: "utf8",
           timeout: 2000,
@@ -431,12 +441,12 @@ export class GitService {
     try {
       debug(`[GIT-EXEC] Running git ahead/behind in ${workingDir}`);
       const [aheadResult, behindResult] = await Promise.all([
-        execAsync("git rev-list --count @{u}..HEAD", {
+        this.execGitAsync("git rev-list --count @{u}..HEAD", {
           cwd: workingDir,
           encoding: "utf8",
           timeout: 2000,
         }),
-        execAsync("git rev-list --count HEAD..@{u}", {
+        this.execGitAsync("git rev-list --count HEAD..@{u}", {
           cwd: workingDir,
           encoding: "utf8",
           timeout: 2000,
