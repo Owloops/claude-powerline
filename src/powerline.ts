@@ -32,7 +32,7 @@ import {
 } from "./segments";
 import { BlockProvider, BlockInfo } from "./segments/block";
 import { TodayProvider, TodayInfo } from "./segments/today";
-import { SYMBOLS, RESET_CODE } from "./utils/constants";
+import { SYMBOLS, TEXT_SYMBOLS, RESET_CODE } from "./utils/constants";
 
 export class PowerlineRenderer {
   private readonly symbols: PowerlineSymbols;
@@ -396,37 +396,39 @@ export class PowerlineRenderer {
 
   private initializeSymbols(): PowerlineSymbols {
     const style = this.config.display.style;
+    const charset = this.config.display.charset || "unicode";
     const isMinimalStyle = style === "minimal";
     const isCapsuleStyle = style === "capsule";
+    const symbolSet = charset === "text" ? TEXT_SYMBOLS : SYMBOLS;
 
     return {
-      right: isMinimalStyle ? "" : (isCapsuleStyle ? SYMBOLS.right_rounded : SYMBOLS.right),
-      left: isCapsuleStyle ? SYMBOLS.left_rounded : "",
-      branch: SYMBOLS.branch,
-      model: SYMBOLS.model,
-      git_clean: SYMBOLS.git_clean,
-      git_dirty: SYMBOLS.git_dirty,
-      git_conflicts: SYMBOLS.git_conflicts,
-      git_ahead: SYMBOLS.git_ahead,
-      git_behind: SYMBOLS.git_behind,
-      git_worktree: SYMBOLS.git_worktree,
-      git_tag: SYMBOLS.git_tag,
-      git_sha: SYMBOLS.git_sha,
-      git_upstream: SYMBOLS.git_upstream,
-      git_stash: SYMBOLS.git_stash,
-      git_time: SYMBOLS.git_time,
-      session_cost: SYMBOLS.session_cost,
-      block_cost: SYMBOLS.block_cost,
-      today_cost: SYMBOLS.today_cost,
-      context_time: SYMBOLS.context_time,
-      metrics_response: SYMBOLS.metrics_response,
-      metrics_last_response: SYMBOLS.metrics_last_response,
-      metrics_duration: SYMBOLS.metrics_duration,
-      metrics_messages: SYMBOLS.metrics_messages,
-      metrics_lines_added: SYMBOLS.metrics_lines_added,
-      metrics_lines_removed: SYMBOLS.metrics_lines_removed,
-      metrics_burn: SYMBOLS.metrics_burn,
-      version: SYMBOLS.version,
+      right: isMinimalStyle ? "" : (isCapsuleStyle ? symbolSet.right_rounded : symbolSet.right),
+      left: isCapsuleStyle ? symbolSet.left_rounded : "",
+      branch: symbolSet.branch,
+      model: symbolSet.model,
+      git_clean: symbolSet.git_clean,
+      git_dirty: symbolSet.git_dirty,
+      git_conflicts: symbolSet.git_conflicts,
+      git_ahead: symbolSet.git_ahead,
+      git_behind: symbolSet.git_behind,
+      git_worktree: symbolSet.git_worktree,
+      git_tag: symbolSet.git_tag,
+      git_sha: symbolSet.git_sha,
+      git_upstream: symbolSet.git_upstream,
+      git_stash: symbolSet.git_stash,
+      git_time: symbolSet.git_time,
+      session_cost: symbolSet.session_cost,
+      block_cost: symbolSet.block_cost,
+      today_cost: symbolSet.today_cost,
+      context_time: symbolSet.context_time,
+      metrics_response: symbolSet.metrics_response,
+      metrics_last_response: symbolSet.metrics_last_response,
+      metrics_duration: symbolSet.metrics_duration,
+      metrics_messages: symbolSet.metrics_messages,
+      metrics_lines_added: symbolSet.metrics_lines_added,
+      metrics_lines_removed: symbolSet.metrics_lines_removed,
+      metrics_burn: symbolSet.metrics_burn,
+      version: symbolSet.version,
     };
   }
 

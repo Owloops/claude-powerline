@@ -34,6 +34,7 @@ export interface LineConfig {
 export interface DisplayConfig {
   lines: LineConfig[];
   style?: "minimal" | "powerline" | "capsule";
+  charset?: "unicode" | "text";
   colorCompatibility?: "auto" | "ansi" | "ansi256" | "truecolor";
 }
 
@@ -72,6 +73,10 @@ function isValidTheme(theme: string): theme is PowerlineConfig["theme"] {
 
 function isValidStyle(style: string): style is "minimal" | "powerline" | "capsule" {
   return style === "minimal" || style === "powerline" || style === "capsule";
+}
+
+function isValidCharset(charset: string): charset is "unicode" | "text" {
+  return charset === "unicode" || charset === "text";
 }
 
 function deepMerge<T extends Record<string, any>>(
@@ -184,6 +189,18 @@ function parseCLIOverrides(args: string[]): Partial<PowerlineConfig> {
     }
   }
 
+  const charset = args.find((arg) => arg.startsWith("--charset="))?.split("=")[1];
+  if (charset) {
+    if (isValidCharset(charset)) {
+      display.charset = charset;
+    } else {
+      console.warn(
+        `Invalid charset '${charset}' from CLI argument, falling back to 'unicode'`
+      );
+      display.charset = "unicode";
+    }
+  }
+
   if (Object.keys(display).length > 0) {
     config.display = display as DisplayConfig;
   }
@@ -218,6 +235,13 @@ export function loadConfig(
       `Invalid display style '${config.display.style}' in config file, falling back to 'minimal'`
     );
     config.display.style = "minimal";
+  }
+
+  if (config.display?.charset && !isValidCharset(config.display.charset)) {
+    console.warn(
+      `Invalid charset '${config.display.charset}' in config file, falling back to 'unicode'`
+    );
+    config.display.charset = "unicode";
   }
 
   if (config.theme && !isValidTheme(config.theme)) {

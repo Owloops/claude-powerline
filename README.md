@@ -80,6 +80,7 @@ _Live demonstration: real-time usage tracking, git integration, and theme showca
 - 5 built-in themes (dark, light, nord, tokyo-night, rose-pine)
 - Custom color configuration
 - Three separator styles: minimal, powerline, and capsule
+- Two character sets: unicode (Nerd Font) and text (ASCII)
 - Multi-line layouts to prevent cutoff
 
 ### Performance Metrics
@@ -97,7 +98,7 @@ _Live demonstration: real-time usage tracking, git integration, and theme showca
 
 ### Setup
 
-Requires Node.js 18+, Claude Code, Git 2.0+, and terminal with [Nerd Font](https://www.nerdfonts.com/) for proper icon display.
+Requires Node.js 18+, Claude Code, and Git 2.0+. For best display, install a [Nerd Font](https://www.nerdfonts.com/) or use `--charset=text` for ASCII-only symbols.
 
 **1. Add to your Claude Code `settings.json`:**
 
@@ -124,6 +125,7 @@ Once added to Claude Code settings, the statusline runs automatically. For custo
 
 - `--theme` - `dark` (default), `light`, `nord`, `tokyo-night`, `rose-pine`, `custom`
 - `--style` - `minimal` (default), `powerline`, `capsule`
+- `--charset` - `unicode` (default), `text`
 - `--config` - Custom config file path
 - `--help` - Show help
 
@@ -131,7 +133,7 @@ Once added to Claude Code settings, the statusline runs automatically. For custo
 
 ```bash
 claude-powerline --theme=nord --style=powerline
-claude-powerline --theme=dark --style=capsule
+claude-powerline --theme=dark --style=capsule --charset=text
 claude-powerline --config=/path/to/config.json
 ```
 
@@ -215,7 +217,8 @@ Config files reload automatically and no restart needed.
 
 **Symbols:**
 
-- `⎇` Branch • `♯` SHA • `⌂` Tag • `⧇` Stash • `✓` Clean • `●` Dirty • `⚠` Conflicts • `↑3` Ahead • `↓2` Behind • `(+1 ~2 ?3)` Staged/Unstaged/Untracked
+- Unicode: `⎇` Branch • `♯` SHA • `⌂` Tag • `⧇` Stash • `✓` Clean • `●` Dirty • `⚠` Conflicts • `↑3` Ahead • `↓2` Behind • `(+1 ~2 ?3)` Staged/Unstaged/Untracked
+- Text: `~` Branch • `#` SHA • `T` Tag • `S` Stash • `=` Clean • `*` Dirty • `!` Conflicts • `^3` Ahead • `v2` Behind • `(+1 ~2 ?3)` Staged/Unstaged/Untracked
 
 </details>
 
@@ -245,7 +248,8 @@ Config files reload automatically and no restart needed.
 
 **Symbols:**
 
-- `⧖` Total API time • `Δ` Last response • `⧗` Session duration • `⟐` Messages • `+` Lines added • `-` Lines removed
+- Unicode: `⧖` Total API time • `Δ` Last response • `⧗` Session duration • `⟐` Messages • `+` Lines added • `-` Lines removed
+- Text: `R` Total API time • `L` Last response • `T` Session duration • `#` Messages • `+` Lines added • `-` Lines removed
 
 </details>
 
@@ -257,6 +261,8 @@ Config files reload automatically and no restart needed.
   "enabled": true
 }
 ```
+
+**Symbols:** `✱` Model (unicode) • `M` Model (text)
 
 </details>
 
@@ -275,6 +281,8 @@ Config files reload automatically and no restart needed.
 - `showPercentageOnly`: Show only percentage remaining (default: false)
 
 **Display:** `◔ 34,040 (79%)` or `◔ 79%` (percentage only)
+
+**Symbols:** `◔` Context (unicode) • `C` Context (text)
 
 ##### Model Context Limits
 
@@ -321,6 +329,8 @@ Configure context window limits for different model types. Defaults to 200K toke
 
 **Display:** `v1.0.81`
 
+**Symbols:** `◈` Version (unicode) • `v` Version (text)
+
 </details>
 
 <details>
@@ -339,7 +349,7 @@ Configure context window limits for different model types. Defaults to 200K toke
 - `type`: Display format - `cost` | `tokens` | `both` | `breakdown`
 - `costSource`: Cost calculation method - `calculated` (ccusage-style) | `official` (hook data)
 
-**Symbols:** `§` Session
+**Symbols:** `§` Session (unicode) • `$` Session (text)
 
 </details>
 
@@ -361,7 +371,7 @@ Configure context window limits for different model types. Defaults to 200K toke
 
 **Weighted Tokens:** Opus tokens count 5x toward rate limits compared to Sonnet/Haiku tokens
 
-**Symbols:** `◱` Block
+**Symbols:** `◱` Block (unicode) • `B` Block (text)
 
 </details>
 
@@ -379,7 +389,7 @@ Configure context window limits for different model types. Defaults to 200K toke
 
 - `type`: Display format - `cost` | `tokens` | `both` | `breakdown`
 
-**Symbols:** `☉` Today
+**Symbols:** `☉` Today (unicode) • `D` Today (text)
 
 </details>
 
@@ -401,8 +411,39 @@ Configure context window limits for different model types. Defaults to 200K toke
 
 **Indicators:** `25%` Normal • `+75%` Moderate (50-79%) • `!85%` Warning (80%+)
 
-> [!TIP]  
+> [!TIP]
 > Claude's rate limits consider multiple factors beyond tokens (message count, length, attachments, model). See [Anthropic's usage documentation](https://support.anthropic.com/en/articles/11014257-about-claude-s-max-plan-usage) for details.
+
+### Character Sets
+
+Choose between Unicode symbols (requires Nerd Font) or ASCII text mode for maximum compatibility.
+
+```json
+{
+  "display": {
+    "charset": "unicode"
+  }
+}
+```
+
+**Options:**
+
+- `unicode` (default) - Uses Nerd Font icons and symbols (⎇, ✱, ●, ↑, ↓, etc.)
+- `text` - ASCII-only characters (~, M, *, ^, v, etc.) for terminals without Nerd Font
+
+**Combinations with styles:**
+
+The charset setting works independently from separator styles, giving you 6 possible combinations:
+- `minimal` + `unicode` / `text` - No separators
+- `powerline` + `unicode` / `text` - Arrow separators (requires Nerd Font for unicode)
+- `capsule` + `unicode` / `text` - Rounded caps (requires Nerd Font for unicode)
+
+**CLI Usage:**
+
+```bash
+claude-powerline --charset=text --style=minimal
+claude-powerline --charset=unicode --style=powerline
+```
 
 ### Multi-line Layout
 

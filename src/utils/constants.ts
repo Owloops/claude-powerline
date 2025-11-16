@@ -1,4 +1,5 @@
 export const RESET_CODE = "\x1b[0m";
+
 export const SYMBOLS = {
   right: "\uE0B0",
   left_rounded: "\uE0B6",
@@ -28,5 +29,36 @@ export const SYMBOLS = {
   metrics_lines_removed: "-",
   metrics_burn: "⟢",
   version: "◈",
+} as const;
+
+export const TEXT_SYMBOLS = {
+  right: "\uE0B0",
+  left_rounded: "\uE0B6",
+  right_rounded: "\uE0B4",
+  branch: "~",
+  model: "M",
+  git_clean: "=",
+  git_dirty: "*",
+  git_conflicts: "!",
+  git_ahead: "^",
+  git_behind: "v",
+  git_worktree: "W",
+  git_tag: "T",
+  git_sha: "#",
+  git_upstream: ">>",
+  git_stash: "S",
+  git_time: "@",
+  session_cost: "$",
+  block_cost: "B",
+  today_cost: "D",
+  context_time: "C",
+  metrics_response: "R",
+  metrics_last_response: "L",
+  metrics_duration: "T",
+  metrics_messages: "#",
+  metrics_lines_added: "+",
+  metrics_lines_removed: "-",
+  metrics_burn: "~/h",
+  version: "v",
 } as const;
 
