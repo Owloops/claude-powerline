@@ -1,3 +1,10 @@
+## [1.9.18](https://github.com/Owloops/claude-powerline/compare/v1.9.17...v1.9.18) (2025-11-16)
+
+
+### Bug Fixes
+
+* **git:** prevent lock file creation with GIT_OPTIONAL_LOCKS ([#26](https://github.com/Owloops/claude-powerline/issues/26)) ([876f793](https://github.com/Owloops/claude-powerline/commit/876f7931cbb0453be9690509bd9d3c9c59518860))
+
 ## [1.9.17](https://github.com/Owloops/claude-powerline/compare/v1.9.16...v1.9.17) (2025-10-16)
 
 
