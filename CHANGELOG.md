@@ -1,3 +1,10 @@
+## [1.9.19](https://github.com/Owloops/claude-powerline/compare/v1.9.18...v1.9.19) (2025-11-16)
+
+
+### Bug Fixes
+
+* **display:** add text charset mode for terminals without nerd fonts ([3e3943a](https://github.com/Owloops/claude-powerline/commit/3e3943ae2081e4b27ca064ed9d61e3cdf6f5d229))
+
 ## [1.9.18](https://github.com/Owloops/claude-powerline/compare/v1.9.17...v1.9.18) (2025-11-16)
 
 
