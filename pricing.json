@@ -1,7 +1,7 @@
 {
   "_meta": {
     "source": "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json",
-    "updated": "2025-11-23",
+    "updated": "2025-11-30",
     "currency": "USD",
     "unit": "per_million_tokens"
   },
@@ -164,6 +164,14 @@
     "cache_write_5m": 18.75,
     "cache_write_1h": 30,
     "cache_read": 1.5
+  },
+  "claude-opus-4-5-20251101": {
+    "name": "claude-opus-4-5-20251101",
+    "input": 5,
+    "output": 25,
+    "cache_write_5m": 6.25,
+    "cache_write_1h": 10,
+    "cache_read": 0.5
   },
   "claude-sonnet-4-20250514": {
     "name": "claude-sonnet-4-20250514",
