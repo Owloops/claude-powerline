@@ -58,37 +58,48 @@ _Live demonstration: real-time usage tracking, git integration, and theme showca
 <tr>
 <td width="50%">
 
-### Usage Tracking
+**Real-time usage tracking**
 
-- Real-time session costs
-- 5-hour billing window monitoring
-- Daily budget alerts with percentages
-- Token breakdown (input/output/cached)
-
-### Git Integration
-
-- Branch status with clean/dirty indicators
-- Commits ahead/behind remote tracking
-- Repository info (SHA, tags, stash count)
-- Working tree staged/unstaged/untracked counts
+Monitor session costs, 5-hour billing windows, and daily budgets with percentage alerts.
 
 </td>
 <td width="50%">
 
-### Customization
+**Git integration**
 
-- 5 built-in themes (dark, light, nord, tokyo-night, rose-pine)
-- Custom color configuration
-- Three separator styles: minimal, powerline, and capsule
-- Two character sets: unicode (Nerd Font) and text (ASCII)
-- Multi-line layouts to prevent cutoff
+Branch status, commits ahead/behind, working tree changes, and repository info at a glance.
 
-### Performance Metrics
+</td>
+</tr>
+<tr>
+<td width="50%">
 
-- Average and last response times
-- Session duration tracking
-- Message count monitoring
-- Context usage with auto-compact threshold
+**5 built-in themes**
+
+Dark, light, nord, tokyo-night, and rose-pine themes with full custom color support.
+
+</td>
+<td width="50%">
+
+**Multiple styles**
+
+Minimal, powerline, and capsule separators with unicode or ASCII character sets.
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+**Auto-wrap layout**
+
+Segments automatically wrap to new lines based on terminal width. No more cutoff.
+
+</td>
+<td width="50%">
+
+**Zero dependencies**
+
+Lightweight and fast with no external dependencies to install.
 
 </td>
 </tr>
