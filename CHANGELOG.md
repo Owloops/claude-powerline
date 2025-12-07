@@ -1,3 +1,10 @@
+## [1.10.1](https://github.com/Owloops/claude-powerline/compare/v1.10.0...v1.10.1) (2025-12-07)
+
+
+### Bug Fixes
+
+* include subagent costs in session segment calculation ([e03a08a](https://github.com/Owloops/claude-powerline/commit/e03a08a1734fa46bfd2a16a0fa47f72dcaad227c))
+
 # [1.10.0](https://github.com/Owloops/claude-powerline/compare/v1.9.19...v1.10.0) (2025-12-07)
 
 
