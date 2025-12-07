@@ -1,3 +1,15 @@
+# [1.10.0](https://github.com/Owloops/claude-powerline/compare/v1.9.19...v1.10.0) (2025-12-07)
+
+
+### Bug Fixes
+
+* resolve eslint no-control-regex error ([ef0503b](https://github.com/Owloops/claude-powerline/commit/ef0503b7e83e70be03e6943bed6a2cb2efd3b825))
+
+
+### Features
+
+* add auto-wrap layout based on terminal width ([1bc0a93](https://github.com/Owloops/claude-powerline/commit/1bc0a930d82075fa45d4b2a29a12cd9f47a138ef))
+
 ## [1.9.19](https://github.com/Owloops/claude-powerline/compare/v1.9.18...v1.9.19) (2025-11-16)
 
 
