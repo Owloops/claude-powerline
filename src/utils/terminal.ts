@@ -1,6 +1,7 @@
 import { execSync } from "node:child_process";
 
-const ANSI_REGEX = /\x1b\[[0-9;]*m/g;
+const ESC = String.fromCharCode(27);
+const ANSI_REGEX = new RegExp(`${ESC}\\[[0-9;]*m`, "g");
 const VALID_TTY_PATTERN = /^[a-zA-Z0-9/]+$/;
 
 function findParentTty(): string | null {
