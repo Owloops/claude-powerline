@@ -33,6 +33,14 @@ import {
 import { BlockProvider, BlockInfo } from "./segments/block";
 import { TodayProvider, TodayInfo } from "./segments/today";
 import { SYMBOLS, TEXT_SYMBOLS, RESET_CODE } from "./utils/constants";
+import { getTerminalWidth, visibleLength } from "./utils/terminal";
+
+interface RenderedSegment {
+  type: string;
+  text: string;
+  bgColor: string;
+  fgColor: string;
+}
 
 export class PowerlineRenderer {
   private readonly symbols: PowerlineSymbols;
@@ -135,6 +143,17 @@ export class PowerlineRenderer {
       ? await this.metricsProvider.getMetricsInfo(hookData.session_id, hookData)
       : null;
 
+    if (this.config.display.autoWrap) {
+      return this.generateAutoWrapStatusline(
+        hookData,
+        usageInfo,
+        blockInfo,
+        todayInfo,
+        contextInfo,
+        metricsInfo
+      );
+    }
+
     const lines = await Promise.all(
       this.config.display.lines.map((lineConfig) =>
         this.renderLine(
@@ -150,6 +169,129 @@ export class PowerlineRenderer {
     );
 
     return lines.filter((line) => line.length > 0).join("\n");
+  }
+
+  private async generateAutoWrapStatusline(
+    hookData: ClaudeHookData,
+    usageInfo: UsageInfo | null,
+    blockInfo: BlockInfo | null,
+    todayInfo: TodayInfo | null,
+    contextInfo: ContextInfo | null,
+    metricsInfo: MetricsInfo | null
+  ): Promise<string> {
+    const colors = this.getThemeColors();
+    const currentDir = hookData.workspace?.current_dir || hookData.cwd || "/";
+    const terminalWidth = getTerminalWidth();
+
+    const outputLines: string[] = [];
+
+    for (const lineConfig of this.config.display.lines) {
+      const segments = Object.entries(lineConfig.segments)
+        .filter(
+          ([_, config]: [string, AnySegmentConfig | undefined]) => config?.enabled
+        )
+        .map(([type, config]: [string, AnySegmentConfig]) => ({ type, config }));
+
+      const renderedSegments: RenderedSegment[] = [];
+      for (const segment of segments) {
+        const segmentData = await this.renderSegment(
+          segment,
+          hookData,
+          usageInfo,
+          blockInfo,
+          todayInfo,
+          contextInfo,
+          metricsInfo,
+          colors,
+          currentDir
+        );
+
+        if (segmentData) {
+          renderedSegments.push({
+            type: segment.type,
+            text: segmentData.text,
+            bgColor: segmentData.bgColor,
+            fgColor: segmentData.fgColor,
+          });
+        }
+      }
+
+      if (renderedSegments.length === 0) continue;
+
+      if (!terminalWidth || terminalWidth <= 0) {
+        outputLines.push(this.buildLineFromSegments(renderedSegments, colors));
+        continue;
+      }
+
+      let currentLineSegments: RenderedSegment[] = [];
+      let currentLineWidth = 0;
+
+      for (const segment of renderedSegments) {
+        const segmentWidth = this.calculateSegmentWidth(segment, currentLineSegments.length === 0);
+
+        if (currentLineSegments.length > 0 && currentLineWidth + segmentWidth > terminalWidth) {
+          outputLines.push(this.buildLineFromSegments(currentLineSegments, colors));
+          currentLineSegments = [];
+          currentLineWidth = 0;
+        }
+
+        currentLineSegments.push(segment);
+        currentLineWidth += segmentWidth;
+      }
+
+      if (currentLineSegments.length > 0) {
+        outputLines.push(this.buildLineFromSegments(currentLineSegments, colors));
+      }
+    }
+
+    return outputLines.join("\n");
+  }
+
+  private calculateSegmentWidth(segment: RenderedSegment, isFirst: boolean): number {
+    const isCapsuleStyle = this.config.display.style === "capsule";
+    const textWidth = visibleLength(segment.text);
+
+    if (isCapsuleStyle) {
+      const capsuleOverhead = 4 + (isFirst ? 0 : 1);
+      return textWidth + capsuleOverhead;
+    }
+
+    const powerlineOverhead = 3;
+    return textWidth + powerlineOverhead;
+  }
+
+  private buildLineFromSegments(
+    segments: RenderedSegment[],
+    colors: PowerlineColors
+  ): string {
+    const isCapsuleStyle = this.config.display.style === "capsule";
+    let line = colors.reset;
+
+    for (let i = 0; i < segments.length; i++) {
+      const segment = segments[i];
+      if (!segment) continue;
+
+      const isFirst = i === 0;
+      const isLast = i === segments.length - 1;
+      const nextSegment = !isLast ? segments[i + 1] : null;
+      const nextBgColor = nextSegment
+        ? this.getSegmentBgColor(nextSegment.type, colors)
+        : "";
+
+      if (isCapsuleStyle && !isFirst) {
+        line += " ";
+      }
+
+      line += this.formatSegment(
+        segment.bgColor,
+        segment.fgColor,
+        segment.text,
+        isLast ? undefined : nextBgColor,
+        colors
+      );
+    }
+
+    return line;
   }
 
   private async renderLine(

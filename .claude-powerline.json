@@ -4,6 +4,7 @@
     "style": "powerline",
     "charset": "unicode",
     "colorCompatibility": "auto",
+    "autoWrap": true,
     "lines": [
       {
         "segments": {

@@ -6,6 +6,7 @@ export const DEFAULT_CONFIG: PowerlineConfig = {
     style: "minimal",
     charset: "unicode",
     colorCompatibility: "auto",
+    autoWrap: true,
     lines: [
       {
         segments: {

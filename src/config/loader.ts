@@ -36,6 +36,7 @@ export interface DisplayConfig {
   style?: "minimal" | "powerline" | "capsule";
   charset?: "unicode" | "text";
   colorCompatibility?: "auto" | "ansi" | "ansi256" | "truecolor";
+  autoWrap?: boolean;
 }
 
 export interface BudgetItemConfig {

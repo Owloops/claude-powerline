@@ -445,9 +445,23 @@ claude-powerline --charset=text --style=minimal
 claude-powerline --charset=unicode --style=powerline
 ```
 
+### Auto-Wrap
+
+Automatically wrap segments to new lines based on terminal width.
+
+```json
+{
+  "display": {
+    "autoWrap": true
+  }
+}
+```
+
+Segments flow naturally and wrap to new lines when they exceed the terminal width. The layout adjusts automatically when the terminal is resized. Enabled by default.
+
 ### Multi-line Layout
 
-Prevent segment cutoff by organizing segments across multiple lines.
+Alternatively, manually organize segments across multiple lines.
 
 ```json
 {
@@ -472,8 +486,8 @@ Prevent segment cutoff by organizing segments across multiple lines.
 }
 ```
 
-> [!NOTE]  
-> Claude Code system messages may truncate long status lines. Multi-line layouts prevent segment cutoff and improve readability.
+> [!NOTE]
+> Claude Code system messages may truncate long status lines. Use `autoWrap` or manual multi-line layouts to prevent segment cutoff.
 
 ### Colors & Themes
 
