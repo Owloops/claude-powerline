@@ -62,7 +62,7 @@
     "eslint-plugin-prettier": "^5.5.4",
     "jest": "^30.0.5",
     "prettier": "^3.6.2",
-    "semantic-release": "^24.2.7",
+    "semantic-release": "^25.0.2",
     "ts-jest": "^29.4.1",
     "tsup": "^8.5.0",
     "typescript": "^5.0.0"
