@@ -52,7 +52,7 @@ export interface BudgetConfig {
 }
 
 export interface PowerlineConfig {
-  theme: "light" | "dark" | "nord" | "tokyo-night" | "rose-pine" | "custom";
+  theme: "light" | "dark" | "nord" | "tokyo-night" | "rose-pine" | "gruvbox" | "custom";
   display: DisplayConfig;
   colors?: {
     custom: ColorTheme;
@@ -68,6 +68,7 @@ function isValidTheme(theme: string): theme is PowerlineConfig["theme"] {
     "nord",
     "tokyo-night",
     "rose-pine",
+    "gruvbox",
     "custom",
   ].includes(theme);
 }

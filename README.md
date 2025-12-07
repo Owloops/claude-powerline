@@ -74,9 +74,9 @@ Branch status, commits ahead/behind, working tree changes, and repository info a
 <tr>
 <td width="50%">
 
-**5 built-in themes**
+**6 built-in themes**
 
-Dark, light, nord, tokyo-night, and rose-pine themes with full custom color support.
+Dark, light, nord, tokyo-night, rose-pine, and gruvbox themes with full custom color support.
 
 </td>
 <td width="50%">
@@ -134,7 +134,7 @@ Once added to Claude Code settings, the statusline runs automatically. For custo
 
 **CLI Options:**
 
-- `--theme` - `dark` (default), `light`, `nord`, `tokyo-night`, `rose-pine`, `custom`
+- `--theme` - `dark` (default), `light`, `nord`, `tokyo-night`, `rose-pine`, `gruvbox`, `custom`
 - `--style` - `minimal` (default), `powerline`, `capsule`
 - `--charset` - `unicode` (default), `text`
 - `--config` - Custom config file path
