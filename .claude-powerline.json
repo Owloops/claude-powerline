@@ -1,5 +1,5 @@
 {
-  "theme": "gruvbox",
+  "theme": "custom",
   "display": {
     "style": "powerline",
     "charset": "unicode",
