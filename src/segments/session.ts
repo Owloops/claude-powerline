@@ -2,10 +2,12 @@ import { debug } from "../utils/logger";
 import { PricingService } from "./pricing";
 import {
   findTranscriptFile,
+  findAgentTranscripts,
   parseJsonlFile,
   type ParsedEntry,
   type ClaudeHookData,
 } from "../utils/claude";
+import { dirname } from "node:path";
 
 export interface SessionUsageEntry {
   timestamp: string;
@@ -72,6 +74,15 @@ export class SessionProvider {
       debug(`Found transcript at: ${transcriptPath}`);
 
       const parsedEntries = await parseJsonlFile(transcriptPath);
+      const projectPath = dirname(transcriptPath);
+      const agentTranscripts = await findAgentTranscripts(sessionId, projectPath);
+
+      debug(`Found ${agentTranscripts.length} agent transcripts for session`);
+
+      for (const agentPath of agentTranscripts) {
+        const agentEntries = await parseJsonlFile(agentPath);
+        parsedEntries.push(...agentEntries);
+      }
 
       if (parsedEntries.length === 0) {
         return { totalCost: 0, entries: [] };

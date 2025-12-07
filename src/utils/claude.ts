@@ -102,6 +102,38 @@ export async function findTranscriptFile(
   return null;
 }
 
+export async function findAgentTranscripts(
+  sessionId: string,
+  projectPath: string
+): Promise<string[]> {
+  const agentFiles: string[] = [];
+
+  try {
+    const files = await readdir(projectPath);
+    const agentFileNames = files.filter((f) => f.startsWith("agent-") && f.endsWith(".jsonl"));
+
+    for (const fileName of agentFileNames) {
+      const filePath = posix.join(projectPath, fileName);
+      try {
+        const content = await readFile(filePath, "utf-8");
+        const firstLine = content.split("\n")[0];
+        if (firstLine) {
+          const parsed = JSON.parse(firstLine);
+          if (parsed.sessionId === sessionId) {
+            agentFiles.push(filePath);
+          }
+        }
+      } catch {
+        debug(`Failed to check agent file ${filePath}`);
+      }
+    }
+  } catch (error) {
+    debug(`Failed to read project directory ${projectPath}:`, error);
+  }
+
+  return agentFiles;
+}
+
 export async function getEarliestTimestamp(
   filePath: string
 ): Promise<Date | null> {
