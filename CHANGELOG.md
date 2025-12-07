@@ -1,3 +1,10 @@
+# [1.11.0](https://github.com/Owloops/claude-powerline/compare/v1.10.1...v1.11.0) (2025-12-07)
+
+
+### Features
+
+* add gruvbox theme ([8f1ef4c](https://github.com/Owloops/claude-powerline/commit/8f1ef4c0e407b7e0b0c1c25239553bff3d2620d4))
+
 ## [1.10.1](https://github.com/Owloops/claude-powerline/compare/v1.10.0...v1.10.1) (2025-12-07)
 
 
