@@ -1,3 +1,10 @@
+## [1.11.2](https://github.com/Owloops/claude-powerline/compare/v1.11.1...v1.11.2) (2025-12-09)
+
+
+### Bug Fixes
+
+* **text-mode:** use S and V symbols for session and version segments ([c78da54](https://github.com/Owloops/claude-powerline/commit/c78da542fdd6395fe16b7c1f19c59dff83ed08d2))
+
 ## [1.11.1](https://github.com/Owloops/claude-powerline/compare/v1.11.0...v1.11.1) (2025-12-09)
 
 
