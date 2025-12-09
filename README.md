@@ -340,7 +340,7 @@ Configure context window limits for different model types. Defaults to 200K toke
 
 **Display:** `v1.0.81`
 
-**Symbols:** `◈` Version (unicode) • `v` Version (text)
+**Symbols:** `◈` Version (unicode) • `V` Version (text)
 
 </details>
 
@@ -360,7 +360,7 @@ Configure context window limits for different model types. Defaults to 200K toke
 - `type`: Display format - `cost` | `tokens` | `both` | `breakdown`
 - `costSource`: Cost calculation method - `calculated` (ccusage-style) | `official` (hook data)
 
-**Symbols:** `§` Session (unicode) • `$` Session (text)
+**Symbols:** `§` Session (unicode) • `S` Session (text)
 
 </details>
 
