@@ -1,3 +1,10 @@
+## [1.11.1](https://github.com/Owloops/claude-powerline/compare/v1.11.0...v1.11.1) (2025-12-09)
+
+
+### Bug Fixes
+
+* **autowrap:** reserve 20% terminal width for right-side ui elements ([9ae542d](https://github.com/Owloops/claude-powerline/commit/9ae542dd07b82c86184134a8e6befa5c566684bf))
+
 # [1.11.0](https://github.com/Owloops/claude-powerline/compare/v1.10.1...v1.11.0) (2025-12-07)
 
 
