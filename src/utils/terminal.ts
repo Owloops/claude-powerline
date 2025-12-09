@@ -82,22 +82,30 @@ function getUnixTerminalWidth(): number | null {
   return null;
 }
 
+/**
+ * @info Returns 80% of terminal width to reserve space for Claude Code's
+ * right-side UI messages (e.g., "ctrl-g to edit prompt in Nvim", "Thinking off")
+ */
 export function getTerminalWidth(): number | null {
+  const applyReserve = (w: number) => Math.floor(w * 0.8);
+
   const envColumns = process.env.COLUMNS;
   if (envColumns) {
     const parsed = parseInt(envColumns, 10);
-    if (!isNaN(parsed) && parsed > 0) return parsed;
+    if (!isNaN(parsed) && parsed > 0) return applyReserve(parsed);
   }
 
   if (process.stdout.columns && process.stdout.columns > 0) {
-    return process.stdout.columns;
+    return applyReserve(process.stdout.columns);
   }
 
   if (process.platform === "win32") {
-    return getWindowsTerminalWidth();
+    const width = getWindowsTerminalWidth();
+    if (width) return applyReserve(width);
   }
 
-  return getUnixTerminalWidth();
+  const width = getUnixTerminalWidth();
+  return width ? applyReserve(width) : null;
 }
 
 export function stripAnsi(str: string): string {
