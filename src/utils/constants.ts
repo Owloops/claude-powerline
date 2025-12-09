@@ -48,7 +48,7 @@ export const TEXT_SYMBOLS = {
   git_upstream: ">>",
   git_stash: "S",
   git_time: "@",
-  session_cost: "$",
+  session_cost: "S",
   block_cost: "B",
   today_cost: "D",
   context_time: "C",
@@ -59,6 +59,6 @@ export const TEXT_SYMBOLS = {
   metrics_lines_added: "+",
   metrics_lines_removed: "-",
   metrics_burn: "~/h",
-  version: "v",
+  version: "V",
 } as const;
 
