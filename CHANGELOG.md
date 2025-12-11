@@ -1,3 +1,10 @@
+# [1.12.0](https://github.com/Owloops/claude-powerline/compare/v1.11.2...v1.12.0) (2025-12-11)
+
+
+### Features
+
+* **directory:** add fish-style path abbreviation option ([5a3e1b6](https://github.com/Owloops/claude-powerline/commit/5a3e1b69d64a63a310f4f79b27912b544eaa05d5))
+
 ## [1.11.2](https://github.com/Owloops/claude-powerline/compare/v1.11.1...v1.11.2) (2025-12-09)
 
 
