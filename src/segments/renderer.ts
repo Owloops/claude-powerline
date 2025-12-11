@@ -10,6 +10,7 @@ export interface SegmentConfig {
 
 export interface DirectorySegmentConfig extends SegmentConfig {
   showBasename?: boolean;
+  style?: "full" | "fish" | "basename";
 }
 
 export interface GitSegmentConfig extends SegmentConfig {
@@ -134,7 +135,9 @@ export class SegmentRenderer {
     const currentDir = hookData.workspace?.current_dir || hookData.cwd || "/";
     const projectDir = hookData.workspace?.project_dir;
 
-    if (config?.showBasename) {
+    const style = config?.style ?? (config?.showBasename ? "basename" : "full");
+
+    if (style === "basename") {
       const basename = path.basename(currentDir) || "root";
       return {
         text: basename,
@@ -156,7 +159,11 @@ export class SegmentRenderer {
       }
     }
 
-    const dirName = this.getDisplayDirectoryName(displayDir, displayProjectDir);
+    let dirName = this.getDisplayDirectoryName(displayDir, displayProjectDir);
+
+    if (style === "fish") {
+      dirName = this.abbreviateFishStyle(dirName);
+    }
 
     return {
       text: dirName,
@@ -609,6 +616,17 @@ export class SegmentRenderer {
     }
 
     return path.basename(currentDir) || "root";
+  }
+
+  private abbreviateFishStyle(dirPath: string): string {
+    const parts = dirPath.split(path.sep);
+    return parts
+      .map((part, index) => {
+        if (index === parts.length - 1) return part;
+        if (part === "~" || part === "") return part;
+        return part.charAt(0);
+      })
+      .join(path.sep);
   }
 
   private formatUsageDisplay(

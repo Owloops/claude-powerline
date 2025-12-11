@@ -12,7 +12,7 @@ export const DEFAULT_CONFIG: PowerlineConfig = {
         segments: {
           directory: {
             enabled: true,
-            showBasename: true,
+            style: "basename",
           },
           git: {
             enabled: true,

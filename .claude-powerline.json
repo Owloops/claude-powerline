@@ -10,7 +10,7 @@
         "segments": {
           "directory": {
             "enabled": true,
-            "showBasename": true
+            "style": "fish"
           },
           "model": {
             "enabled": true

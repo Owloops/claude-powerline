@@ -188,13 +188,16 @@ Config files reload automatically and no restart needed.
 ```json
 "directory": {
   "enabled": true,
-  "showBasename": false
+  "style": "full"
 }
 ```
 
 **Options:**
 
-- `showBasename`: Show only folder name instead of full path
+- `style`: Display format - `full` | `fish` | `basename`
+  - `full`: Show complete path (e.g., `~/projects/claude-powerline`)
+  - `fish`: Fish-shell style abbreviation (e.g., `~/p/claude-powerline`)
+  - `basename`: Show only folder name (e.g., `claude-powerline`)
 
 </details>
 
