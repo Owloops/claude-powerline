@@ -29,6 +29,11 @@ export interface ClaudeHookData {
     total_lines_added: number;
     total_lines_removed: number;
   };
+  context_window?: {
+    total_input_tokens: number;
+    total_output_tokens: number;
+    context_window_size: number;
+  };
 }
 
 export function getClaudePaths(): string[] {

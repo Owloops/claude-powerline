@@ -341,7 +341,7 @@ export class SegmentRenderer {
 
     const text = config?.showPercentageOnly
       ? `${this.symbols.context_time} ${contextLeft}`
-      : `${this.symbols.context_time} ${contextInfo.inputTokens.toLocaleString()} (${contextLeft})`;
+      : `${this.symbols.context_time} ${contextInfo.totalTokens.toLocaleString()} (${contextLeft})`;
 
     return {
       text,
