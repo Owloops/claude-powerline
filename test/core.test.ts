@@ -136,10 +136,10 @@ describe("Core Functionality", () => {
       const { ContextProvider } = require("../src/segments/context");
       const contextProvider = new ContextProvider(DEFAULT_CONFIG);
       const result =
-        await contextProvider.calculateContextTokens(transcriptPath);
+        await contextProvider.calculateContextTokensFromTranscript(transcriptPath);
 
       expect(result).toBeDefined();
-      expect(result.inputTokens).toBe(15000);
+      expect(result.totalTokens).toBe(15000);
       expect(result.percentage).toBeGreaterThan(0);
     });
 
@@ -162,13 +162,13 @@ describe("Core Functionality", () => {
 
       const { ContextProvider } = require("../src/segments/context");
       const contextProvider = new ContextProvider(customConfig);
-      const result = await contextProvider.calculateContextTokens(
+      const result = await contextProvider.calculateContextTokensFromTranscript(
         transcriptPath,
         "claude-sonnet-4-20250514"
       );
 
       expect(result).toBeDefined();
-      expect(result.inputTokens).toBe(500000);
+      expect(result.totalTokens).toBe(500000);
       expect(result.maxTokens).toBe(1000000);
       expect(result.percentage).toBe(50);
     });
@@ -191,13 +191,13 @@ describe("Core Functionality", () => {
 
       const { ContextProvider } = require("../src/segments/context");
       const contextProvider = new ContextProvider(customConfig);
-      const result = await contextProvider.calculateContextTokens(
+      const result = await contextProvider.calculateContextTokensFromTranscript(
         transcriptPath,
         "unknown-model"
       );
 
       expect(result).toBeDefined();
-      expect(result.inputTokens).toBe(100000);
+      expect(result.totalTokens).toBe(100000);
       expect(result.maxTokens).toBe(200000);
       expect(result.percentage).toBe(50);
     });
@@ -222,13 +222,13 @@ describe("Core Functionality", () => {
       const { ContextProvider } = require("../src/segments/context");
       const contextProvider = new ContextProvider(customConfig);
 
-      const sonnetResult = await contextProvider.calculateContextTokens(
+      const sonnetResult = await contextProvider.calculateContextTokensFromTranscript(
         transcriptPath,
         "claude-3-5-sonnet-20241022"
       );
       expect(sonnetResult?.maxTokens).toBe(500000);
 
-      const opusResult = await contextProvider.calculateContextTokens(
+      const opusResult = await contextProvider.calculateContextTokensFromTranscript(
         transcriptPath,
         "claude-opus-4-20250514"
       );
