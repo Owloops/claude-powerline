@@ -1,10 +1,10 @@
 import { readFileSync } from "node:fs";
 import { debug } from "../utils/logger";
-import { parseJsonlFile, type ParsedEntry } from "../utils/claude";
+import { parseJsonlFile, type ParsedEntry, type ClaudeHookData } from "../utils/claude";
 import type { PowerlineConfig } from "../config/loader";
 
 export interface ContextInfo {
-  inputTokens: number;
+  totalTokens: number;
   percentage: number;
   usablePercentage: number;
   contextLeftPercentage: number;
@@ -51,7 +51,69 @@ export class ContextProvider {
     return "default";
   }
 
-  async calculateContextTokens(
+  private calculatePercentages(
+    totalTokens: number,
+    contextLimit: number
+  ): Pick<ContextInfo, "percentage" | "usablePercentage" | "contextLeftPercentage" | "usableTokens"> {
+    const percentage = Math.min(
+      100,
+      Math.max(0, Math.round((totalTokens / contextLimit) * 100))
+    );
+
+    const usableLimit = Math.round(contextLimit * 0.75);
+    const usablePercentage = Math.min(
+      100,
+      Math.max(0, Math.round((totalTokens / usableLimit) * 100))
+    );
+
+    const contextLeftPercentage = Math.max(0, 100 - usablePercentage);
+
+    return {
+      percentage,
+      usablePercentage,
+      contextLeftPercentage,
+      usableTokens: usableLimit,
+    };
+  }
+
+  /**
+   * Calculate context info from native Claude Code context_window data (preferred).
+   * Available in Claude Code 2.0.65+
+   */
+  calculateContextFromHookData(hookData: ClaudeHookData): ContextInfo | null {
+    const contextWindow = hookData.context_window;
+    if (!contextWindow) {
+      debug("No context_window in hook data, falling back to transcript parsing");
+      return null;
+    }
+
+    debug(
+      `Native context data: input=${contextWindow.total_input_tokens}, output=${contextWindow.total_output_tokens}, size=${contextWindow.context_window_size}`
+    );
+
+    const totalTokens =
+      (contextWindow.total_input_tokens || 0) +
+      (contextWindow.total_output_tokens || 0);
+    const contextLimit = contextWindow.context_window_size || 200000;
+
+    debug(
+      `Using native context_window: ${totalTokens} tokens (limit: ${contextLimit})`
+    );
+
+    const percentages = this.calculatePercentages(totalTokens, contextLimit);
+
+    return {
+      totalTokens,
+      maxTokens: contextLimit,
+      ...percentages,
+    };
+  }
+
+  /**
+   * Calculate context tokens by parsing the transcript file (fallback).
+   * Used for older Claude Code versions that don't provide context_window.
+   */
+  async calculateContextTokensFromTranscript(
     transcriptPath: string,
     modelId?: string
   ): Promise<ContextInfo | null> {
@@ -94,37 +156,25 @@ export class ContextProvider {
 
       if (mostRecentEntry?.message?.usage) {
         const usage = mostRecentEntry.message.usage;
-        const contextLength =
+        // For transcript fallback, we include input + output tokens to match native behavior
+        const totalTokens =
           (usage.input_tokens || 0) +
+          (usage.output_tokens || 0) +
           (usage.cache_read_input_tokens || 0) +
           (usage.cache_creation_input_tokens || 0);
 
         const contextLimit = modelId ? this.getContextLimit(modelId) : 200000;
 
         debug(
-          `Most recent main chain context: ${contextLength} tokens (limit: ${contextLimit})`
+          `Most recent main chain context: ${totalTokens} tokens (limit: ${contextLimit})`
         );
 
-        const percentage = Math.min(
-          100,
-          Math.max(0, Math.round((contextLength / contextLimit) * 100))
-        );
-
-        const usableLimit = Math.round(contextLimit * 0.75);
-        const usablePercentage = Math.min(
-          100,
-          Math.max(0, Math.round((contextLength / usableLimit) * 100))
-        );
-
-        const contextLeftPercentage = Math.max(0, 100 - usablePercentage);
+        const percentages = this.calculatePercentages(totalTokens, contextLimit);
 
         return {
-          inputTokens: contextLength,
-          percentage,
-          usablePercentage,
-          contextLeftPercentage,
+          totalTokens,
           maxTokens: contextLimit,
-          usableTokens: usableLimit,
+          ...percentages,
         };
       }
 
@@ -136,5 +186,22 @@ export class ContextProvider {
       );
       return null;
     }
+  }
+
+  /**
+   * Get context info using native data if available, falling back to transcript parsing.
+   */
+  async getContextInfo(hookData: ClaudeHookData): Promise<ContextInfo | null> {
+    // Try native context_window first (Claude Code 2.0.65+)
+    const nativeContext = this.calculateContextFromHookData(hookData);
+    if (nativeContext) {
+      return nativeContext;
+    }
+
+    // Fall back to transcript parsing for older versions
+    return this.calculateContextTokensFromTranscript(
+      hookData.transcript_path,
+      hookData.model?.id
+    );
   }
 }

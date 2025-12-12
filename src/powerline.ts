@@ -133,10 +133,7 @@ export class PowerlineRenderer {
       : null;
 
     const contextInfo = this.needsSegmentInfo("context")
-      ? await this.contextProvider.calculateContextTokens(
-          hookData.transcript_path,
-          hookData.model?.id
-        )
+      ? await this.contextProvider.getContextInfo(hookData)
       : null;
 
     const metricsInfo = this.needsSegmentInfo("metrics")
