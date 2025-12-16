@@ -13,6 +13,7 @@ import type {
   MetricsSegmentConfig,
   BlockSegmentConfig,
   TodaySegmentConfig,
+  WeeklySegmentConfig,
   VersionSegmentConfig,
 } from "../segments/renderer";
 
@@ -24,6 +25,7 @@ export interface LineConfig {
     session?: UsageSegmentConfig;
     block?: BlockSegmentConfig;
     today?: TodaySegmentConfig;
+    weekly?: WeeklySegmentConfig;
     tmux?: TmuxSegmentConfig;
     context?: ContextSegmentConfig;
     metrics?: MetricsSegmentConfig;
@@ -43,11 +45,17 @@ export interface BudgetItemConfig {
   amount?: number;
   warningThreshold?: number;
   type?: "cost" | "tokens";
+  resetDay?: number;      // 0=Sunday, 1=Monday, ..., 6=Saturday
+  resetHour?: number;     // 0-23
+  resetMinute?: number;   // 0-59
+  trackingMode?: "estimate" | "realtime";  // estimate uses local data, realtime uses OAuth API
+  pollInterval?: number;  // minutes between API calls (default 15)
 }
 
 export interface BudgetConfig {
   session?: BudgetItemConfig;
   today?: BudgetItemConfig;
+  weekly?: BudgetItemConfig;
   block?: BudgetItemConfig;
 }
 

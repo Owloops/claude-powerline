@@ -48,10 +48,19 @@ export interface MetricsSegmentConfig extends SegmentConfig {
 export interface BlockSegmentConfig extends SegmentConfig {
   type: "cost" | "tokens" | "both" | "time" | "weighted";
   burnType?: "cost" | "tokens" | "both" | "none";
+  displayStyle?: "text" | "bar";  // bar shows progress bar
+  barWidth?: number;              // width of progress bar (default 10)
 }
 
 export interface TodaySegmentConfig extends SegmentConfig {
   type: "cost" | "tokens" | "both" | "breakdown";
+}
+
+export interface WeeklySegmentConfig extends SegmentConfig {
+  type: "cost" | "tokens" | "both" | "breakdown";
+  showWeekProgress?: boolean;
+  displayStyle?: "text" | "bar";  // bar shows progress bar
+  barWidth?: number;              // width of progress bar (default 10)
 }
 
 export interface VersionSegmentConfig extends SegmentConfig {}
@@ -66,6 +75,7 @@ export type AnySegmentConfig =
   | MetricsSegmentConfig
   | BlockSegmentConfig
   | TodaySegmentConfig
+  | WeeklySegmentConfig
   | VersionSegmentConfig;
 
 import {
@@ -84,6 +94,7 @@ import type {
   MetricsInfo,
 } from ".";
 import type { TodayInfo } from "./today";
+import type { WeeklyInfo } from "./weekly";
 
 export interface PowerlineSymbols {
   right: string;
@@ -104,6 +115,7 @@ export interface PowerlineSymbols {
   session_cost: string;
   block_cost: string;
   today_cost: string;
+  weekly_cost: string;
   context_time: string;
   metrics_response: string;
   metrics_last_response: string;
@@ -443,129 +455,186 @@ export class SegmentRenderer {
     config?: BlockSegmentConfig
   ): SegmentData {
     let displayText: string;
+    const blockBudget = this.config.budget?.block;
+    const wantsRealtime = blockBudget?.trackingMode === "realtime";
+
+    // Format time remaining
+    const timeStr =
+      blockInfo.timeRemaining !== null
+        ? (() => {
+            const hours = Math.floor(blockInfo.timeRemaining / 60);
+            const minutes = blockInfo.timeRemaining % 60;
+            return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+          })()
+        : null;
+
+    // Use realtime data if available
+    if (blockInfo.isRealtime && blockInfo.realtimePercentUsed !== null) {
+      const percentUsed = blockInfo.realtimePercentUsed;
+
+      if (config?.displayStyle === "bar") {
+        const barWidth = config?.barWidth ?? 10;
+        const bar = this.formatProgressBarBright(percentUsed, barWidth);
+        displayText = timeStr
+          ? `${bar} ${percentUsed}% (${timeStr})`
+          : `${bar} ${percentUsed}%`;
+      } else {
+        displayText = timeStr
+          ? `${percentUsed}% (${timeStr} left)`
+          : `${percentUsed}%`;
+      }
+
+      return {
+        text: `${this.symbols.block_cost} ${displayText}`,
+        bgColor: colors.blockBg,
+        fgColor: colors.blockFg,
+      };
+    }
+
+    // Estimate mode - show ~ prefix if realtime was requested but failed
+    const estimatePrefix = wantsRealtime ? "~" : "";
 
     if (blockInfo.cost === null && blockInfo.tokens === null) {
-      displayText = "No active block";
+      displayText = wantsRealtime ? "~no data" : "No active block";
     } else {
       const type = config?.type || "cost";
       const burnType = config?.burnType;
-      const blockBudget = this.config.budget?.block;
 
-      const timeStr =
-        blockInfo.timeRemaining !== null
-          ? (() => {
-              const hours = Math.floor(blockInfo.timeRemaining / 60);
-              const minutes = blockInfo.timeRemaining % 60;
-              return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
-            })()
-          : null;
+      // If budget is set, show percentage-based display
+      if (blockBudget?.amount && blockBudget.amount > 0) {
+        let usageValue: number | null = null;
+        if (blockBudget.type === "tokens" && blockInfo.tokens !== null) {
+          usageValue = blockInfo.tokens;
+        } else if (blockBudget.type === "cost" && blockInfo.cost !== null) {
+          usageValue = blockInfo.cost;
+        }
 
-      let mainContent: string;
-      switch (type) {
-        case "cost":
-          mainContent = this.formatUsageWithBudget(
-            blockInfo.cost,
-            null,
-            null,
-            "cost",
-            blockBudget?.amount,
-            blockBudget?.warningThreshold,
-            blockBudget?.type
-          );
-          break;
-        case "tokens":
-          mainContent = this.formatUsageWithBudget(
-            null,
-            blockInfo.tokens,
-            null,
-            "tokens",
-            blockBudget?.amount,
-            blockBudget?.warningThreshold,
-            blockBudget?.type
-          );
-          break;
-        case "weighted":
-          const rateLimit =
-            blockBudget?.type === "tokens" ? blockBudget.amount : undefined;
-          const weightedDisplay = formatTokens(blockInfo.weightedTokens);
-          if (rateLimit && blockInfo.weightedTokens !== null) {
-            const rateLimitStatus = getBudgetStatus(
-              blockInfo.weightedTokens,
-              rateLimit,
-              blockBudget?.warningThreshold || 80
-            );
-            mainContent = `${weightedDisplay}${rateLimitStatus.displayText}`;
+        if (usageValue !== null) {
+          const percentUsed = Math.round((usageValue / blockBudget.amount) * 100);
+
+          if (config?.displayStyle === "bar") {
+            const barWidth = config?.barWidth ?? 10;
+            const bar = this.formatProgressBarBright(percentUsed, barWidth);
+            displayText = timeStr
+              ? `${estimatePrefix}${bar} ${percentUsed}% (${timeStr})`
+              : `${estimatePrefix}${bar} ${percentUsed}%`;
           } else {
-            mainContent = `${weightedDisplay} (weighted)`;
+            displayText = timeStr
+              ? `${estimatePrefix}${percentUsed}% (${timeStr} left)`
+              : `${estimatePrefix}${percentUsed}%`;
           }
-          break;
-        case "both":
-          mainContent = this.formatUsageWithBudget(
-            blockInfo.cost,
-            blockInfo.tokens,
-            null,
-            "both",
-            blockBudget?.amount,
-            blockBudget?.warningThreshold,
-            blockBudget?.type
-          );
-          break;
-        case "time":
-          mainContent = timeStr || "N/A";
-          break;
-        default:
-          mainContent = this.formatUsageWithBudget(
-            blockInfo.cost,
-            null,
-            null,
-            "cost",
-            blockBudget?.amount,
-            blockBudget?.warningThreshold,
-            blockBudget?.type
-          );
-      }
-
-      let burnContent = "";
-      if (burnType && burnType !== "none") {
-        switch (burnType) {
+        } else {
+          displayText = `${estimatePrefix}N/A`;
+        }
+      } else {
+        // No budget set - fall back to showing raw values
+        let mainContent: string;
+        switch (type) {
           case "cost":
-            const costBurnRate =
-              blockInfo.burnRate !== null
-                ? blockInfo.burnRate < 1
-                  ? `${(blockInfo.burnRate * 100).toFixed(0)}¢/h`
-                  : `$${blockInfo.burnRate.toFixed(2)}/h`
-                : "N/A";
-            burnContent = ` | ${costBurnRate}`;
+            mainContent = this.formatUsageWithBudget(
+              blockInfo.cost,
+              null,
+              null,
+              "cost",
+              blockBudget?.amount,
+              blockBudget?.warningThreshold,
+              blockBudget?.type
+            );
             break;
           case "tokens":
-            const tokenBurnRate =
-              blockInfo.tokenBurnRate !== null
-                ? `${formatTokens(Math.round(blockInfo.tokenBurnRate))}/h`
-                : "N/A";
-            burnContent = ` | ${tokenBurnRate}`;
+            mainContent = this.formatUsageWithBudget(
+              null,
+              blockInfo.tokens,
+              null,
+              "tokens",
+              blockBudget?.amount,
+              blockBudget?.warningThreshold,
+              blockBudget?.type
+            );
+            break;
+          case "weighted":
+            const rateLimit =
+              blockBudget?.type === "tokens" ? blockBudget.amount : undefined;
+            const weightedDisplay = formatTokens(blockInfo.weightedTokens);
+            if (rateLimit && blockInfo.weightedTokens !== null) {
+              const rateLimitStatus = getBudgetStatus(
+                blockInfo.weightedTokens,
+                rateLimit,
+                blockBudget?.warningThreshold || 80
+              );
+              mainContent = `${weightedDisplay}${rateLimitStatus.displayText}`;
+            } else {
+              mainContent = `${weightedDisplay} (weighted)`;
+            }
             break;
           case "both":
-            const costBurn =
-              blockInfo.burnRate !== null
-                ? blockInfo.burnRate < 1
-                  ? `${(blockInfo.burnRate * 100).toFixed(0)}¢/h`
-                  : `$${blockInfo.burnRate.toFixed(2)}/h`
-                : "N/A";
-            const tokenBurn =
-              blockInfo.tokenBurnRate !== null
-                ? `${formatTokens(Math.round(blockInfo.tokenBurnRate))}/h`
-                : "N/A";
-            burnContent = ` | ${costBurn} / ${tokenBurn}`;
+            mainContent = this.formatUsageWithBudget(
+              blockInfo.cost,
+              blockInfo.tokens,
+              null,
+              "both",
+              blockBudget?.amount,
+              blockBudget?.warningThreshold,
+              blockBudget?.type
+            );
             break;
+          case "time":
+            mainContent = timeStr || "N/A";
+            break;
+          default:
+            mainContent = this.formatUsageWithBudget(
+              blockInfo.cost,
+              null,
+              null,
+              "cost",
+              blockBudget?.amount,
+              blockBudget?.warningThreshold,
+              blockBudget?.type
+            );
         }
-      }
 
-      if (type === "time") {
-        displayText = mainContent;
-      } else {
-        displayText = timeStr
-          ? `${mainContent}${burnContent} (${timeStr} left)`
-          : `${mainContent}${burnContent}`;
+        let burnContent = "";
+        if (burnType && burnType !== "none") {
+          switch (burnType) {
+            case "cost":
+              const costBurnRate =
+                blockInfo.burnRate !== null
+                  ? blockInfo.burnRate < 1
+                    ? `${(blockInfo.burnRate * 100).toFixed(0)}¢/h`
+                    : `$${blockInfo.burnRate.toFixed(2)}/h`
+                  : "N/A";
+              burnContent = ` | ${costBurnRate}`;
+              break;
+            case "tokens":
+              const tokenBurnRate =
+                blockInfo.tokenBurnRate !== null
+                  ? `${formatTokens(Math.round(blockInfo.tokenBurnRate))}/h`
+                  : "N/A";
+              burnContent = ` | ${tokenBurnRate}`;
+              break;
+            case "both":
+              const costBurn =
+                blockInfo.burnRate !== null
+                  ? blockInfo.burnRate < 1
+                    ? `${(blockInfo.burnRate * 100).toFixed(0)}¢/h`
+                    : `$${blockInfo.burnRate.toFixed(2)}/h`
+                  : "N/A";
+              const tokenBurn =
+                blockInfo.tokenBurnRate !== null
+                  ? `${formatTokens(Math.round(blockInfo.tokenBurnRate))}/h`
+                  : "N/A";
+              burnContent = ` | ${costBurn} / ${tokenBurn}`;
+              break;
+          }
+        }
+
+        if (type === "time") {
+          displayText = mainContent;
+        } else {
+          displayText = timeStr
+            ? `${estimatePrefix}${mainContent}${burnContent} (${timeStr} left)`
+            : `${estimatePrefix}${mainContent}${burnContent}`;
+        }
       }
     }
 
@@ -599,6 +668,99 @@ export class SegmentRenderer {
     };
   }
 
+  renderWeekly(
+    weeklyInfo: WeeklyInfo,
+    colors: PowerlineColors,
+    config?: WeeklySegmentConfig
+  ): SegmentData {
+    const weeklyBudget = this.config.budget?.weekly;
+    const wantsRealtime = weeklyBudget?.trackingMode === "realtime";
+
+    // Use realtime data if available
+    if (weeklyInfo.isRealtime && weeklyInfo.realtimePercentUsed !== null) {
+      const percentUsed = weeklyInfo.realtimePercentUsed;
+      let text: string;
+
+      if (config?.displayStyle === "bar") {
+        const barWidth = config?.barWidth ?? 10;
+        const bar = this.formatProgressBarDim(percentUsed, barWidth);
+        text = `${this.symbols.weekly_cost} ${bar} ${percentUsed}%`;
+      } else {
+        text = `${this.symbols.weekly_cost} ${percentUsed}%`;
+      }
+
+      if (config?.showWeekProgress) {
+        text += ` (wk ${weeklyInfo.weekProgressPercent}%)`;
+      }
+
+      return {
+        text,
+        bgColor: colors.weeklyBg,
+        fgColor: colors.weeklyFg,
+      };
+    }
+
+    // Estimate mode - show ~ prefix if realtime was requested but failed
+    const estimatePrefix = wantsRealtime ? "~" : "";
+
+    // If budget is set, show percentage-based display
+    if (weeklyBudget?.amount && weeklyBudget.amount > 0) {
+      let usageValue: number | null = null;
+      if (weeklyBudget.type === "tokens" && weeklyInfo.tokens !== null) {
+        usageValue = weeklyInfo.tokens;
+      } else if (weeklyBudget.type === "cost" && weeklyInfo.cost !== null) {
+        usageValue = weeklyInfo.cost;
+      }
+
+      if (usageValue !== null) {
+        const percentUsed = Math.round((usageValue / weeklyBudget.amount) * 100);
+        let text: string;
+
+        if (config?.displayStyle === "bar") {
+          const barWidth = config?.barWidth ?? 10;
+          const bar = this.formatProgressBarDim(percentUsed, barWidth);
+          text = `${this.symbols.weekly_cost} ${estimatePrefix}${bar} ${percentUsed}%`;
+        } else {
+          text = `${this.symbols.weekly_cost} ${estimatePrefix}${percentUsed}%`;
+        }
+
+        if (config?.showWeekProgress) {
+          text += ` (wk ${weeklyInfo.weekProgressPercent}%)`;
+        }
+
+        return {
+          text,
+          bgColor: colors.weeklyBg,
+          fgColor: colors.weeklyFg,
+        };
+      }
+    }
+
+    // Fallback to raw values if no budget set
+    const type = config?.type || "cost";
+    const usageText = this.formatUsageWithBudget(
+      weeklyInfo.cost,
+      weeklyInfo.tokens,
+      weeklyInfo.tokenBreakdown,
+      type,
+      weeklyBudget?.amount,
+      weeklyBudget?.warningThreshold,
+      weeklyBudget?.type
+    );
+
+    let text = `${this.symbols.weekly_cost} ${estimatePrefix}${usageText}`;
+
+    if (config?.showWeekProgress) {
+      text += ` (wk ${weeklyInfo.weekProgressPercent}%)`;
+    }
+
+    return {
+      text,
+      bgColor: colors.weeklyBg,
+      fgColor: colors.weeklyFg,
+    };
+  }
+
   private getDisplayDirectoryName(
     currentDir: string,
     projectDir?: string
@@ -627,6 +789,64 @@ export class SegmentRenderer {
         return part.charAt(0);
       })
       .join(path.sep);
+  }
+
+  // Progress bar using bright characters (for 5-hour block)
+  private formatProgressBarBright(percent: number, width: number = 10): string {
+    const filled = (percent / 100) * width;
+    const fullBlocks = Math.floor(filled);
+    const remainder = filled - fullBlocks;
+
+    let bar = "";
+
+    // Full blocks
+    bar += "█".repeat(fullBlocks);
+
+    // Partial block based on remainder
+    if (fullBlocks < width) {
+      if (remainder >= 0.75) {
+        bar += "▓";
+      } else if (remainder >= 0.5) {
+        bar += "▒";
+      } else if (remainder >= 0.25) {
+        bar += "░";
+      } else {
+        bar += " ";
+      }
+    }
+
+    // Empty spaces
+    const remaining = width - bar.length;
+    bar += " ".repeat(Math.max(0, remaining));
+
+    return bar;
+  }
+
+  // Progress bar using dim characters (for weekly)
+  private formatProgressBarDim(percent: number, width: number = 10): string {
+    const filled = (percent / 100) * width;
+    const fullBlocks = Math.floor(filled);
+    const remainder = filled - fullBlocks;
+
+    let bar = "";
+
+    // Filled blocks (using medium shade)
+    bar += "▒".repeat(fullBlocks);
+
+    // Partial block
+    if (fullBlocks < width) {
+      if (remainder >= 0.5) {
+        bar += "░";
+      } else {
+        bar += " ";
+      }
+    }
+
+    // Empty spaces
+    const remaining = width - bar.length;
+    bar += " ".repeat(Math.max(0, remaining));
+
+    return bar;
   }
 
   private formatUsageDisplay(

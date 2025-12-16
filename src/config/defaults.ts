@@ -29,6 +29,7 @@ export const DEFAULT_CONFIG: PowerlineConfig = {
           session: { enabled: true, type: "tokens", costSource: "calculated" },
           today: { enabled: true, type: "cost" },
           block: { enabled: false, type: "cost", burnType: "cost" },
+          weekly: { enabled: false, type: "cost" },
           version: { enabled: false },
           tmux: { enabled: false },
           context: { enabled: true, showPercentageOnly: false },
@@ -52,6 +53,9 @@ export const DEFAULT_CONFIG: PowerlineConfig = {
     today: {
       warningThreshold: 80,
       amount: 50,
+    },
+    weekly: {
+      warningThreshold: 80,
     },
     block: {
       warningThreshold: 80,

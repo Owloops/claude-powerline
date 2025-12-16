@@ -1,6 +1,7 @@
 import { debug } from "../utils/logger";
 import { PricingService } from "./pricing";
 import { loadEntriesFromProjects, type ParsedEntry } from "../utils/claude";
+import { getRealtimeUsage } from "../utils/oauth";
 
 export interface UsageEntry {
   timestamp: Date;
@@ -21,6 +22,9 @@ export interface BlockInfo {
   timeRemaining: number | null;
   burnRate: number | null;
   tokenBurnRate: number | null;
+  realtimePercentUsed: number | null;  // From OAuth API when in realtime mode
+  realtimeResetAt: Date | null;        // Reset time from OAuth API
+  isRealtime: boolean;                 // Whether data came from realtime API
 }
 
 function getModelRateLimitWeight(model: string): number {
@@ -203,7 +207,20 @@ export class BlockProvider {
     }
   }
 
-  async getActiveBlockInfo(): Promise<BlockInfo> {
+  async getActiveBlockInfo(
+    trackingMode?: "estimate" | "realtime",
+    pollInterval?: number
+  ): Promise<BlockInfo> {
+    // If realtime mode, try to get data from OAuth API
+    if (trackingMode === "realtime") {
+      const realtimeInfo = await this.getRealtimeBlockInfo(pollInterval);
+      if (realtimeInfo) {
+        return realtimeInfo;
+      }
+      // Fall back to estimate mode if realtime fails
+      debug("Realtime mode failed, falling back to estimate mode");
+    }
+
     try {
       const entries = await this.loadUsageEntries();
 
@@ -216,6 +233,9 @@ export class BlockProvider {
           timeRemaining: null,
           burnRate: null,
           tokenBurnRate: null,
+          realtimePercentUsed: null,
+          realtimeResetAt: null,
+          isRealtime: false,
         };
       }
 
@@ -296,6 +316,9 @@ export class BlockProvider {
         timeRemaining,
         burnRate,
         tokenBurnRate,
+        realtimePercentUsed: null,
+        realtimeResetAt: null,
+        isRealtime: false,
       };
     } catch (error) {
       debug("Error getting active block info:", error);
@@ -306,7 +329,51 @@ export class BlockProvider {
         timeRemaining: null,
         burnRate: null,
         tokenBurnRate: null,
+        realtimePercentUsed: null,
+        realtimeResetAt: null,
+        isRealtime: false,
       };
+    }
+  }
+
+  private async getRealtimeBlockInfo(
+    pollInterval?: number
+  ): Promise<BlockInfo | null> {
+    try {
+      const usage = await getRealtimeUsage(pollInterval ?? 15);
+      if (!usage || !usage.fiveHour) {
+        debug("No realtime block usage data available");
+        return null;
+      }
+
+      const fiveHour = usage.fiveHour;
+
+      // Calculate time remaining from reset time
+      const now = new Date();
+      const resetAt = new Date(fiveHour.resetAt);
+      const timeRemaining = Math.max(
+        0,
+        Math.round((resetAt.getTime() - now.getTime()) / (1000 * 60))
+      );
+
+      debug(
+        `Block segment (realtime): ${fiveHour.percentUsed}% used, resets at ${fiveHour.resetAt.toISOString()}, ${timeRemaining}m remaining`
+      );
+
+      return {
+        cost: null,
+        tokens: null,
+        weightedTokens: null,
+        timeRemaining,
+        burnRate: null,
+        tokenBurnRate: null,
+        realtimePercentUsed: fiveHour.percentUsed,
+        realtimeResetAt: fiveHour.resetAt,
+        isRealtime: true,
+      };
+    } catch (error) {
+      debug("Error getting realtime block info:", error);
+      return null;
     }
   }
 }

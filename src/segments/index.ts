@@ -20,5 +20,6 @@ export {
   MetricsSegmentConfig,
   BlockSegmentConfig,
   TodaySegmentConfig,
+  WeeklySegmentConfig,
   VersionSegmentConfig,
 } from "./renderer";
