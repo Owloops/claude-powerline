@@ -1,3 +1,10 @@
+# [1.13.0](https://github.com/Owloops/claude-powerline/compare/v1.12.0...v1.13.0) (2025-12-16)
+
+
+### Features
+
+* **context:** use native context_window data from Claude Code 2.0.65+ ([#31](https://github.com/Owloops/claude-powerline/issues/31)) ([cb19f48](https://github.com/Owloops/claude-powerline/commit/cb19f48b6893ea4da0864d8f5c579dd4139e1a0f))
+
 # [1.12.0](https://github.com/Owloops/claude-powerline/compare/v1.11.2...v1.12.0) (2025-12-11)
 
 
