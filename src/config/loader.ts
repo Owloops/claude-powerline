@@ -216,9 +216,12 @@ export function loadConfig(
 ): PowerlineConfig {
   let config: PowerlineConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
 
-  const configPath =
+  const rawConfigPath =
     args.find((arg) => arg.startsWith("--config="))?.split("=")[1] ||
     getConfigPathFromEnv();
+  const configPath = rawConfigPath?.startsWith("~")
+    ? rawConfigPath.replace("~", os.homedir())
+    : rawConfigPath;
 
   const configFile = findConfigFile(configPath, projectDir);
   if (configFile) {
