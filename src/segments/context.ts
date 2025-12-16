@@ -153,10 +153,8 @@ export class ContextProvider {
 
       if (mostRecentEntry?.message?.usage) {
         const usage = mostRecentEntry.message.usage;
-        // For transcript fallback, we include input + output tokens to match native behavior
         const totalTokens =
           (usage.input_tokens || 0) +
-          (usage.output_tokens || 0) +
           (usage.cache_read_input_tokens || 0) +
           (usage.cache_creation_input_tokens || 0);
 
@@ -189,13 +187,11 @@ export class ContextProvider {
    * Get context info using native data if available, falling back to transcript parsing.
    */
   async getContextInfo(hookData: ClaudeHookData): Promise<ContextInfo | null> {
-    // Try native context_window first (Claude Code 2.0.65+)
     const nativeContext = this.calculateContextFromHookData(hookData);
     if (nativeContext) {
       return nativeContext;
     }
 
-    // Fall back to transcript parsing for older versions
     return this.calculateContextTokensFromTranscript(
       hookData.transcript_path,
       hookData.model?.id
