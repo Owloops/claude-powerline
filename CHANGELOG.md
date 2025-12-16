@@ -1,3 +1,10 @@
+## [1.13.1](https://github.com/Owloops/claude-powerline/compare/v1.13.0...v1.13.1) (2025-12-16)
+
+
+### Bug Fixes
+
+* **config:** expand tilde in --config path ([fdba077](https://github.com/Owloops/claude-powerline/commit/fdba077b0cc2787dd373af6f2b3fcf0cca886b37))
+
 # [1.13.0](https://github.com/Owloops/claude-powerline/compare/v1.12.0...v1.13.0) (2025-12-16)
 
 
