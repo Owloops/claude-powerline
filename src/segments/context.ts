@@ -78,26 +78,23 @@ export class ContextProvider {
 
   /**
    * Calculate context info from native Claude Code context_window data (preferred).
-   * Available in Claude Code 2.0.65+
+   * Requires Claude Code 2.0.70+ with current_usage field.
    */
   calculateContextFromHookData(hookData: ClaudeHookData): ContextInfo | null {
-    const contextWindow = hookData.context_window;
-    if (!contextWindow) {
-      debug("No context_window in hook data, falling back to transcript parsing");
+    const currentUsage = hookData.context_window?.current_usage;
+    if (!currentUsage) {
+      debug("No current_usage in hook data, falling back to transcript parsing");
       return null;
     }
 
-    debug(
-      `Native context data: input=${contextWindow.total_input_tokens}, output=${contextWindow.total_output_tokens}, size=${contextWindow.context_window_size}`
-    );
-
+    const contextLimit = hookData.context_window?.context_window_size || 200000;
     const totalTokens =
-      (contextWindow.total_input_tokens || 0) +
-      (contextWindow.total_output_tokens || 0);
-    const contextLimit = contextWindow.context_window_size || 200000;
+      (currentUsage.input_tokens || 0) +
+      (currentUsage.cache_creation_input_tokens || 0) +
+      (currentUsage.cache_read_input_tokens || 0);
 
     debug(
-      `Using native context_window: ${totalTokens} tokens (limit: ${contextLimit})`
+      `Native current_usage: input=${currentUsage.input_tokens}, cache_create=${currentUsage.cache_creation_input_tokens}, cache_read=${currentUsage.cache_read_input_tokens}, total=${totalTokens} (limit: ${contextLimit})`
     );
 
     const percentages = this.calculatePercentages(totalTokens, contextLimit);
