@@ -1,3 +1,10 @@
+## [1.13.2](https://github.com/Owloops/claude-powerline/compare/v1.13.1...v1.13.2) (2025-12-18)
+
+
+### Bug Fixes
+
+* **display:** add configurable padding option for segment spacing ([e48169b](https://github.com/Owloops/claude-powerline/commit/e48169b87d52e4a262c13813cfbc7beb1686b4c5))
+
 ## [1.13.1](https://github.com/Owloops/claude-powerline/compare/v1.13.0...v1.13.1) (2025-12-16)
 
 
