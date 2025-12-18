@@ -247,13 +247,15 @@ export class PowerlineRenderer {
   private calculateSegmentWidth(segment: RenderedSegment, isFirst: boolean): number {
     const isCapsuleStyle = this.config.display.style === "capsule";
     const textWidth = visibleLength(segment.text);
+    const padding = this.config.display.padding ?? 1;
+    const paddingWidth = padding * 2;
 
     if (isCapsuleStyle) {
-      const capsuleOverhead = 4 + (isFirst ? 0 : 1);
+      const capsuleOverhead = 2 + paddingWidth + (isFirst ? 0 : 1);
       return textWidth + capsuleOverhead;
     }
 
-    const powerlineOverhead = 3;
+    const powerlineOverhead = 1 + paddingWidth;
     return textWidth + powerlineOverhead;
   }
 
@@ -697,6 +699,7 @@ export class PowerlineRenderer {
     colors: PowerlineColors
   ): string {
     const isCapsuleStyle = this.config.display.style === "capsule";
+    const padding = " ".repeat(this.config.display.padding ?? 1);
 
     if (isCapsuleStyle) {
       const colorMode = this.config.display.colorCompatibility || "auto";
@@ -707,14 +710,14 @@ export class PowerlineRenderer {
 
       const leftCap = `${capFgColor}${this.symbols.left}${colors.reset}`;
 
-      const content = `${bgColor}${fgColor} ${text} ${colors.reset}`;
+      const content = `${bgColor}${fgColor}${padding}${text}${padding}${colors.reset}`;
 
       const rightCap = `${capFgColor}${this.symbols.right}${colors.reset}`;
 
       return `${leftCap}${content}${rightCap}`;
     }
 
-    let output = `${bgColor}${fgColor} ${text} `;
+    let output = `${bgColor}${fgColor}${padding}${text}${padding}`;
 
     const colorMode = this.config.display.colorCompatibility || "auto";
     const colorSupport = colorMode === "auto" ? getColorSupport() : colorMode;

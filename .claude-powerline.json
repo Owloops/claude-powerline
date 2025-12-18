@@ -1,7 +1,8 @@
 {
   "theme": "custom",
   "display": {
-    "style": "powerline",
+    "padding": 1,
+    "style": "capsule",
     "charset": "unicode",
     "colorCompatibility": "auto",
     "autoWrap": true,

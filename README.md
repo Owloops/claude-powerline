@@ -503,6 +503,20 @@ Alternatively, manually organize segments across multiple lines.
 > [!NOTE]
 > Claude Code system messages may truncate long status lines. Use `autoWrap` or manual multi-line layouts to prevent segment cutoff.
 
+### Padding
+
+Control the spacing inside each segment.
+
+```json
+{
+  "display": {
+    "padding": 1
+  }
+}
+```
+
+The value is the number of spaces on each side of the text. Set to `0` for a compact look, `1` (default) for standard spacing, or higher for more breathing room.
+
 ### Colors & Themes
 
 Create custom themes and configure color compatibility:

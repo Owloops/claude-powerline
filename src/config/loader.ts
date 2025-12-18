@@ -37,6 +37,7 @@ export interface DisplayConfig {
   charset?: "unicode" | "text";
   colorCompatibility?: "auto" | "ansi" | "ansi256" | "truecolor";
   autoWrap?: boolean;
+  padding?: number;
 }
 
 export interface BudgetItemConfig {
