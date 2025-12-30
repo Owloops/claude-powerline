@@ -36,6 +36,8 @@ export interface ContextSegmentConfig extends SegmentConfig {
   showPercentageOnly?: boolean;
   showPercentageUsed?: boolean;
   useRawContextLimit?: boolean;
+  displayStyle?: "text" | "bar";
+  barLength?: number;
 }
 
 export interface MetricsSegmentConfig extends SegmentConfig {
@@ -333,6 +335,15 @@ export class SegmentRenderer {
   ): SegmentData | null {
     if (!contextInfo) {
       const defaultPct = config?.showPercentageUsed ? "0%" : "100%";
+      const barLength = config?.barLength || 10;
+      if (config?.displayStyle === "bar") {
+        const emptyBar = "░".repeat(barLength);
+        return {
+          text: `${emptyBar} ${defaultPct}`,
+          bgColor: colors.contextBg,
+          fgColor: colors.contextFg,
+        };
+      }
       return {
         text: `${this.symbols.context_time} 0 (${defaultPct})`,
         bgColor: colors.contextBg,
@@ -356,6 +367,30 @@ export class SegmentRenderer {
 
     const percentageStr = `${displayPercentage}%`;
 
+    // Progress bar display style
+    if (config?.displayStyle === "bar") {
+      const barLength = config?.barLength || 10;
+      // For bar display, always show "used" percentage for fill calculation
+      const usedPct = config?.useRawContextLimit
+        ? contextInfo.percentage
+        : contextInfo.usablePercentage;
+      const filledCount = Math.round((usedPct / 100) * barLength);
+      const emptyCount = barLength - filledCount;
+      const filledBar = "█".repeat(filledCount);
+      const emptyBar = "░".repeat(emptyCount);
+
+      const text = config?.showPercentageOnly
+        ? `${filledBar}${emptyBar} ${percentageStr}`
+        : `${filledBar}${emptyBar} ${contextInfo.totalTokens.toLocaleString()} (${percentageStr})`;
+
+      return {
+        text,
+        bgColor: colors.contextBg,
+        fgColor: colors.contextFg,
+      };
+    }
+
+    // Default text display style
     const text = config?.showPercentageOnly
       ? `${this.symbols.context_time} ${percentageStr}`
       : `${this.symbols.context_time} ${contextInfo.totalTokens.toLocaleString()} (${percentageStr})`;
