@@ -34,6 +34,8 @@ export interface TmuxSegmentConfig extends SegmentConfig {}
 
 export interface ContextSegmentConfig extends SegmentConfig {
   showPercentageOnly?: boolean;
+  showPercentageUsed?: boolean;
+  useRawContextLimit?: boolean;
 }
 
 export interface MetricsSegmentConfig extends SegmentConfig {
@@ -330,18 +332,33 @@ export class SegmentRenderer {
     config?: ContextSegmentConfig
   ): SegmentData | null {
     if (!contextInfo) {
+      const defaultPct = config?.showPercentageUsed ? "0%" : "100%";
       return {
-        text: `${this.symbols.context_time} 0 (100%)`,
+        text: `${this.symbols.context_time} 0 (${defaultPct})`,
         bgColor: colors.contextBg,
         fgColor: colors.contextFg,
       };
     }
 
-    const contextLeft = `${contextInfo.contextLeftPercentage}%`;
+    // Calculate the percentage to display based on config options
+    let displayPercentage: number;
+    if (config?.useRawContextLimit) {
+      // Use percentage against full context limit (100%)
+      displayPercentage = config?.showPercentageUsed
+        ? contextInfo.percentage
+        : 100 - contextInfo.percentage;
+    } else {
+      // Use percentage against usable limit (75%)
+      displayPercentage = config?.showPercentageUsed
+        ? contextInfo.usablePercentage
+        : contextInfo.contextLeftPercentage;
+    }
+
+    const percentageStr = `${displayPercentage}%`;
 
     const text = config?.showPercentageOnly
-      ? `${this.symbols.context_time} ${contextLeft}`
-      : `${this.symbols.context_time} ${contextInfo.totalTokens.toLocaleString()} (${contextLeft})`;
+      ? `${this.symbols.context_time} ${percentageStr}`
+      : `${this.symbols.context_time} ${contextInfo.totalTokens.toLocaleString()} (${percentageStr})`;
 
     return {
       text,
