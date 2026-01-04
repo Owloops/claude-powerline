@@ -34,6 +34,10 @@ export interface TmuxSegmentConfig extends SegmentConfig {}
 
 export interface ContextSegmentConfig extends SegmentConfig {
   showPercentageOnly?: boolean;
+  showPercentageUsed?: boolean;
+  useRawContextLimit?: boolean;
+  displayStyle?: "text" | "bar";
+  barLength?: number;
 }
 
 export interface MetricsSegmentConfig extends SegmentConfig {
@@ -330,18 +334,66 @@ export class SegmentRenderer {
     config?: ContextSegmentConfig
   ): SegmentData | null {
     if (!contextInfo) {
+      const defaultPct = config?.showPercentageUsed ? "0%" : "100%";
+      const barLength = config?.barLength || 10;
+      if (config?.displayStyle === "bar") {
+        const emptyBar = "░".repeat(barLength);
+        return {
+          text: `${emptyBar} ${defaultPct}`,
+          bgColor: colors.contextBg,
+          fgColor: colors.contextFg,
+        };
+      }
       return {
-        text: `${this.symbols.context_time} 0 (100%)`,
+        text: `${this.symbols.context_time} 0 (${defaultPct})`,
         bgColor: colors.contextBg,
         fgColor: colors.contextFg,
       };
     }
 
-    const contextLeft = `${contextInfo.contextLeftPercentage}%`;
+    // Calculate the percentage to display based on config options
+    let displayPercentage: number;
+    if (config?.useRawContextLimit) {
+      // Use percentage against full context limit (100%)
+      displayPercentage = config?.showPercentageUsed
+        ? contextInfo.percentage
+        : 100 - contextInfo.percentage;
+    } else {
+      // Use percentage against usable limit (75%)
+      displayPercentage = config?.showPercentageUsed
+        ? contextInfo.usablePercentage
+        : contextInfo.contextLeftPercentage;
+    }
 
+    const percentageStr = `${displayPercentage}%`;
+
+    // Progress bar display style
+    if (config?.displayStyle === "bar") {
+      const barLength = config?.barLength || 10;
+      // For bar display, always show "used" percentage for fill calculation
+      const usedPct = config?.useRawContextLimit
+        ? contextInfo.percentage
+        : contextInfo.usablePercentage;
+      const filledCount = Math.round((usedPct / 100) * barLength);
+      const emptyCount = barLength - filledCount;
+      const filledBar = "█".repeat(filledCount);
+      const emptyBar = "░".repeat(emptyCount);
+
+      const text = config?.showPercentageOnly
+        ? `${filledBar}${emptyBar} ${percentageStr}`
+        : `${filledBar}${emptyBar} ${contextInfo.totalTokens.toLocaleString()} (${percentageStr})`;
+
+      return {
+        text,
+        bgColor: colors.contextBg,
+        fgColor: colors.contextFg,
+      };
+    }
+
+    // Default text display style
     const text = config?.showPercentageOnly
-      ? `${this.symbols.context_time} ${contextLeft}`
-      : `${this.symbols.context_time} ${contextInfo.totalTokens.toLocaleString()} (${contextLeft})`;
+      ? `${this.symbols.context_time} ${percentageStr}`
+      : `${this.symbols.context_time} ${contextInfo.totalTokens.toLocaleString()} (${percentageStr})`;
 
     return {
       text,
