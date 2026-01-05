@@ -56,15 +56,27 @@ describe("config", () => {
   });
 
   describe("CLI argument parsing", () => {
-    it("should parse theme from CLI", () => {
+    it("should parse theme from CLI with = syntax", () => {
       mockFs.existsSync.mockReturnValue(false);
       const config = loadConfigFromCLI(["node", "script", "--theme=dark"]);
       expect(config.theme).toBe("dark");
     });
 
-    it("should parse capsule style from CLI", () => {
+    it("should parse theme from CLI with space syntax", () => {
+      mockFs.existsSync.mockReturnValue(false);
+      const config = loadConfigFromCLI(["node", "script", "--theme", "dark"]);
+      expect(config.theme).toBe("dark");
+    });
+
+    it("should parse capsule style from CLI with = syntax", () => {
       mockFs.existsSync.mockReturnValue(false);
       const config = loadConfigFromCLI(["node", "script", "--style=capsule"]);
+      expect(config.display.style).toBe("capsule");
+    });
+
+    it("should parse capsule style from CLI with space syntax", () => {
+      mockFs.existsSync.mockReturnValue(false);
+      const config = loadConfigFromCLI(["node", "script", "--style", "capsule"]);
       expect(config.display.style).toBe("capsule");
     });
 
@@ -92,6 +104,53 @@ describe("config", () => {
         expect.stringContaining("Invalid display style")
       );
       consoleSpy.mockRestore();
+    });
+
+    it("should load config file with --config= syntax", () => {
+      const customConfig = { theme: "nord" as const };
+      mockFs.existsSync.mockImplementation(
+        (path) => path === "/custom/config.json"
+      );
+      mockFs.readFileSync.mockReturnValue(JSON.stringify(customConfig));
+
+      const config = loadConfigFromCLI([
+        "node",
+        "script",
+        "--config=/custom/config.json",
+      ]);
+      expect(config.theme).toBe("nord");
+    });
+
+    it("should load config file with --config space syntax", () => {
+      const customConfig = { theme: "rose-pine" as const };
+      mockFs.existsSync.mockImplementation(
+        (path) => path === "/custom/config.json"
+      );
+      mockFs.readFileSync.mockReturnValue(JSON.stringify(customConfig));
+
+      const config = loadConfigFromCLI([
+        "node",
+        "script",
+        "--config",
+        "/custom/config.json",
+      ]);
+      expect(config.theme).toBe("rose-pine");
+    });
+
+    it("should expand tilde in --config path", () => {
+      const customConfig = { theme: "gruvbox" as const };
+      mockFs.existsSync.mockImplementation(
+        (path) => path === "/home/user/.config/powerline.json"
+      );
+      mockFs.readFileSync.mockReturnValue(JSON.stringify(customConfig));
+
+      const config = loadConfigFromCLI([
+        "node",
+        "script",
+        "--config",
+        "~/.config/powerline.json",
+      ]);
+      expect(config.theme).toBe("gruvbox");
     });
   });
 
