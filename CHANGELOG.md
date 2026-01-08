@@ -1,3 +1,10 @@
+# [1.16.0](https://github.com/Owloops/claude-powerline/compare/v1.15.0...v1.16.0) (2026-01-08)
+
+
+### Features
+
+* **config:** support both --arg=value and --arg value CLI syntax ([#40](https://github.com/Owloops/claude-powerline/issues/40)) ([0914abe](https://github.com/Owloops/claude-powerline/commit/0914abe4856adb8d8bc21ad2a85e85df6a05aeed))
+
 # [1.15.0](https://github.com/Owloops/claude-powerline/compare/v1.14.0...v1.15.0) (2026-01-08)
 
 
