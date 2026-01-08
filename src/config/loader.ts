@@ -82,6 +82,19 @@ function isValidCharset(charset: string): charset is "unicode" | "text" {
   return charset === "unicode" || charset === "text";
 }
 
+function getArgValue(args: string[], argName: string): string | undefined {
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === argName && i + 1 < args.length) {
+      return args[i + 1];
+    }
+    if (arg?.startsWith(`${argName}=`)) {
+      return arg.split("=")[1];
+    }
+  }
+  return undefined;
+}
+
 function deepMerge<T extends Record<string, any>>(
   target: T,
   source: Partial<T>
@@ -175,12 +188,12 @@ function parseCLIOverrides(args: string[]): Partial<PowerlineConfig> {
   const config: Partial<PowerlineConfig> = {};
   const display: Partial<DisplayConfig> = {};
 
-  const theme = args.find((arg) => arg.startsWith("--theme="))?.split("=")[1];
+  const theme = getArgValue(args, "--theme");
   if (theme && isValidTheme(theme)) {
     config.theme = theme;
   }
 
-  const style = args.find((arg) => arg.startsWith("--style="))?.split("=")[1];
+  const style = getArgValue(args, "--style");
   if (style) {
     if (isValidStyle(style)) {
       display.style = style;
@@ -192,7 +205,7 @@ function parseCLIOverrides(args: string[]): Partial<PowerlineConfig> {
     }
   }
 
-  const charset = args.find((arg) => arg.startsWith("--charset="))?.split("=")[1];
+  const charset = getArgValue(args, "--charset");
   if (charset) {
     if (isValidCharset(charset)) {
       display.charset = charset;
@@ -217,9 +230,7 @@ export function loadConfig(
 ): PowerlineConfig {
   let config: PowerlineConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
 
-  const rawConfigPath =
-    args.find((arg) => arg.startsWith("--config="))?.split("=")[1] ||
-    getConfigPathFromEnv();
+  const rawConfigPath = getArgValue(args, "--config") || getConfigPathFromEnv();
   const configPath = rawConfigPath?.startsWith("~")
     ? rawConfigPath.replace("~", os.homedir())
     : rawConfigPath;
