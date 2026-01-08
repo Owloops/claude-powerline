@@ -1,3 +1,10 @@
+# [1.15.0](https://github.com/Owloops/claude-powerline/compare/v1.14.0...v1.15.0) (2026-01-08)
+
+
+### Features
+
+* **context:** add progress bar display style option ([#41](https://github.com/Owloops/claude-powerline/issues/41)) ([3640179](https://github.com/Owloops/claude-powerline/commit/3640179ab429d1272c470788addcd8a956775f29))
+
 # [1.14.0](https://github.com/Owloops/claude-powerline/compare/v1.13.3...v1.14.0) (2026-01-08)
 
 
