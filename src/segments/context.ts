@@ -33,9 +33,9 @@ export class ContextProvider {
   }
 
   private getContextLimit(modelId: string): number {
-    const modelLimits = this.config.modelContextLimits || { default: 200000 };
+    const modelLimits = this.config.modelContextLimits || { default: 182000 };
     const modelType = this.getModelType(modelId);
-    return modelLimits[modelType] || modelLimits.default || 200000;
+    return modelLimits[modelType] || modelLimits.default || 182000;
   }
 
   private getModelType(modelId: string): string {
@@ -87,7 +87,7 @@ export class ContextProvider {
       return null;
     }
 
-    const contextLimit = hookData.context_window?.context_window_size || 200000;
+    const contextLimit = hookData.context_window?.context_window_size || 182000;
     const totalTokens =
       (currentUsage.input_tokens || 0) +
       (currentUsage.cache_creation_input_tokens || 0) +
@@ -158,7 +158,7 @@ export class ContextProvider {
           (usage.cache_read_input_tokens || 0) +
           (usage.cache_creation_input_tokens || 0);
 
-        const contextLimit = modelId ? this.getContextLimit(modelId) : 200000;
+        const contextLimit = modelId ? this.getContextLimit(modelId) : 182000;
 
         debug(
           `Most recent main chain context: ${totalTokens} tokens (limit: ${contextLimit})`
