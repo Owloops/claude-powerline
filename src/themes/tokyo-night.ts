@@ -9,6 +9,8 @@ export const tokyoNightTheme: ColorTheme = {
   today: { bg: "#1a202c", fg: "#4fd6be" },
   tmux: { bg: "#191b29", fg: "#4fd6be" },
   context: { bg: "#414868", fg: "#c0caf5" },
+  contextWarning: { bg: "#ff9e64", fg: "#1a1b26" },
+  contextCritical: { bg: "#f7768e", fg: "#1a1b26" },
   metrics: { bg: "#3d59a1", fg: "#c0caf5" },
   version: { bg: "#292e42", fg: "#bb9af7" },
 };
@@ -22,6 +24,8 @@ export const tokyoNightAnsi256Theme: ColorTheme = {
   today: { bg: "#262640", fg: "#00d7af" },
   tmux: { bg: "#1c1c30", fg: "#00d7af" },
   context: { bg: "#5f5f87", fg: "#d7d7ff" },
+  contextWarning: { bg: "#ffaf5f", fg: "#262626" },
+  contextCritical: { bg: "#ff5f87", fg: "#262626" },
   metrics: { bg: "#5f5faf", fg: "#d7d7ff" },
   version: { bg: "#444460", fg: "#d787ff" },
 };
@@ -35,6 +39,8 @@ export const tokyoNightAnsiTheme: ColorTheme = {
   today: { bg: "#303050", fg: "#00d787" },
   tmux: { bg: "#262640", fg: "#00d787" },
   context: { bg: "#808080", fg: "#ffffff" },
+  contextWarning: { bg: "#ffaf00", fg: "#000000" },
+  contextCritical: { bg: "#ff5f5f", fg: "#000000" },
   metrics: { bg: "#8787d7", fg: "#ffffff" },
   version: { bg: "#585870", fg: "#d787ff" },
 };

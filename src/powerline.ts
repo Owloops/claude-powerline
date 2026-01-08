@@ -633,6 +633,8 @@ export class PowerlineRenderer {
     const today = getSegmentColors("today");
     const tmux = getSegmentColors("tmux");
     const context = getSegmentColors("context");
+    const contextWarning = getSegmentColors("contextWarning");
+    const contextCritical = getSegmentColors("contextCritical");
     const metrics = getSegmentColors("metrics");
     const version = getSegmentColors("version");
 
@@ -654,6 +656,10 @@ export class PowerlineRenderer {
       tmuxFg: tmux.fg,
       contextBg: context.bg,
       contextFg: context.fg,
+      contextWarningBg: contextWarning.bg,
+      contextWarningFg: contextWarning.fg,
+      contextCriticalBg: contextCritical.bg,
+      contextCriticalFg: contextCritical.fg,
       metricsBg: metrics.bg,
       metricsFg: metrics.fg,
       versionBg: version.bg,

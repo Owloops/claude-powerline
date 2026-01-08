@@ -345,10 +345,21 @@ export class SegmentRenderer {
       ? `${this.symbols.context_time} ${contextLeft}`
       : `${this.symbols.context_time} ${contextInfo.totalTokens.toLocaleString()} (${contextLeft})`;
 
+    let bgColor = colors.contextBg;
+    let fgColor = colors.contextFg;
+
+    if (contextInfo.contextLeftPercentage <= 20) {
+      bgColor = colors.contextCriticalBg;
+      fgColor = colors.contextCriticalFg;
+    } else if (contextInfo.contextLeftPercentage <= 40) {
+      bgColor = colors.contextWarningBg;
+      fgColor = colors.contextWarningFg;
+    }
+
     return {
       text,
-      bgColor: colors.contextBg,
-      fgColor: colors.contextFg,
+      bgColor,
+      fgColor,
     };
   }
 

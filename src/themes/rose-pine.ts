@@ -9,6 +9,8 @@ export const rosePineTheme: ColorTheme = {
   today: { bg: "#232136", fg: "#9ccfd8" },
   tmux: { bg: "#26233a", fg: "#908caa" },
   context: { bg: "#393552", fg: "#e0def4" },
+  contextWarning: { bg: "#f6c177", fg: "#191724" },
+  contextCritical: { bg: "#eb6f92", fg: "#191724" },
   metrics: { bg: "#524f67", fg: "#e0def4" },
   version: { bg: "#2a273f", fg: "#c4a7e7" },
 };
@@ -22,6 +24,8 @@ export const rosePineAnsi256Theme: ColorTheme = {
   today: { bg: "#3a3a3a", fg: "#87d7d7" },
   tmux: { bg: "#444444", fg: "#9e9e9e" },
   context: { bg: "#585858", fg: "#e4e4e4" },
+  contextWarning: { bg: "#d7af5f", fg: "#1c1c1c" },
+  contextCritical: { bg: "#ff5f87", fg: "#1c1c1c" },
   metrics: { bg: "#767676", fg: "#e4e4e4" },
   version: { bg: "#4e4e4e", fg: "#d787d7" },
 };
@@ -35,6 +39,8 @@ export const rosePineAnsiTheme: ColorTheme = {
   today: { bg: "#444444", fg: "#00d7d7" },
   tmux: { bg: "#585858", fg: "#bcbcbc" },
   context: { bg: "#808080", fg: "#ffffff" },
+  contextWarning: { bg: "#d7af00", fg: "#000000" },
+  contextCritical: { bg: "#ff5f5f", fg: "#000000" },
   metrics: { bg: "#a8a8a8", fg: "#000000" },
   version: { bg: "#666666", fg: "#ff87ff" },
 };

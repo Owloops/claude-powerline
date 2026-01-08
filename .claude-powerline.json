@@ -106,6 +106,14 @@
         "bg": "#6a6a6a",
         "fg": "#ffffff"
       },
+      "contextWarning": {
+        "bg": "#92400e",
+        "fg": "#fbbf24"
+      },
+      "contextCritical": {
+        "bg": "#991b1b",
+        "fg": "#fca5a5"
+      },
       "metrics": {
         "bg": "#565656",
         "fg": "#e5e5e5"
