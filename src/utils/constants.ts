@@ -29,6 +29,8 @@ export const SYMBOLS = {
   metrics_lines_removed: "-",
   metrics_burn: "⟢",
   version: "◈",
+  bar_filled: "▪",
+  bar_empty: "▫",
 } as const;
 
 export const TEXT_SYMBOLS = {
@@ -60,5 +62,7 @@ export const TEXT_SYMBOLS = {
   metrics_lines_removed: "-",
   metrics_burn: "~/h",
   version: "V",
+  bar_filled: "=",
+  bar_empty: "-",
 } as const;
 

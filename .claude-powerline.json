@@ -48,7 +48,8 @@
           },
           "context": {
             "enabled": true,
-            "showPercentageOnly": false
+            "showPercentageOnly": false,
+            "displayStyle": "text"
           },
           "tmux": {
             "enabled": false
