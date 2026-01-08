@@ -1,3 +1,10 @@
+## [1.13.3](https://github.com/Owloops/claude-powerline/compare/v1.13.2...v1.13.3) (2026-01-08)
+
+
+### Bug Fixes
+
+* **model:** parse provider model ids to friendly display names ([214e53b](https://github.com/Owloops/claude-powerline/commit/214e53b11bc1cc9aa1ad272e68b60011e2fcec5b))
+
 ## [1.13.2](https://github.com/Owloops/claude-powerline/compare/v1.13.1...v1.13.2) (2025-12-18)
 
 
