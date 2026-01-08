@@ -570,6 +570,8 @@ export class PowerlineRenderer {
       metrics_lines_removed: symbolSet.metrics_lines_removed,
       metrics_burn: symbolSet.metrics_burn,
       version: symbolSet.version,
+      bar_filled: symbolSet.bar_filled,
+      bar_empty: symbolSet.bar_empty,
     };
   }
 

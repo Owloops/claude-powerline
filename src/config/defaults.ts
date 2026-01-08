@@ -32,7 +32,7 @@ export const DEFAULT_CONFIG: PowerlineConfig = {
           block: { enabled: false, type: "cost", burnType: "cost" },
           version: { enabled: false },
           tmux: { enabled: false },
-          context: { enabled: true, showPercentageOnly: false },
+          context: { enabled: true, showPercentageOnly: false, displayStyle: "text" },
           metrics: {
             enabled: false,
             showResponseTime: true,

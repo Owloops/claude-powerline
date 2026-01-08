@@ -35,6 +35,7 @@ export interface TmuxSegmentConfig extends SegmentConfig {}
 
 export interface ContextSegmentConfig extends SegmentConfig {
   showPercentageOnly?: boolean;
+  displayStyle?: "text" | "bar";
 }
 
 export interface MetricsSegmentConfig extends SegmentConfig {
@@ -114,6 +115,8 @@ export interface PowerlineSymbols {
   metrics_lines_removed: string;
   metrics_burn: string;
   version: string;
+  bar_filled: string;
+  bar_empty: string;
 }
 
 export interface SegmentData {
@@ -331,19 +334,23 @@ export class SegmentRenderer {
     colors: PowerlineColors,
     config?: ContextSegmentConfig,
   ): SegmentData | null {
+    const barLength = 10;
+
     if (!contextInfo) {
+      if (config?.displayStyle === "bar") {
+        const emptyBar = this.symbols.bar_empty.repeat(barLength);
+        return {
+          text: `${emptyBar} 0%`,
+          bgColor: colors.contextBg,
+          fgColor: colors.contextFg,
+        };
+      }
       return {
         text: `${this.symbols.context_time} 0 (100%)`,
         bgColor: colors.contextBg,
         fgColor: colors.contextFg,
       };
     }
-
-    const contextLeft = `${contextInfo.contextLeftPercentage}%`;
-
-    const text = config?.showPercentageOnly
-      ? `${this.symbols.context_time} ${contextLeft}`
-      : `${this.symbols.context_time} ${contextInfo.totalTokens.toLocaleString()} (${contextLeft})`;
 
     let bgColor = colors.contextBg;
     let fgColor = colors.contextFg;
@@ -356,11 +363,25 @@ export class SegmentRenderer {
       fgColor = colors.contextWarningFg;
     }
 
-    return {
-      text,
-      bgColor,
-      fgColor,
-    };
+    if (config?.displayStyle === "bar") {
+      const usedPct = contextInfo.usablePercentage;
+      const filledCount = Math.round((usedPct / 100) * barLength);
+      const emptyCount = barLength - filledCount;
+      const bar = this.symbols.bar_filled.repeat(filledCount) + this.symbols.bar_empty.repeat(emptyCount);
+
+      const text = config?.showPercentageOnly
+        ? `${bar} ${usedPct}%`
+        : `${bar} ${contextInfo.totalTokens.toLocaleString()} (${usedPct}%)`;
+
+      return { text, bgColor, fgColor };
+    }
+
+    const contextLeft = `${contextInfo.contextLeftPercentage}%`;
+    const text = config?.showPercentageOnly
+      ? `${this.symbols.context_time} ${contextLeft}`
+      : `${this.symbols.context_time} ${contextInfo.totalTokens.toLocaleString()} (${contextLeft})`;
+
+    return { text, bgColor, fgColor };
   }
 
   renderMetrics(
