@@ -1,3 +1,10 @@
+# [1.14.0](https://github.com/Owloops/claude-powerline/compare/v1.13.3...v1.14.0) (2026-01-08)
+
+
+### Features
+
+* **context:** color-code context usage by percentage thresholds ([0faca87](https://github.com/Owloops/claude-powerline/commit/0faca87c3ebc2d11271ab7dbc49092f566883a26))
+
 ## [1.13.3](https://github.com/Owloops/claude-powerline/compare/v1.13.2...v1.13.3) (2026-01-08)
 
 
