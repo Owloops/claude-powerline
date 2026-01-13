@@ -28,16 +28,16 @@ export function formatTokenBreakdown(breakdown: TokenBreakdown | null): string {
   const parts: string[] = [];
 
   if (breakdown.input > 0) {
-    parts.push(`${formatTokens(breakdown.input).replace(" tokens", "")}in`);
+    parts.push(`${formatTokens(breakdown.input).replace(" tokens", "")} in`);
   }
 
   if (breakdown.output > 0) {
-    parts.push(`${formatTokens(breakdown.output).replace(" tokens", "")}out`);
+    parts.push(`${formatTokens(breakdown.output).replace(" tokens", "")} out`);
   }
 
   if (breakdown.cacheCreation > 0 || breakdown.cacheRead > 0) {
     const totalCached = breakdown.cacheCreation + breakdown.cacheRead;
-    parts.push(`${formatTokens(totalCached).replace(" tokens", "")}cached`);
+    parts.push(`${formatTokens(totalCached).replace(" tokens", "")} cached`);
   }
 
   return parts.length > 0 ? parts.join(" + ") : "0 tokens";
