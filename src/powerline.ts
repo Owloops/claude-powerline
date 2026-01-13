@@ -224,7 +224,7 @@ export class PowerlineRenderer {
       let currentLineWidth = 0;
 
       for (const segment of renderedSegments) {
-        const segmentWidth = this.calculateSegmentWidth(segment, currentLineSegments.length === 0);
+        const segmentWidth = this.calculateSegmentWidth(segment);
 
         if (currentLineSegments.length > 0 && currentLineWidth + segmentWidth > terminalWidth) {
           outputLines.push(this.buildLineFromSegments(currentLineSegments, colors));
@@ -244,14 +244,14 @@ export class PowerlineRenderer {
     return outputLines.join("\n");
   }
 
-  private calculateSegmentWidth(segment: RenderedSegment, isFirst: boolean): number {
+  private calculateSegmentWidth(segment: RenderedSegment): number {
     const isCapsuleStyle = this.config.display.style === "capsule";
     const textWidth = visibleLength(segment.text);
     const padding = this.config.display.padding ?? 1;
     const paddingWidth = padding * 2;
 
     if (isCapsuleStyle) {
-      const capsuleOverhead = 2 + paddingWidth + (isFirst ? 0 : 1);
+      const capsuleOverhead = 2 + paddingWidth;
       return textWidth + capsuleOverhead;
     }
 
@@ -263,23 +263,17 @@ export class PowerlineRenderer {
     segments: RenderedSegment[],
     colors: PowerlineColors
   ): string {
-    const isCapsuleStyle = this.config.display.style === "capsule";
     let line = colors.reset;
 
     for (let i = 0; i < segments.length; i++) {
       const segment = segments[i];
       if (!segment) continue;
 
-      const isFirst = i === 0;
       const isLast = i === segments.length - 1;
       const nextSegment = !isLast ? segments[i + 1] : null;
       const nextBgColor = nextSegment
         ? this.getSegmentBgColor(nextSegment.type, colors)
         : "";
-
-      if (isCapsuleStyle && !isFirst) {
-        line += " ";
-      }
 
       line += this.formatSegment(
         segment.bgColor,
@@ -311,14 +305,12 @@ export class PowerlineRenderer {
       )
       .map(([type, config]: [string, AnySegmentConfig]) => ({ type, config }));
 
-    const isCapsuleStyle = this.config.display.style === "capsule";
     let line = colors.reset;
 
     for (let i = 0; i < segments.length; i++) {
       const segment = segments[i];
       if (!segment) continue;
 
-      const isFirst = i === 0;
       const isLast = i === segments.length - 1;
       const nextSegment = !isLast ? segments[i + 1] : null;
       const nextBgColor = nextSegment
@@ -338,10 +330,6 @@ export class PowerlineRenderer {
       );
 
       if (segmentData) {
-        if (isCapsuleStyle && !isFirst) {
-          line += " ";
-        }
-        
         line += this.formatSegment(
           segmentData.bgColor,
           segmentData.fgColor,
