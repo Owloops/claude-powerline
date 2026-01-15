@@ -273,9 +273,6 @@ export class PowerlineRenderer {
       const isFirst = i === 0;
       const isLast = i === segments.length - 1;
       const nextSegment = !isLast ? segments[i + 1] : null;
-      const nextBgColor = nextSegment
-        ? this.getSegmentBgColor(nextSegment.type, colors)
-        : "";
 
       if (isCapsuleStyle && !isFirst) {
         line += " ";
@@ -285,7 +282,7 @@ export class PowerlineRenderer {
         segment.bgColor,
         segment.fgColor,
         segment.text,
-        isLast ? undefined : nextBgColor,
+        nextSegment?.bgColor,
         colors
       );
     }
@@ -311,20 +308,8 @@ export class PowerlineRenderer {
       )
       .map(([type, config]: [string, AnySegmentConfig]) => ({ type, config }));
 
-    const isCapsuleStyle = this.config.display.style === "capsule";
-    let line = colors.reset;
-
-    for (let i = 0; i < segments.length; i++) {
-      const segment = segments[i];
-      if (!segment) continue;
-
-      const isFirst = i === 0;
-      const isLast = i === segments.length - 1;
-      const nextSegment = !isLast ? segments[i + 1] : null;
-      const nextBgColor = nextSegment
-        ? this.getSegmentBgColor(nextSegment.type, colors)
-        : "";
-
+    const renderedSegments: RenderedSegment[] = [];
+    for (const segment of segments) {
       const segmentData = await this.renderSegment(
         segment,
         hookData,
@@ -338,21 +323,16 @@ export class PowerlineRenderer {
       );
 
       if (segmentData) {
-        if (isCapsuleStyle && !isFirst) {
-          line += " ";
-        }
-        
-        line += this.formatSegment(
-          segmentData.bgColor,
-          segmentData.fgColor,
-          segmentData.text,
-          isLast ? undefined : nextBgColor,
-          colors
-        );
+        renderedSegments.push({
+          type: segment.type,
+          text: segmentData.text,
+          bgColor: segmentData.bgColor,
+          fgColor: segmentData.fgColor,
+        });
       }
     }
 
-    return line;
+    return this.buildLineFromSegments(renderedSegments, colors);
   }
 
   private async renderSegment(
