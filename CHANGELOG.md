@@ -1,3 +1,10 @@
+## [1.16.1](https://github.com/Owloops/claude-powerline/compare/v1.16.0...v1.16.1) (2026-01-15)
+
+
+### Bug Fixes
+
+* various display improvements ([#43](https://github.com/Owloops/claude-powerline/issues/43)) ([c3d5cc7](https://github.com/Owloops/claude-powerline/commit/c3d5cc7a1aeb3dcee2da49a7ebfeb13cf92dbdba))
+
 # [1.16.0](https://github.com/Owloops/claude-powerline/compare/v1.15.0...v1.16.0) (2026-01-08)
 
 
