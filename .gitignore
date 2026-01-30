@@ -15,3 +15,4 @@ dist-sea/
 claude-powerline-sea-*
 demo-recording/
 .omc/
+.claude-powerline.json
