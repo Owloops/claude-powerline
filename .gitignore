@@ -14,3 +14,4 @@ dist-sea/
 *.blob
 claude-powerline-sea-*
 demo-recording/
+.omc/
