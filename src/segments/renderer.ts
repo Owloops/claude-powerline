@@ -30,7 +30,6 @@ export interface GitSegmentConfig extends SegmentConfig {
 export interface UsageSegmentConfig extends SegmentConfig {
   type: "cost" | "tokens" | "both" | "breakdown";
   costSource?: "calculated" | "official";
-  showBurnRate?: boolean;
   showCacheHitRate?: boolean;
   colorByCost?: boolean;
   costThresholds?: { low: number; medium: number };
@@ -54,7 +53,6 @@ export interface MetricsSegmentConfig extends SegmentConfig {
 
 export interface BlockSegmentConfig extends SegmentConfig {
   type: "cost" | "tokens" | "both" | "time" | "weighted";
-  burnType?: "cost" | "tokens" | "both" | "none";
   showCacheHitRate?: boolean;
   colorByCost?: boolean;
   costThresholds?: { low: number; medium: number };
@@ -559,7 +557,6 @@ export class SegmentRenderer {
       displayText = "No active block";
     } else {
       const type = config?.type || "cost";
-      const burnType = config?.burnType;
       const blockBudget = this.config.budget?.block;
 
       const timeStr =
@@ -636,47 +633,12 @@ export class SegmentRenderer {
           );
       }
 
-      let burnContent = "";
-      if (burnType && burnType !== "none") {
-        switch (burnType) {
-          case "cost":
-            const costBurnRate =
-              blockInfo.burnRate !== null
-                ? blockInfo.burnRate < 1
-                  ? `${(blockInfo.burnRate * 100).toFixed(0)}¢/h`
-                  : `$${blockInfo.burnRate.toFixed(2)}/h`
-                : "N/A";
-            burnContent = ` | ${costBurnRate}`;
-            break;
-          case "tokens":
-            const tokenBurnRate =
-              blockInfo.tokenBurnRate !== null
-                ? `${formatTokens(Math.round(blockInfo.tokenBurnRate))}/h`
-                : "N/A";
-            burnContent = ` | ${tokenBurnRate}`;
-            break;
-          case "both":
-            const costBurn =
-              blockInfo.burnRate !== null
-                ? blockInfo.burnRate < 1
-                  ? `${(blockInfo.burnRate * 100).toFixed(0)}¢/h`
-                  : `$${blockInfo.burnRate.toFixed(2)}/h`
-                : "N/A";
-            const tokenBurn =
-              blockInfo.tokenBurnRate !== null
-                ? `${formatTokens(Math.round(blockInfo.tokenBurnRate))}/h`
-                : "N/A";
-            burnContent = ` | ${costBurn} / ${tokenBurn}`;
-            break;
-        }
-      }
-
       if (type === "time") {
         displayText = mainContent;
       } else {
         displayText = timeStr
-          ? `${mainContent}${burnContent} (${timeStr} left)`
-          : `${mainContent}${burnContent}`;
+          ? `${mainContent} (${timeStr} left)`
+          : mainContent;
       }
     }
 
@@ -1011,25 +973,6 @@ export class SegmentRenderer {
         return this.formatModelTierCode(typeCode, a.model, colors);
       }
       return typeCode;
-    }).join('');
-  }
-
-  /**
-   * Format agent codes with duration and optional model tier coloring.
-   */
-  private formatAgentCodesWithDuration(
-    agents: ActiveAgent[],
-    maxDisplay: number,
-    showModelTier: boolean,
-    colors: PowerlineColors
-  ): string {
-    return agents.slice(0, maxDisplay).map(a => {
-      const typeCode = this.getAgentTypeCode(a.type);
-      const code = showModelTier && a.model
-        ? this.formatModelTierCode(typeCode, a.model, colors)
-        : typeCode;
-      const duration = this.formatAgentDuration(a);
-      return duration ? `${code}(${duration})` : code;
     }).join('');
   }
 

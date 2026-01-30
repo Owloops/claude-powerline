@@ -354,7 +354,10 @@ Configure context window limits for different model types. Defaults to 200K toke
 "session": {
   "enabled": true,
   "type": "tokens",
-  "costSource": "calculated"
+  "costSource": "calculated",
+  "showCacheHitRate": false,
+  "colorByCost": false,
+  "costThresholds": { "low": 1, "medium": 5 }
 }
 ```
 
@@ -362,6 +365,9 @@ Configure context window limits for different model types. Defaults to 200K toke
 
 - `type`: Display format - `cost` | `tokens` | `both` | `breakdown`
 - `costSource`: Cost calculation method - `calculated` (ccusage-style) | `official` (hook data)
+- `showCacheHitRate`: Show cache hit percentage in the segment
+- `colorByCost`: Enable cost-based background coloring
+- `costThresholds`: Cost thresholds in USD for coloring (`low` = green, above `medium` = red)
 
 **Symbols:** `§` Session (unicode) • `S` Session (text)
 
@@ -374,14 +380,18 @@ Configure context window limits for different model types. Defaults to 200K toke
 "block": {
   "enabled": true,
   "type": "weighted",
-  "burnType": "cost"
+  "showCacheHitRate": false,
+  "colorByCost": false,
+  "costThresholds": { "low": 1, "medium": 5 }
 }
 ```
 
 **Options:**
 
 - `type`: Display format - `cost` | `tokens` | `both` | `time` | `weighted`
-- `burnType`: Burn rate display - `cost` | `tokens` | `both` | `none`
+- `showCacheHitRate`: Show cache hit percentage in the segment
+- `colorByCost`: Enable cost-based background coloring
+- `costThresholds`: Cost thresholds in USD for coloring (`low` = green, above `medium` = red)
 
 **Weighted Tokens:** Opus tokens count 5x toward rate limits compared to Sonnet/Haiku tokens
 
@@ -404,6 +414,85 @@ Configure context window limits for different model types. Defaults to 200K toke
 - `type`: Display format - `cost` | `tokens` | `both` | `breakdown`
 
 **Symbols:** `☉` Today (unicode) • `D` Today (text)
+
+</details>
+
+<details>
+<summary><strong>OMC Mode</strong> - Shows active oh-my-claudecode execution mode</summary>
+
+```json
+"omcMode": {
+  "enabled": true
+}
+```
+
+**Display:** Shows the active OMC mode when running (ultrawork, autopilot, ecomode). Hidden when inactive.
+
+**Symbols:** `⚡` ultrawork • `🤖` autopilot • `🌿` ecomode (unicode) • `ULW` `AUTO` `ECO` (text)
+
+</details>
+
+<details>
+<summary><strong>OMC Ralph</strong> - Shows Ralph loop iteration progress</summary>
+
+```json
+"omcRalph": {
+  "enabled": true,
+  "warnThreshold": 7
+}
+```
+
+**Options:**
+
+- `warnThreshold`: Iteration count to show warning color (default: 7)
+
+**Display:** `⟳ 3/10` - current/max iterations. Hidden when inactive.
+
+**Symbols:** `⟳` Ralph (unicode) • `R` Ralph (text)
+
+</details>
+
+<details>
+<summary><strong>OMC Agents</strong> - Shows active background agents with model tier coloring</summary>
+
+```json
+"omcAgents": {
+  "enabled": true,
+  "format": "codes",
+  "showModelTier": true,
+  "maxDisplay": 3
+}
+```
+
+**Options:**
+
+- `format`: Display format - `count` | `codes` | `codes-duration` | `name` | `detailed`
+  - `count`: Just the number of agents (e.g., `3`)
+  - `codes`: Single-letter codes (e.g., `eax` for executor, architect, explore)
+  - `codes-duration`: Codes with duration (e.g., `e(2m)a(45s)`)
+  - `name`: Agent names (e.g., `executor,architect`)
+  - `detailed`: Full format with brackets (e.g., `[executor(2m),architect]`)
+- `showModelTier`: Color-code by model (Opus=purple/uppercase, Sonnet=yellow, Haiku=green)
+- `maxDisplay`: Maximum agents to show (default: 3)
+
+**Display:** Hidden when no agents running.
+
+**Symbols:** `◎` Agents (unicode) • `A` Agents (text)
+
+</details>
+
+<details>
+<summary><strong>OMC Skill</strong> - Shows currently active skill name</summary>
+
+```json
+"omcSkill": {
+  "enabled": true
+}
+```
+
+**Display:** `skill:planner` or `skill:analyze(query)`. Hidden when no skill active.
+
+**Symbols:** `⚙` Skill (unicode) • `SK:` Skill (text)
 
 </details>
 
@@ -553,6 +642,59 @@ Create custom themes and configure color compatibility:
 - `COLORTERM` - Auto-detected for truecolor support
 
 **Priority:** `FORCE_COLOR` overrides `NO_COLOR` (allowing color to be forced on even when NO_COLOR is set)
+
+### Extended Theme Colors
+
+In addition to segment colors, themes support these specialized colors:
+
+**Cost-based Coloring** (for `colorByCost` option):
+```json
+"colors": {
+  "custom": {
+    "costNormal": { "bg": "#1a472a", "fg": "#ffffff" },
+    "costWarning": { "bg": "#6b5b00", "fg": "#ffffff" },
+    "costCritical": { "bg": "#8b0000", "fg": "#ffffff" }
+  }
+}
+```
+
+- `costNormal`: Color when cost < low threshold (default: green tint)
+- `costWarning`: Color when low ≤ cost < medium threshold (default: yellow tint)
+- `costCritical`: Color when cost ≥ medium threshold (default: red tint)
+
+**OMC Segment Colors**:
+```json
+"colors": {
+  "custom": {
+    "omcModeActive": { "bg": "#5a4fcf", "fg": "#ffffff" },
+    "omcRalphActive": { "bg": "#2d7d46", "fg": "#ffffff" },
+    "omcRalphWarn": { "bg": "#b8860b", "fg": "#000000" },
+    "omcRalphMax": { "bg": "#8b0000", "fg": "#ffffff" },
+    "omcAgentsActive": { "bg": "#4a5568", "fg": "#ffffff" },
+    "omcSkillActive": { "bg": "#6b46c1", "fg": "#ffffff" }
+  }
+}
+```
+
+**Agent Model Tier Colors** (for `showModelTier` option):
+```json
+"colors": {
+  "custom": {
+    "omcAgentOpus": { "bg": "#9333ea", "fg": "#ffffff" },
+    "omcAgentSonnet": { "bg": "#ca8a04", "fg": "#000000" },
+    "omcAgentHaiku": { "bg": "#16a34a", "fg": "#ffffff" }
+  }
+}
+```
+
+**Burn Rate Segment**:
+```json
+"colors": {
+  "custom": {
+    "burnRate": { "bg": "#374151", "fg": "#f59e0b" }
+  }
+}
+```
 
 ## Performance
 

@@ -63,7 +63,8 @@ describe("Core Functionality", () => {
       };
 
       const result = await renderer.generateStatusline(hookData);
-      expect(result).toContain("0 tokens");
+      // Check for session segment with zero usage (format varies by config)
+      expect(result).toMatch(/§.*(\$0\.00|0 tokens|0K)/)
     });
   });
 

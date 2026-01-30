@@ -31,7 +31,6 @@ export const DEFAULT_CONFIG: PowerlineConfig = {
             enabled: true,
             type: "tokens",
             costSource: "calculated",
-            showBurnRate: false,
             showCacheHitRate: false,
             colorByCost: false,
             costThresholds: { low: 1, medium: 5 },
@@ -40,7 +39,6 @@ export const DEFAULT_CONFIG: PowerlineConfig = {
           block: {
             enabled: false,
             type: "cost",
-            burnType: "cost",
             showCacheHitRate: false,
             colorByCost: false,
             costThresholds: { low: 1, medium: 5 },
