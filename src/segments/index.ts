@@ -21,4 +21,14 @@ export {
   BlockSegmentConfig,
   TodaySegmentConfig,
   VersionSegmentConfig,
+  OmcModeSegmentConfig,
+  OmcRalphSegmentConfig,
+  OmcAgentsSegmentConfig,
 } from "./renderer";
+export {
+  OmcProvider,
+  OmcInfo,
+  OmcModeInfo,
+  OmcRalphInfo,
+  OmcAgentsInfo,
+} from "./omc";

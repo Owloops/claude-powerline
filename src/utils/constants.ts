@@ -29,6 +29,12 @@ export const SYMBOLS = {
   metrics_lines_removed: "-",
   metrics_burn: "⟢",
   version: "◈",
+  omc_mode_ultrawork: "⚡",
+  omc_mode_autopilot: "🤖",
+  omc_mode_ecomode: "🌿",
+  omc_mode_inactive: "◌",
+  omc_ralph: "⟳",
+  omc_agents: "◎",
 } as const;
 
 export const TEXT_SYMBOLS = {
@@ -60,5 +66,11 @@ export const TEXT_SYMBOLS = {
   metrics_lines_removed: "-",
   metrics_burn: "~/h",
   version: "V",
+  omc_mode_ultrawork: "ULW",
+  omc_mode_autopilot: "AUTO",
+  omc_mode_ecomode: "ECO",
+  omc_mode_inactive: "OFF",
+  omc_ralph: "R",
+  omc_agents: "A",
 } as const;
 

@@ -3,6 +3,7 @@ import type { ClaudeHookData } from "../utils/claude";
 import type { PowerlineColors } from "../themes";
 import type { PowerlineConfig } from "../config/loader";
 import type { BlockInfo } from "./block";
+import type { OmcModeInfo, OmcRalphInfo, OmcAgentsInfo } from "./omc";
 
 export interface SegmentConfig {
   enabled: boolean;
@@ -56,6 +57,14 @@ export interface TodaySegmentConfig extends SegmentConfig {
 
 export interface VersionSegmentConfig extends SegmentConfig {}
 
+export interface OmcModeSegmentConfig extends SegmentConfig {}
+
+export interface OmcRalphSegmentConfig extends SegmentConfig {
+  warnThreshold?: number;
+}
+
+export interface OmcAgentsSegmentConfig extends SegmentConfig {}
+
 export type AnySegmentConfig =
   | SegmentConfig
   | DirectorySegmentConfig
@@ -66,7 +75,10 @@ export type AnySegmentConfig =
   | MetricsSegmentConfig
   | BlockSegmentConfig
   | TodaySegmentConfig
-  | VersionSegmentConfig;
+  | VersionSegmentConfig
+  | OmcModeSegmentConfig
+  | OmcRalphSegmentConfig
+  | OmcAgentsSegmentConfig;
 
 import {
   formatCost,
@@ -113,6 +125,12 @@ export interface PowerlineSymbols {
   metrics_lines_removed: string;
   metrics_burn: string;
   version: string;
+  omc_mode_ultrawork: string;
+  omc_mode_autopilot: string;
+  omc_mode_ecomode: string;
+  omc_mode_inactive: string;
+  omc_ralph: string;
+  omc_agents: string;
 }
 
 export interface SegmentData {
@@ -703,6 +721,94 @@ export class SegmentRenderer {
       text: `${this.symbols.version} v${hookData.version}`,
       bgColor: colors.versionBg,
       fgColor: colors.versionFg,
+    };
+  }
+
+  renderOmcMode(
+    modeInfo: OmcModeInfo | null,
+    colors: PowerlineColors,
+    _config?: OmcModeSegmentConfig
+  ): SegmentData | null {
+    // Hide segment entirely when no mode is active
+    if (!modeInfo || !modeInfo.active) {
+      return null;
+    }
+
+    let symbol: string;
+    switch (modeInfo.mode) {
+      case 'ultrawork':
+        symbol = this.symbols.omc_mode_ultrawork;
+        break;
+      case 'autopilot':
+        symbol = this.symbols.omc_mode_autopilot;
+        break;
+      case 'ecomode':
+        symbol = this.symbols.omc_mode_ecomode;
+        break;
+      default:
+        symbol = this.symbols.omc_mode_inactive;
+    }
+
+    return {
+      text: symbol,
+      bgColor: colors.omcModeActiveBg,
+      fgColor: colors.omcModeActiveFg,
+    };
+  }
+
+  renderOmcRalph(
+    ralphInfo: OmcRalphInfo | null,
+    colors: PowerlineColors,
+    config?: OmcRalphSegmentConfig
+  ): SegmentData | null {
+    // Hide segment entirely when ralph is not active
+    if (!ralphInfo || !ralphInfo.active) {
+      return null;
+    }
+
+    const warnThreshold = config?.warnThreshold ?? 7;
+
+    const current = ralphInfo.currentIteration ?? 0;
+    const max = ralphInfo.maxIterations ?? 10;
+    const text = `${this.symbols.omc_ralph} ${current}/${max}`;
+
+    if (current >= max) {
+      return {
+        text,
+        bgColor: colors.omcRalphMaxBg,
+        fgColor: colors.omcRalphMaxFg,
+      };
+    } else if (current >= warnThreshold) {
+      return {
+        text,
+        bgColor: colors.omcRalphWarnBg,
+        fgColor: colors.omcRalphWarnFg,
+      };
+    }
+
+    return {
+      text,
+      bgColor: colors.omcRalphActiveBg,
+      fgColor: colors.omcRalphActiveFg,
+    };
+  }
+
+  renderOmcAgents(
+    agentsInfo: OmcAgentsInfo | null,
+    colors: PowerlineColors,
+    _config?: OmcAgentsSegmentConfig
+  ): SegmentData | null {
+    const count = agentsInfo?.count ?? 0;
+
+    // Hide segment entirely when no agents are running
+    if (count === 0) {
+      return null;
+    }
+
+    return {
+      text: `${this.symbols.omc_agents} ${count}`,
+      bgColor: colors.omcAgentsActiveBg,
+      fgColor: colors.omcAgentsActiveFg,
     };
   }
 }

@@ -29,6 +29,11 @@ import {
   BlockSegmentConfig,
   TodaySegmentConfig,
   VersionSegmentConfig,
+  OmcModeSegmentConfig,
+  OmcRalphSegmentConfig,
+  OmcAgentsSegmentConfig,
+  OmcProvider,
+  OmcInfo,
 } from "./segments";
 import { BlockProvider, BlockInfo } from "./segments/block";
 import { TodayProvider, TodayInfo } from "./segments/today";
@@ -52,6 +57,7 @@ export class PowerlineRenderer {
   private _tmuxService?: TmuxService;
   private _metricsProvider?: MetricsProvider;
   private _segmentRenderer?: SegmentRenderer;
+  private _omcProvider?: OmcProvider;
 
   constructor(private readonly config: PowerlineConfig) {
     this.symbols = this.initializeSymbols();
@@ -113,6 +119,13 @@ export class PowerlineRenderer {
     return this._segmentRenderer;
   }
 
+  private get omcProvider(): OmcProvider {
+    if (!this._omcProvider) {
+      this._omcProvider = new OmcProvider();
+    }
+    return this._omcProvider;
+  }
+
   private needsSegmentInfo(segmentType: keyof LineConfig["segments"]): boolean {
     return this.config.display.lines.some(
       (line) => line.segments[segmentType]?.enabled
@@ -140,6 +153,14 @@ export class PowerlineRenderer {
       ? await this.metricsProvider.getMetricsInfo(hookData.session_id, hookData)
       : null;
 
+    const needsOmcInfo =
+      this.needsSegmentInfo("omcMode") ||
+      this.needsSegmentInfo("omcRalph") ||
+      this.needsSegmentInfo("omcAgents");
+    const omcInfo = needsOmcInfo
+      ? await this.omcProvider.getOmcInfo(hookData)
+      : null;
+
     if (this.config.display.autoWrap) {
       return this.generateAutoWrapStatusline(
         hookData,
@@ -147,7 +168,8 @@ export class PowerlineRenderer {
         blockInfo,
         todayInfo,
         contextInfo,
-        metricsInfo
+        metricsInfo,
+        omcInfo
       );
     }
 
@@ -160,7 +182,8 @@ export class PowerlineRenderer {
           blockInfo,
           todayInfo,
           contextInfo,
-          metricsInfo
+          metricsInfo,
+          omcInfo
         )
       )
     );
@@ -174,7 +197,8 @@ export class PowerlineRenderer {
     blockInfo: BlockInfo | null,
     todayInfo: TodayInfo | null,
     contextInfo: ContextInfo | null,
-    metricsInfo: MetricsInfo | null
+    metricsInfo: MetricsInfo | null,
+    omcInfo: OmcInfo | null
   ): Promise<string> {
     const colors = this.getThemeColors();
     const currentDir = hookData.workspace?.current_dir || hookData.cwd || "/";
@@ -199,6 +223,7 @@ export class PowerlineRenderer {
           todayInfo,
           contextInfo,
           metricsInfo,
+          omcInfo,
           colors,
           currentDir
         );
@@ -273,9 +298,9 @@ export class PowerlineRenderer {
       const isFirst = i === 0;
       const isLast = i === segments.length - 1;
       const nextSegment = !isLast ? segments[i + 1] : null;
-      const nextBgColor = nextSegment
-        ? this.getSegmentBgColor(nextSegment.type, colors)
-        : "";
+      // Codex Fix 1: Use actual rendered bgColor instead of static theme color
+      // This ensures OMC segments with dynamic backgrounds get correct separator colors
+      const nextBgColor = nextSegment ? nextSegment.bgColor : "";
 
       if (isCapsuleStyle && !isFirst) {
         line += " ";
@@ -300,7 +325,8 @@ export class PowerlineRenderer {
     blockInfo: BlockInfo | null,
     todayInfo: TodayInfo | null,
     contextInfo: ContextInfo | null,
-    metricsInfo: MetricsInfo | null
+    metricsInfo: MetricsInfo | null,
+    omcInfo: OmcInfo | null
   ): Promise<string> {
     const colors = this.getThemeColors();
     const currentDir = hookData.workspace?.current_dir || hookData.cwd || "/";
@@ -311,20 +337,9 @@ export class PowerlineRenderer {
       )
       .map(([type, config]: [string, AnySegmentConfig]) => ({ type, config }));
 
-    const isCapsuleStyle = this.config.display.style === "capsule";
-    let line = colors.reset;
-
-    for (let i = 0; i < segments.length; i++) {
-      const segment = segments[i];
-      if (!segment) continue;
-
-      const isFirst = i === 0;
-      const isLast = i === segments.length - 1;
-      const nextSegment = !isLast ? segments[i + 1] : null;
-      const nextBgColor = nextSegment
-        ? this.getSegmentBgColor(nextSegment.type, colors)
-        : "";
-
+    // Pre-render all segments first (Codex Fix 1: needed to get actual bgColors)
+    const renderedSegments: RenderedSegment[] = [];
+    for (const segment of segments) {
       const segmentData = await this.renderSegment(
         segment,
         hookData,
@@ -333,26 +348,23 @@ export class PowerlineRenderer {
         todayInfo,
         contextInfo,
         metricsInfo,
+        omcInfo,
         colors,
         currentDir
       );
 
       if (segmentData) {
-        if (isCapsuleStyle && !isFirst) {
-          line += " ";
-        }
-        
-        line += this.formatSegment(
-          segmentData.bgColor,
-          segmentData.fgColor,
-          segmentData.text,
-          isLast ? undefined : nextBgColor,
-          colors
-        );
+        renderedSegments.push({
+          type: segment.type,
+          text: segmentData.text,
+          bgColor: segmentData.bgColor,
+          fgColor: segmentData.fgColor,
+        });
       }
     }
 
-    return line;
+    // Build line using actual rendered bgColors for separator arrows
+    return this.buildLineFromSegments(renderedSegments, colors);
   }
 
   private async renderSegment(
@@ -363,6 +375,7 @@ export class PowerlineRenderer {
     todayInfo: TodayInfo | null,
     contextInfo: ContextInfo | null,
     metricsInfo: MetricsInfo | null,
+    omcInfo: OmcInfo | null,
     colors: PowerlineColors,
     currentDir: string
   ) {
@@ -436,6 +449,30 @@ export class PowerlineRenderer {
         segment.config as VersionSegmentConfig,
         hookData,
         colors
+      );
+    }
+
+    if (segment.type === "omcMode") {
+      return this.segmentRenderer.renderOmcMode(
+        omcInfo?.mode ?? null,
+        colors,
+        segment.config as OmcModeSegmentConfig
+      );
+    }
+
+    if (segment.type === "omcRalph") {
+      return this.segmentRenderer.renderOmcRalph(
+        omcInfo?.ralph ?? null,
+        colors,
+        segment.config as OmcRalphSegmentConfig
+      );
+    }
+
+    if (segment.type === "omcAgents") {
+      return this.segmentRenderer.renderOmcAgents(
+        omcInfo?.agents ?? null,
+        colors,
+        segment.config as OmcAgentsSegmentConfig
       );
     }
 
@@ -570,6 +607,12 @@ export class PowerlineRenderer {
       metrics_lines_removed: symbolSet.metrics_lines_removed,
       metrics_burn: symbolSet.metrics_burn,
       version: symbolSet.version,
+      omc_mode_ultrawork: symbolSet.omc_mode_ultrawork,
+      omc_mode_autopilot: symbolSet.omc_mode_autopilot,
+      omc_mode_ecomode: symbolSet.omc_mode_ecomode,
+      omc_mode_inactive: symbolSet.omc_mode_inactive,
+      omc_ralph: symbolSet.omc_ralph,
+      omc_agents: symbolSet.omc_agents,
     };
   }
 
@@ -635,6 +678,14 @@ export class PowerlineRenderer {
     const context = getSegmentColors("context");
     const metrics = getSegmentColors("metrics");
     const version = getSegmentColors("version");
+    const omcModeActive = getSegmentColors("omcModeActive");
+    const omcModeInactive = getSegmentColors("omcModeInactive");
+    const omcRalphActive = getSegmentColors("omcRalphActive");
+    const omcRalphWarn = getSegmentColors("omcRalphWarn");
+    const omcRalphMax = getSegmentColors("omcRalphMax");
+    const omcRalphInactive = getSegmentColors("omcRalphInactive");
+    const omcAgentsActive = getSegmentColors("omcAgentsActive");
+    const omcAgentsInactive = getSegmentColors("omcAgentsInactive");
 
     return {
       reset: colorSupport === "none" ? "" : RESET_CODE,
@@ -658,37 +709,23 @@ export class PowerlineRenderer {
       metricsFg: metrics.fg,
       versionBg: version.bg,
       versionFg: version.fg,
+      omcModeActiveBg: omcModeActive.bg,
+      omcModeActiveFg: omcModeActive.fg,
+      omcModeInactiveBg: omcModeInactive.bg,
+      omcModeInactiveFg: omcModeInactive.fg,
+      omcRalphActiveBg: omcRalphActive.bg,
+      omcRalphActiveFg: omcRalphActive.fg,
+      omcRalphWarnBg: omcRalphWarn.bg,
+      omcRalphWarnFg: omcRalphWarn.fg,
+      omcRalphMaxBg: omcRalphMax.bg,
+      omcRalphMaxFg: omcRalphMax.fg,
+      omcRalphInactiveBg: omcRalphInactive.bg,
+      omcRalphInactiveFg: omcRalphInactive.fg,
+      omcAgentsActiveBg: omcAgentsActive.bg,
+      omcAgentsActiveFg: omcAgentsActive.fg,
+      omcAgentsInactiveBg: omcAgentsInactive.bg,
+      omcAgentsInactiveFg: omcAgentsInactive.fg,
     };
-  }
-
-  private getSegmentBgColor(
-    segmentType: string,
-    colors: PowerlineColors
-  ): string {
-    switch (segmentType) {
-      case "directory":
-        return colors.modeBg;
-      case "git":
-        return colors.gitBg;
-      case "model":
-        return colors.modelBg;
-      case "session":
-        return colors.sessionBg;
-      case "block":
-        return colors.blockBg;
-      case "today":
-        return colors.todayBg;
-      case "tmux":
-        return colors.tmuxBg;
-      case "context":
-        return colors.contextBg;
-      case "metrics":
-        return colors.metricsBg;
-      case "version":
-        return colors.versionBg;
-      default:
-        return colors.modeBg;
-    }
   }
 
   private formatSegment(

@@ -14,6 +14,9 @@ import type {
   BlockSegmentConfig,
   TodaySegmentConfig,
   VersionSegmentConfig,
+  OmcModeSegmentConfig,
+  OmcRalphSegmentConfig,
+  OmcAgentsSegmentConfig,
 } from "../segments/renderer";
 
 export interface LineConfig {
@@ -28,6 +31,9 @@ export interface LineConfig {
     context?: ContextSegmentConfig;
     metrics?: MetricsSegmentConfig;
     version?: VersionSegmentConfig;
+    omcMode?: OmcModeSegmentConfig;
+    omcRalph?: OmcRalphSegmentConfig;
+    omcAgents?: OmcAgentsSegmentConfig;
   };
 }
 

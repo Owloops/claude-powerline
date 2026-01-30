@@ -33,6 +33,14 @@ export interface ColorTheme {
   context: SegmentColor;
   metrics: SegmentColor;
   version: SegmentColor;
+  omcModeActive: SegmentColor;
+  omcModeInactive: SegmentColor;
+  omcRalphActive: SegmentColor;
+  omcRalphWarn: SegmentColor;
+  omcRalphMax: SegmentColor;
+  omcRalphInactive: SegmentColor;
+  omcAgentsActive: SegmentColor;
+  omcAgentsInactive: SegmentColor;
 }
 
 export interface PowerlineColors {
@@ -57,6 +65,22 @@ export interface PowerlineColors {
   metricsFg: string;
   versionBg: string;
   versionFg: string;
+  omcModeActiveBg: string;
+  omcModeActiveFg: string;
+  omcModeInactiveBg: string;
+  omcModeInactiveFg: string;
+  omcRalphActiveBg: string;
+  omcRalphActiveFg: string;
+  omcRalphWarnBg: string;
+  omcRalphWarnFg: string;
+  omcRalphMaxBg: string;
+  omcRalphMaxFg: string;
+  omcRalphInactiveBg: string;
+  omcRalphInactiveFg: string;
+  omcAgentsActiveBg: string;
+  omcAgentsActiveFg: string;
+  omcAgentsInactiveBg: string;
+  omcAgentsInactiveFg: string;
 }
 
 export const BUILT_IN_THEMES: Record<string, ColorTheme> = {
