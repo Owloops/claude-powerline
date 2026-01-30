@@ -76,6 +76,7 @@ export interface OmcAgentsSegmentConfig extends SegmentConfig {
   format?: AgentsDisplayFormat;  // Default: 'count'
   showModelTier?: boolean;       // Show color-coded model tier
   maxDisplay?: number;           // Max agents to show (default: 3)
+  showTokens?: boolean;          // Show per-agent token counts and cost (default: false)
 }
 
 export interface OmcSkillSegmentConfig extends SegmentConfig {}
@@ -951,11 +952,64 @@ export class SegmentRenderer {
         displayText = String(count);
     }
 
+    // Append token info when showTokens is enabled (CODEX-4 FIX)
+    if (config?.showTokens) {
+      const tokenSummary = this.formatAgentTokenSummary(runningAgents);
+      if (tokenSummary) {
+        displayText += ` ${tokenSummary}`;
+      }
+    }
+
     return {
       text: `${this.symbols.omc_agents} ${displayText}`,
       bgColor: colors.omcAgentsActiveBg,
       fgColor: colors.omcAgentsActiveFg,
     };
+  }
+
+  /**
+   * Format token summary for running agents.
+   * Returns format like "(12.5k, $0.05)" or null if no token data.
+   */
+  private formatAgentTokenSummary(agents: ActiveAgent[]): string | null {
+    let totalTokens = 0;
+    let totalCost = 0;
+
+    for (const agent of agents) {
+      if (agent.tokens) {
+        totalTokens += agent.tokens.input + agent.tokens.output +
+                       agent.tokens.cacheCreation + agent.tokens.cacheRead;
+      }
+      if (agent.cost) {
+        totalCost += agent.cost;
+      }
+    }
+
+    if (totalTokens === 0 && totalCost === 0) return null;
+
+    const tokenStr = this.formatTokenCount(totalTokens);
+    const costStr = totalCost > 0 ? `$${totalCost.toFixed(3)}` : '';
+
+    if (tokenStr && costStr) {
+      return `(${tokenStr}, ${costStr})`;
+    } else if (tokenStr) {
+      return `(${tokenStr})`;
+    } else if (costStr) {
+      return `(${costStr})`;
+    }
+    return null;
+  }
+
+  /**
+   * Format token count compactly (e.g., 12500 -> "12.5k")
+   */
+  private formatTokenCount(count: number): string {
+    if (count >= 1_000_000) {
+      return `${(count / 1_000_000).toFixed(1)}M`;
+    } else if (count >= 1000) {
+      return `${(count / 1000).toFixed(1)}k`;
+    }
+    return String(count);
   }
 
   /**

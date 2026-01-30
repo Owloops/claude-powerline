@@ -7,7 +7,78 @@ import {
   type ParsedEntry,
   type ClaudeHookData,
 } from "../utils/claude";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { homedir } from "node:os";
+
+// Burn rate configuration
+const BURN_RATE_CONFIG = {
+  windowMs: 15 * 60 * 1000,        // 15-minute sliding window
+  emaAlpha: 0.3,                    // Smoothing factor (higher = more responsive)
+  minWindowEntries: 2,              // Minimum entries for windowed calculation
+  minDurationMs: 60000,             // Require at least 1 minute
+  staleThresholdMs: 5 * 60 * 1000,  // Reset EMA if >5 minutes between updates
+};
+
+// Cache file for cross-process EMA persistence (CODEX-1 FIX)
+const EMA_CACHE_DIR = join(homedir(), ".cache", "claude-powerline");
+const EMA_CACHE_FILE = join(EMA_CACHE_DIR, "ema-state.json");
+
+interface EmaState {
+  previousBurnRate: number | null;
+  lastSessionId: string | null;
+  lastTimestamp: number;
+}
+
+function isValidEmaState(obj: unknown): obj is EmaState {
+  if (typeof obj !== 'object' || obj === null) return false;
+  const state = obj as Record<string, unknown>;
+
+  // previousBurnRate must be null or a finite number
+  if (state.previousBurnRate !== null &&
+      (typeof state.previousBurnRate !== 'number' || !isFinite(state.previousBurnRate))) {
+    return false;
+  }
+
+  // lastSessionId must be null or string
+  if (state.lastSessionId !== null && typeof state.lastSessionId !== 'string') {
+    return false;
+  }
+
+  // lastTimestamp must be a finite number
+  if (typeof state.lastTimestamp !== 'number' || !isFinite(state.lastTimestamp)) {
+    return false;
+  }
+
+  return true;
+}
+
+function readEmaState(): EmaState {
+  try {
+    if (existsSync(EMA_CACHE_FILE)) {
+      const data = readFileSync(EMA_CACHE_FILE, "utf-8");
+      const parsed = JSON.parse(data);
+      // Validate shape to prevent NaN from corrupted cache
+      if (isValidEmaState(parsed)) {
+        return parsed;
+      }
+    }
+  } catch {
+    // Corrupted or missing - return defaults
+  }
+  return { previousBurnRate: null, lastSessionId: null, lastTimestamp: 0 };
+}
+
+function writeEmaState(state: EmaState): void {
+  try {
+    if (!existsSync(EMA_CACHE_DIR)) {
+      mkdirSync(EMA_CACHE_DIR, { recursive: true });
+    }
+    writeFileSync(EMA_CACHE_FILE, JSON.stringify(state), "utf-8");
+  } catch {
+    // Best effort - don't fail render if cache write fails
+  }
+}
 
 export interface SessionUsageEntry {
   timestamp: string;
@@ -139,22 +210,71 @@ export class SessionProvider {
   private calculateBurnRate(
     cost: number | null,
     entries: SessionUsageEntry[],
-    hookDurationMs?: number
+    hookDurationMs?: number,
+    sessionId?: string
   ): number | null {
     if (!cost || cost === 0) return null;
 
-    // Prefer hook-provided duration
-    if (hookDurationMs && hookDurationMs > 0) {
-      return cost / (hookDurationMs / 3600000);
+    // CODEX-1 FIX: Read state from file (cross-process persistence)
+    const emaState = readEmaState();
+    const now = Date.now();
+
+    // Reset EMA if session changed or stale
+    if (
+      sessionId !== emaState.lastSessionId ||
+      now - emaState.lastTimestamp > BURN_RATE_CONFIG.staleThresholdMs
+    ) {
+      emaState.previousBurnRate = null;
+      emaState.lastSessionId = sessionId || null;
+    }
+    emaState.lastTimestamp = now;
+
+    let rawRate: number | null = null;
+
+    // CODEX-5 FIX: Prefer sliding window when entries sufficient, hookDuration as fallback
+    if (entries.length >= BURN_RATE_CONFIG.minWindowEntries) {
+      // Primary: Sliding window over recent entries
+      const windowStart = now - BURN_RATE_CONFIG.windowMs;
+      const recentEntries = entries.filter(e => new Date(e.timestamp).getTime() > windowStart);
+
+      if (recentEntries.length >= BURN_RATE_CONFIG.minWindowEntries) {
+        // Calculate windowed cost and duration
+        const windowCost = recentEntries.reduce((sum, e) => sum + (e.costUSD || 0), 0);
+        const windowTimes = recentEntries.map(e => new Date(e.timestamp).getTime()).sort((a, b) => a - b);
+        const windowDurationMs = Math.max(
+          windowTimes[windowTimes.length - 1]! - windowTimes[0]!,
+          BURN_RATE_CONFIG.minDurationMs
+        );
+        rawRate = windowCost / (windowDurationMs / 3600000);
+      } else {
+        // Fallback within entries: full duration
+        const times = entries.map(e => new Date(e.timestamp).getTime()).sort((a, b) => a - b);
+        const durationMs = times[times.length - 1]! - times[0]!;
+        if (durationMs >= BURN_RATE_CONFIG.minDurationMs) {
+          rawRate = cost / (durationMs / 3600000);
+        }
+      }
     }
 
-    // Fallback: entry timestamps
-    if (entries.length < 2) return null;
-    const times = entries.map(e => new Date(e.timestamp).getTime()).sort((a,b) => a-b);
-    const durationMs = times[times.length-1]! - times[0]!;
-    if (durationMs < 60000) return null;  // Require at least 1 minute
+    // Final fallback: hook-provided duration (when timestamps/entries insufficient)
+    if (rawRate === null && hookDurationMs && hookDurationMs > 0) {
+      rawRate = cost / (hookDurationMs / 3600000);
+    }
 
-    return cost / (durationMs / 3600000);
+    if (rawRate === null) return null;
+
+    // Apply EMA smoothing
+    if (emaState.previousBurnRate === null) {
+      emaState.previousBurnRate = rawRate;
+      writeEmaState(emaState);  // CODEX-1 FIX: Persist to file
+      return rawRate;
+    }
+
+    const smoothedRate = rawRate * BURN_RATE_CONFIG.emaAlpha +
+                         emaState.previousBurnRate * (1 - BURN_RATE_CONFIG.emaAlpha);
+    emaState.previousBurnRate = smoothedRate;
+    writeEmaState(emaState);  // CODEX-1 FIX: Persist to file
+    return smoothedRate;
   }
 
   private calculateCacheHitRate(breakdown: TokenBreakdown): number | null {
@@ -197,7 +317,8 @@ export class SessionProvider {
     const burnRate = this.calculateBurnRate(
       cost,
       sessionUsage.entries,
-      hookData?.cost?.total_duration_ms
+      hookData?.cost?.total_duration_ms,
+      sessionId  // Pass session ID for EMA state management
     );
 
     return {

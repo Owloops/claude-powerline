@@ -97,6 +97,32 @@ describe("OmcProvider", () => {
     });
   });
 
+  describe("parseTaskOutputResult", () => {
+    it("should parse task output with completed status", () => {
+      const parseTaskOutputResult = (provider as any).parseTaskOutputResult.bind(provider);
+
+      const content = "<task_id>abc123</task_id><status>completed</status>";
+      const result = parseTaskOutputResult(content);
+      expect(result).toEqual({ taskId: "abc123", status: "completed" });
+    });
+
+    it("should parse task output with failed status", () => {
+      const parseTaskOutputResult = (provider as any).parseTaskOutputResult.bind(provider);
+
+      const content = "<task_id>abc123</task_id><status>failed</status>";
+      const result = parseTaskOutputResult(content);
+      expect(result).toEqual({ taskId: "abc123", status: "failed" });
+    });
+
+    it("should parse task output with error status", () => {
+      const parseTaskOutputResult = (provider as any).parseTaskOutputResult.bind(provider);
+
+      const content = "<task_id>abc123</task_id><status>error</status>";
+      const result = parseTaskOutputResult(content);
+      expect(result).toEqual({ taskId: "abc123", status: "error" });
+    });
+  });
+
   describe("isTerminalStatus", () => {
     it("should identify terminal statuses", () => {
       const isTerminalStatus = (provider as any).isTerminalStatus.bind(provider);

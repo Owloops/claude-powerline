@@ -134,6 +134,12 @@ export class PowerlineRenderer {
     );
   }
 
+  private needsAgentTokens(): boolean {
+    return this.config.display.lines.some(
+      (line) => line.segments.omcAgents?.enabled && line.segments.omcAgents?.showTokens
+    );
+  }
+
   async generateStatusline(hookData: ClaudeHookData): Promise<string> {
     const usageInfo = this.needsSegmentInfo("session")
       ? await this.usageProvider.getUsageInfo(hookData.session_id, hookData)
@@ -164,6 +170,7 @@ export class PowerlineRenderer {
       ? await this.omcProvider.getOmcInfo(hookData, {
           needsSkill: this.needsSegmentInfo("omcSkill"),
           needsAgents: this.needsSegmentInfo("omcAgents"),
+          needsAgentTokens: this.needsAgentTokens(),
         })
       : null;
 

@@ -57,7 +57,7 @@ export const DEFAULT_CONFIG: PowerlineConfig = {
           },
           omcMode: { enabled: false },
           omcRalph: { enabled: false, warnThreshold: 7 },
-          omcAgents: { enabled: false },
+          omcAgents: { enabled: false, showTokens: false },
           omcSkill: { enabled: false },
         },
       },
