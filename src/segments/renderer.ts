@@ -3,7 +3,7 @@ import type { ClaudeHookData } from "../utils/claude";
 import type { PowerlineColors } from "../themes";
 import type { PowerlineConfig } from "../config/loader";
 import type { BlockInfo } from "./block";
-import type { OmcModeInfo, OmcRalphInfo, OmcAgentsInfo } from "./omc";
+import type { OmcModeInfo, OmcRalphInfo, OmcAgentsInfo, OmcSkillInfo, ActiveAgent } from "./omc";
 
 export interface SegmentConfig {
   enabled: boolean;
@@ -63,7 +63,15 @@ export interface OmcRalphSegmentConfig extends SegmentConfig {
   warnThreshold?: number;
 }
 
-export interface OmcAgentsSegmentConfig extends SegmentConfig {}
+export type AgentsDisplayFormat = 'count' | 'codes' | 'codes-duration' | 'name' | 'detailed';
+
+export interface OmcAgentsSegmentConfig extends SegmentConfig {
+  format?: AgentsDisplayFormat;  // Default: 'count'
+  showModelTier?: boolean;       // Show color-coded model tier
+  maxDisplay?: number;           // Max agents to show (default: 3)
+}
+
+export interface OmcSkillSegmentConfig extends SegmentConfig {}
 
 export type AnySegmentConfig =
   | SegmentConfig
@@ -78,7 +86,8 @@ export type AnySegmentConfig =
   | VersionSegmentConfig
   | OmcModeSegmentConfig
   | OmcRalphSegmentConfig
-  | OmcAgentsSegmentConfig;
+  | OmcAgentsSegmentConfig
+  | OmcSkillSegmentConfig;
 
 import {
   formatCost,
@@ -131,6 +140,7 @@ export interface PowerlineSymbols {
   omc_mode_inactive: string;
   omc_ralph: string;
   omc_agents: string;
+  omc_skill: string;
 }
 
 export interface SegmentData {
@@ -749,8 +759,9 @@ export class SegmentRenderer {
         symbol = this.symbols.omc_mode_inactive;
     }
 
+    // Show icon + mode name (e.g., "⚡ ultrawork")
     return {
-      text: symbol,
+      text: `${symbol} ${modeInfo.mode}`,
       bgColor: colors.omcModeActiveBg,
       fgColor: colors.omcModeActiveFg,
     };
@@ -796,19 +807,209 @@ export class SegmentRenderer {
   renderOmcAgents(
     agentsInfo: OmcAgentsInfo | null,
     colors: PowerlineColors,
-    _config?: OmcAgentsSegmentConfig
+    config?: OmcAgentsSegmentConfig
   ): SegmentData | null {
     const count = agentsInfo?.count ?? 0;
+    const allAgents = agentsInfo?.agents ?? [];
 
     // Hide segment entirely when no agents are running
     if (count === 0) {
       return null;
     }
 
+    // Filter to RUNNING agents only for display
+    const runningAgents = allAgents.filter(a => a.status === 'running');
+
+    const format = config?.format ?? 'count';
+    const showModelTier = config?.showModelTier ?? false;
+    const maxDisplay = config?.maxDisplay ?? 3;
+
+    let displayText: string;
+
+    switch (format) {
+      case 'count':
+        displayText = count === 1 && agentsInfo?.agentType
+          ? agentsInfo.agentType
+          : String(count);
+        break;
+
+      case 'codes':
+        displayText = this.formatAgentCodes(runningAgents, maxDisplay, showModelTier, colors);
+        if (count > maxDisplay) displayText += `+${count - maxDisplay}`;
+        break;
+
+      case 'codes-duration':
+        displayText = this.formatAgentCodesWithDuration(runningAgents, maxDisplay, showModelTier, colors);
+        if (count > maxDisplay) displayText += `+${count - maxDisplay}`;
+        break;
+
+      case 'name':
+        displayText = runningAgents.slice(0, maxDisplay)
+          .map(a => a.type.split(':').pop() || 'agent')
+          .join(',');
+        if (count > maxDisplay) displayText += `+${count - maxDisplay}`;
+        break;
+
+      case 'detailed':
+        displayText = '[' + runningAgents.slice(0, maxDisplay).map(a => {
+          const name = a.type.split(':').pop() || 'agent';
+          const duration = this.formatAgentDuration(a);
+          return duration ? `${name}(${duration})` : name;
+        }).join(',') + ']';
+        if (count > maxDisplay) displayText = displayText.slice(0, -1) + `+${count - maxDisplay}]`;
+        break;
+
+      default:
+        displayText = String(count);
+    }
+
     return {
-      text: `${this.symbols.omc_agents} ${count}`,
+      text: `${this.symbols.omc_agents} ${displayText}`,
       bgColor: colors.omcAgentsActiveBg,
       fgColor: colors.omcAgentsActiveFg,
+    };
+  }
+
+  /**
+   * Format agent codes with optional model tier coloring.
+   */
+  private formatAgentCodes(
+    agents: ActiveAgent[],
+    maxDisplay: number,
+    showModelTier: boolean,
+    colors: PowerlineColors
+  ): string {
+    return agents.slice(0, maxDisplay).map(a => {
+      const typeCode = this.getAgentTypeCode(a.type);
+      if (showModelTier && a.model) {
+        return this.formatModelTierCode(typeCode, a.model, colors);
+      }
+      return typeCode;
+    }).join('');
+  }
+
+  /**
+   * Format agent codes with duration and optional model tier coloring.
+   */
+  private formatAgentCodesWithDuration(
+    agents: ActiveAgent[],
+    maxDisplay: number,
+    showModelTier: boolean,
+    colors: PowerlineColors
+  ): string {
+    return agents.slice(0, maxDisplay).map(a => {
+      const typeCode = this.getAgentTypeCode(a.type);
+      const code = showModelTier && a.model
+        ? this.formatModelTierCode(typeCode, a.model, colors)
+        : typeCode;
+      const duration = this.formatAgentDuration(a);
+      return duration ? `${code}(${duration})` : code;
+    }).join('');
+  }
+
+  /**
+   * Get single-character code for agent type
+   */
+  private getAgentTypeCode(type: string): string {
+    const name = type.split(':').pop()?.toLowerCase() || 'x';
+    const codeMap: Record<string, string> = {
+      'executor': 'e', 'executor-low': 'e', 'executor-high': 'e',
+      'architect': 'a', 'architect-low': 'a', 'architect-medium': 'a',
+      'explore': 'x', 'explore-medium': 'x', 'explore-high': 'x',
+      'designer': 'd', 'designer-low': 'd', 'designer-high': 'd',
+      'researcher': 'r', 'researcher-low': 'r',
+      'writer': 'w',
+      'planner': 'p',
+      'critic': 'c',
+      'analyst': 'n',
+      'qa-tester': 'q', 'qa-tester-high': 'q',
+      'scientist': 's', 'scientist-low': 's', 'scientist-high': 's',
+      'build-fixer': 'b', 'build-fixer-low': 'b',
+      'security-reviewer': 'y', 'security-reviewer-low': 'y',
+      'code-reviewer': 'v', 'code-reviewer-low': 'v',
+      'tdd-guide': 't', 'tdd-guide-low': 't',
+      'vision': 'i',
+    };
+    return codeMap[name] || name.charAt(0);
+  }
+
+  /**
+   * Format code with model tier visual differentiation.
+   * Opus=UPPERCASE+magenta, Sonnet=lowercase+yellow, Haiku=lowercase+green
+   */
+  private formatModelTierCode(code: string, model: string, colors: PowerlineColors): string {
+    const modelLower = model?.toLowerCase() || '';
+
+    // codex-4 fix: use includes() for flexible model string matching
+    // Real model strings may be 'claude-3-opus-...' not just 'opus'
+    const tier = modelLower.includes('opus') ? 'opus'
+      : modelLower.includes('sonnet') ? 'sonnet'
+      : modelLower.includes('haiku') ? 'haiku'
+      : null;
+
+    // Determine casing: Opus=UPPER, Sonnet/Haiku=lower
+    const casedCode = tier === 'opus' ? code.toUpperCase() : code.toLowerCase();
+
+    // Get model-specific ANSI fg code from theme
+    let ansiFg: string | undefined;
+    switch (tier) {
+      case 'opus':
+        ansiFg = colors.omcAgentOpusFg;
+        break;
+      case 'sonnet':
+        ansiFg = colors.omcAgentSonnetFg;
+        break;
+      case 'haiku':
+        ansiFg = colors.omcAgentHaikuFg;
+        break;
+    }
+
+    // If ANSI code available, wrap text then restore base segment fg
+    if (ansiFg) {
+      return `${ansiFg}${casedCode}${colors.omcAgentsActiveFg}`;
+    }
+
+    // Fallback for non-color terminals: use superscript suffix
+    const suffixMap: Record<string, string> = {
+      'opus': '\u1D3C',    // superscript O
+      'sonnet': '\u02E2',  // superscript s
+      'haiku': '\u02B0',   // superscript h
+    };
+    const suffix = tier ? (suffixMap[tier] || '') : '';
+    return casedCode + suffix;
+  }
+
+  /**
+   * Format agent duration as compact string (e.g., "2m", "45s")
+   */
+  private formatAgentDuration(agent: ActiveAgent): string | null {
+    if (!agent.startTime) return null;
+    const endTime = agent.endTime || new Date();
+    const durationMs = endTime.getTime() - agent.startTime.getTime();
+    const seconds = Math.floor(durationMs / 1000);
+    if (seconds < 60) return `${seconds}s`;
+    const minutes = Math.floor(seconds / 60);
+    return `${minutes}m`;
+  }
+
+  renderOmcSkill(
+    skillInfo: OmcSkillInfo | null,
+    colors: PowerlineColors,
+    _config?: OmcSkillSegmentConfig
+  ): SegmentData | null {
+    // Hide segment entirely when no skill has been activated
+    if (!skillInfo || !skillInfo.name) {
+      return null;
+    }
+
+    // Format: "skill:planner" or "skill:analyze(query)"
+    const argsDisplay = skillInfo.args ? `(${skillInfo.args})` : '';
+    const text = `skill:${skillInfo.name}${argsDisplay}`;
+
+    return {
+      text,
+      bgColor: colors.omcSkillActiveBg,
+      fgColor: colors.omcSkillActiveFg,
     };
   }
 }

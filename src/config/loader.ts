@@ -17,6 +17,7 @@ import type {
   OmcModeSegmentConfig,
   OmcRalphSegmentConfig,
   OmcAgentsSegmentConfig,
+  OmcSkillSegmentConfig,
 } from "../segments/renderer";
 
 export interface LineConfig {
@@ -34,6 +35,7 @@ export interface LineConfig {
     omcMode?: OmcModeSegmentConfig;
     omcRalph?: OmcRalphSegmentConfig;
     omcAgents?: OmcAgentsSegmentConfig;
+    omcSkill?: OmcSkillSegmentConfig;
   };
 }
 

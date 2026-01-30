@@ -24,6 +24,7 @@ export {
   OmcModeSegmentConfig,
   OmcRalphSegmentConfig,
   OmcAgentsSegmentConfig,
+  OmcSkillSegmentConfig,
 } from "./renderer";
 export {
   OmcProvider,
@@ -31,4 +32,6 @@ export {
   OmcModeInfo,
   OmcRalphInfo,
   OmcAgentsInfo,
+  OmcSkillInfo,
+  ActiveAgent,
 } from "./omc";

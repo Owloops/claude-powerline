@@ -19,6 +19,11 @@ export const darkTheme: ColorTheme = {
   omcRalphInactive: { bg: "#374151", fg: "#9ca3af" },
   omcAgentsActive: { bg: "#7c3aed", fg: "#ffffff" },
   omcAgentsInactive: { bg: "#374151", fg: "#9ca3af" },
+  omcSkillActive: { bg: "#0891b2", fg: "#ffffff" },   // cyan-600
+  omcSkillInactive: { bg: "#374151", fg: "#9ca3af" },
+  omcAgentOpus: { bg: "#1e1e1e", fg: "#ff79c6" },
+  omcAgentSonnet: { bg: "#1e1e1e", fg: "#dcdcaa" },
+  omcAgentHaiku: { bg: "#1e1e1e", fg: "#6a9955" },
 };
 
 export const darkAnsi256Theme: ColorTheme = {
@@ -40,6 +45,11 @@ export const darkAnsi256Theme: ColorTheme = {
   omcRalphInactive: { bg: "#4e4e4e", fg: "#9e9e9e" },
   omcAgentsActive: { bg: "#875fff", fg: "#ffffff" },
   omcAgentsInactive: { bg: "#4e4e4e", fg: "#9e9e9e" },
+  omcSkillActive: { bg: "#00afaf", fg: "#ffffff" },
+  omcSkillInactive: { bg: "#4e4e4e", fg: "#9e9e9e" },
+  omcAgentOpus: { bg: "#262626", fg: "#ff5f87" },
+  omcAgentSonnet: { bg: "#262626", fg: "#d7d75f" },
+  omcAgentHaiku: { bg: "#262626", fg: "#5faf5f" },
 };
 
 export const darkAnsiTheme: ColorTheme = {
@@ -61,4 +71,9 @@ export const darkAnsiTheme: ColorTheme = {
   omcRalphInactive: { bg: "#585858", fg: "#a8a8a8" },
   omcAgentsActive: { bg: "#af5fff", fg: "#ffffff" },
   omcAgentsInactive: { bg: "#585858", fg: "#a8a8a8" },
+  omcSkillActive: { bg: "#00afaf", fg: "#ffffff" },
+  omcSkillInactive: { bg: "#585858", fg: "#a8a8a8" },
+  omcAgentOpus: { bg: "#303030", fg: "#ff0000" },
+  omcAgentSonnet: { bg: "#303030", fg: "#ffff00" },
+  omcAgentHaiku: { bg: "#303030", fg: "#00ff00" },
 };

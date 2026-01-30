@@ -41,6 +41,12 @@ export interface ColorTheme {
   omcRalphInactive: SegmentColor;
   omcAgentsActive: SegmentColor;
   omcAgentsInactive: SegmentColor;
+  omcSkillActive: SegmentColor;
+  omcSkillInactive: SegmentColor;
+  // Model tier colors for agent display (NEW - optional for backward compat)
+  omcAgentOpus?: SegmentColor;
+  omcAgentSonnet?: SegmentColor;
+  omcAgentHaiku?: SegmentColor;
 }
 
 export interface PowerlineColors {
@@ -81,6 +87,17 @@ export interface PowerlineColors {
   omcAgentsActiveFg: string;
   omcAgentsInactiveBg: string;
   omcAgentsInactiveFg: string;
+  omcSkillActiveBg: string;
+  omcSkillActiveFg: string;
+  omcSkillInactiveBg: string;
+  omcSkillInactiveFg: string;
+  // Model tier colors for agent display (NEW - optional for backward compat)
+  omcAgentOpusBg?: string;
+  omcAgentOpusFg?: string;
+  omcAgentSonnetBg?: string;
+  omcAgentSonnetFg?: string;
+  omcAgentHaikuBg?: string;
+  omcAgentHaikuFg?: string;
 }
 
 export const BUILT_IN_THEMES: Record<string, ColorTheme> = {

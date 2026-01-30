@@ -19,6 +19,11 @@ export const tokyoNightTheme: ColorTheme = {
   omcRalphInactive: { bg: "#414868", fg: "#a9b1d6" },
   omcAgentsActive: { bg: "#bb9af7", fg: "#1a1b26" },
   omcAgentsInactive: { bg: "#414868", fg: "#a9b1d6" },
+  omcSkillActive: { bg: "#7dcfff", fg: "#1a1b26" },
+  omcSkillInactive: { bg: "#24283b", fg: "#565f89" },
+  omcAgentOpus: { bg: "#1a1b26", fg: "#ff79c6" },
+  omcAgentSonnet: { bg: "#1a1b26", fg: "#e0af68" },
+  omcAgentHaiku: { bg: "#1a1b26", fg: "#9ece6a" },
 };
 
 export const tokyoNightAnsi256Theme: ColorTheme = {
@@ -40,6 +45,11 @@ export const tokyoNightAnsi256Theme: ColorTheme = {
   omcRalphInactive: { bg: "#5f5f87", fg: "#d7d7ff" },
   omcAgentsActive: { bg: "#d787ff", fg: "#1c1c30" },
   omcAgentsInactive: { bg: "#5f5f87", fg: "#d7d7ff" },
+  omcSkillActive: { bg: "#5fd7ff", fg: "#1c1c30" },
+  omcSkillInactive: { bg: "#303050", fg: "#5f5f87" },
+  omcAgentOpus: { bg: "#1c1c30", fg: "#ff79c6" },
+  omcAgentSonnet: { bg: "#1c1c30", fg: "#d7af5f" },
+  omcAgentHaiku: { bg: "#1c1c30", fg: "#87d787" },
 };
 
 export const tokyoNightAnsiTheme: ColorTheme = {
@@ -61,4 +71,9 @@ export const tokyoNightAnsiTheme: ColorTheme = {
   omcRalphInactive: { bg: "#808080", fg: "#ffffff" },
   omcAgentsActive: { bg: "#d787ff", fg: "#262640" },
   omcAgentsInactive: { bg: "#808080", fg: "#ffffff" },
+  omcSkillActive: { bg: "#00d7ff", fg: "#262640" },
+  omcSkillInactive: { bg: "#444470", fg: "#808080" },
+  omcAgentOpus: { bg: "#262640", fg: "#ff5f87" },
+  omcAgentSonnet: { bg: "#262640", fg: "#ffaf00" },
+  omcAgentHaiku: { bg: "#262640", fg: "#00ff00" },
 };

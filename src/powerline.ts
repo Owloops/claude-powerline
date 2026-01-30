@@ -32,6 +32,7 @@ import {
   OmcModeSegmentConfig,
   OmcRalphSegmentConfig,
   OmcAgentsSegmentConfig,
+  OmcSkillSegmentConfig,
   OmcProvider,
   OmcInfo,
 } from "./segments";
@@ -156,9 +157,13 @@ export class PowerlineRenderer {
     const needsOmcInfo =
       this.needsSegmentInfo("omcMode") ||
       this.needsSegmentInfo("omcRalph") ||
-      this.needsSegmentInfo("omcAgents");
+      this.needsSegmentInfo("omcAgents") ||
+      this.needsSegmentInfo("omcSkill");
     const omcInfo = needsOmcInfo
-      ? await this.omcProvider.getOmcInfo(hookData)
+      ? await this.omcProvider.getOmcInfo(hookData, {
+          needsSkill: this.needsSegmentInfo("omcSkill"),
+          needsAgents: this.needsSegmentInfo("omcAgents"),
+        })
       : null;
 
     if (this.config.display.autoWrap) {
@@ -476,6 +481,14 @@ export class PowerlineRenderer {
       );
     }
 
+    if (segment.type === "omcSkill") {
+      return this.segmentRenderer.renderOmcSkill(
+        omcInfo?.skill ?? null,
+        colors,
+        segment.config as OmcSkillSegmentConfig
+      );
+    }
+
     return null;
   }
 
@@ -613,6 +626,7 @@ export class PowerlineRenderer {
       omc_mode_inactive: symbolSet.omc_mode_inactive,
       omc_ralph: symbolSet.omc_ralph,
       omc_agents: symbolSet.omc_agents,
+      omc_skill: symbolSet.omc_skill,
     };
   }
 
@@ -644,6 +658,11 @@ export class PowerlineRenderer {
 
     const getSegmentColors = (segment: keyof ColorTheme) => {
       const colors = colorTheme[segment] || fallbackTheme[segment];
+
+      // Guard for optional segment colors (e.g., model tier colors)
+      if (!colors) {
+        return { bg: "", fg: "" };
+      }
 
       if (colorSupport === "none") {
         return {
@@ -686,6 +705,37 @@ export class PowerlineRenderer {
     const omcRalphInactive = getSegmentColors("omcRalphInactive");
     const omcAgentsActive = getSegmentColors("omcAgentsActive");
     const omcAgentsInactive = getSegmentColors("omcAgentsInactive");
+    const omcSkillActive = getSegmentColors("omcSkillActive");
+    const omcSkillInactive = getSegmentColors("omcSkillInactive");
+
+    // Model tier colors - optional with graceful fallback
+    const getOptionalSegmentColors = (segment: keyof ColorTheme) => {
+      const colors = colorTheme[segment];
+      if (!colors) return null;
+
+      if (colorSupport === "none") {
+        return { bg: "", fg: "" };
+      } else if (colorSupport === "ansi") {
+        return {
+          bg: hexToBasicAnsi(colors.bg, true),
+          fg: hexToBasicAnsi(colors.fg, false),
+        };
+      } else if (colorSupport === "ansi256") {
+        return {
+          bg: hexTo256Ansi(colors.bg, true),
+          fg: hexTo256Ansi(colors.fg, false),
+        };
+      } else {
+        return {
+          bg: hexToAnsi(colors.bg, true),
+          fg: hexToAnsi(colors.fg, false),
+        };
+      }
+    };
+
+    const omcAgentOpus = getOptionalSegmentColors("omcAgentOpus");
+    const omcAgentSonnet = getOptionalSegmentColors("omcAgentSonnet");
+    const omcAgentHaiku = getOptionalSegmentColors("omcAgentHaiku");
 
     return {
       reset: colorSupport === "none" ? "" : RESET_CODE,
@@ -725,6 +775,23 @@ export class PowerlineRenderer {
       omcAgentsActiveFg: omcAgentsActive.fg,
       omcAgentsInactiveBg: omcAgentsInactive.bg,
       omcAgentsInactiveFg: omcAgentsInactive.fg,
+      omcSkillActiveBg: omcSkillActive.bg,
+      omcSkillActiveFg: omcSkillActive.fg,
+      omcSkillInactiveBg: omcSkillInactive.bg,
+      omcSkillInactiveFg: omcSkillInactive.fg,
+      // Model tier colors (optional - only present if theme defines them)
+      ...(omcAgentOpus && {
+        omcAgentOpusBg: omcAgentOpus.bg,
+        omcAgentOpusFg: omcAgentOpus.fg,
+      }),
+      ...(omcAgentSonnet && {
+        omcAgentSonnetBg: omcAgentSonnet.bg,
+        omcAgentSonnetFg: omcAgentSonnet.fg,
+      }),
+      ...(omcAgentHaiku && {
+        omcAgentHaikuBg: omcAgentHaiku.bg,
+        omcAgentHaikuFg: omcAgentHaiku.fg,
+      }),
     };
   }
 
