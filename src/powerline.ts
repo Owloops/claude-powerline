@@ -315,7 +315,7 @@ export class PowerlineRenderer {
         segment.bgColor,
         segment.fgColor,
         segment.text,
-        isLast ? undefined : nextBgColor,
+        nextSegment?.bgColor,
         colors
       );
     }
@@ -368,7 +368,6 @@ export class PowerlineRenderer {
       }
     }
 
-    // Build line using actual rendered bgColors for separator arrows
     return this.buildLineFromSegments(renderedSegments, colors);
   }
 
@@ -620,6 +619,8 @@ export class PowerlineRenderer {
       metrics_lines_removed: symbolSet.metrics_lines_removed,
       metrics_burn: symbolSet.metrics_burn,
       version: symbolSet.version,
+      bar_filled: symbolSet.bar_filled,
+      bar_empty: symbolSet.bar_empty,
       omc_mode_ultrawork: symbolSet.omc_mode_ultrawork,
       omc_mode_autopilot: symbolSet.omc_mode_autopilot,
       omc_mode_ecomode: symbolSet.omc_mode_ecomode,
@@ -695,6 +696,8 @@ export class PowerlineRenderer {
     const today = getSegmentColors("today");
     const tmux = getSegmentColors("tmux");
     const context = getSegmentColors("context");
+    const contextWarning = getSegmentColors("contextWarning");
+    const contextCritical = getSegmentColors("contextCritical");
     const metrics = getSegmentColors("metrics");
     const version = getSegmentColors("version");
     const omcModeActive = getSegmentColors("omcModeActive");
@@ -755,6 +758,10 @@ export class PowerlineRenderer {
       tmuxFg: tmux.fg,
       contextBg: context.bg,
       contextFg: context.fg,
+      contextWarningBg: contextWarning.bg,
+      contextWarningFg: contextWarning.fg,
+      contextCriticalBg: contextCritical.bg,
+      contextCriticalFg: contextCritical.fg,
       metricsBg: metrics.bg,
       metricsFg: metrics.fg,
       versionBg: version.bg,

@@ -31,6 +31,8 @@ export interface ColorTheme {
   today: SegmentColor;
   tmux: SegmentColor;
   context: SegmentColor;
+  contextWarning: SegmentColor;
+  contextCritical: SegmentColor;
   metrics: SegmentColor;
   version: SegmentColor;
   omcModeActive: SegmentColor;
@@ -67,6 +69,10 @@ export interface PowerlineColors {
   tmuxFg: string;
   contextBg: string;
   contextFg: string;
+  contextWarningBg: string;
+  contextWarningFg: string;
+  contextCriticalBg: string;
+  contextCriticalFg: string;
   metricsBg: string;
   metricsFg: string;
   versionBg: string;

@@ -36,6 +36,8 @@ export const SYMBOLS = {
   omc_ralph: "⟳",
   omc_agents: "◎",
   omc_skill: "⚙",
+  bar_filled: "▪",
+  bar_empty: "▫",
 } as const;
 
 export const TEXT_SYMBOLS = {
@@ -74,5 +76,7 @@ export const TEXT_SYMBOLS = {
   omc_ralph: "R",
   omc_agents: "A",
   omc_skill: "SK:",
+  bar_filled: "=",
+  bar_empty: "-",
 } as const;
 

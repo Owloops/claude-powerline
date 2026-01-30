@@ -1,7 +1,7 @@
 {
   "_meta": {
     "source": "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json",
-    "updated": "2025-12-21",
+    "updated": "2026-01-25",
     "currency": "USD",
     "unit": "per_million_tokens"
   },

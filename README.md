@@ -132,7 +132,7 @@ Using `npx` automatically downloads and runs the latest version without manual u
 
 Once added to Claude Code settings, the statusline runs automatically. For customization:
 
-**CLI Options:**
+**CLI Options** (both `--arg value` and `--arg=value` syntax supported):
 
 - `--theme` - `dark` (default), `light`, `nord`, `tokyo-night`, `rose-pine`, `gruvbox`, `custom`
 - `--style` - `minimal` (default), `powerline`, `capsule`

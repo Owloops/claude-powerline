@@ -48,7 +48,8 @@
           },
           "context": {
             "enabled": true,
-            "showPercentageOnly": false
+            "showPercentageOnly": false,
+            "displayStyle": "text"
           },
           "tmux": {
             "enabled": false
@@ -105,6 +106,14 @@
       "context": {
         "bg": "#6a6a6a",
         "fg": "#ffffff"
+      },
+      "contextWarning": {
+        "bg": "#92400e",
+        "fg": "#fbbf24"
+      },
+      "contextCritical": {
+        "bg": "#991b1b",
+        "fg": "#fca5a5"
       },
       "metrics": {
         "bg": "#565656",

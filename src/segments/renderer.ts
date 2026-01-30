@@ -4,6 +4,7 @@ import type { PowerlineColors } from "../themes";
 import type { PowerlineConfig } from "../config/loader";
 import type { BlockInfo } from "./block";
 import type { OmcModeInfo, OmcRalphInfo, OmcAgentsInfo, OmcSkillInfo, ActiveAgent } from "./omc";
+import { formatModelName } from "../utils/formatters";
 
 export interface SegmentConfig {
   enabled: boolean;
@@ -35,6 +36,7 @@ export interface TmuxSegmentConfig extends SegmentConfig {}
 
 export interface ContextSegmentConfig extends SegmentConfig {
   showPercentageOnly?: boolean;
+  displayStyle?: "text" | "bar";
 }
 
 export interface MetricsSegmentConfig extends SegmentConfig {
@@ -141,6 +143,8 @@ export interface PowerlineSymbols {
   omc_ralph: string;
   omc_agents: string;
   omc_skill: string;
+  bar_filled: string;
+  bar_empty: string;
 }
 
 export interface SegmentData {
@@ -152,13 +156,13 @@ export interface SegmentData {
 export class SegmentRenderer {
   constructor(
     private readonly config: PowerlineConfig,
-    private readonly symbols: PowerlineSymbols
+    private readonly symbols: PowerlineSymbols,
   ) {}
 
   renderDirectory(
     hookData: ClaudeHookData,
     colors: PowerlineColors,
-    config?: DirectorySegmentConfig
+    config?: DirectorySegmentConfig,
   ): SegmentData {
     const currentDir = hookData.workspace?.current_dir || hookData.cwd || "/";
     const projectDir = hookData.workspace?.project_dir;
@@ -203,7 +207,7 @@ export class SegmentRenderer {
   renderGit(
     gitInfo: GitInfo,
     colors: PowerlineColors,
-    config?: GitSegmentConfig
+    config?: GitSegmentConfig,
   ): SegmentData | null {
     if (!gitInfo) return null;
 
@@ -233,7 +237,7 @@ export class SegmentRenderer {
     if (config?.showAheadBehind !== false) {
       if (gitInfo.ahead > 0 && gitInfo.behind > 0) {
         parts.push(
-          `${this.symbols.git_ahead}${gitInfo.ahead}${this.symbols.git_behind}${gitInfo.behind}`
+          `${this.symbols.git_ahead}${gitInfo.ahead}${this.symbols.git_behind}${gitInfo.behind}`,
         );
       } else if (gitInfo.ahead > 0) {
         parts.push(`${this.symbols.git_ahead}${gitInfo.ahead}`);
@@ -290,7 +294,8 @@ export class SegmentRenderer {
   }
 
   renderModel(hookData: ClaudeHookData, colors: PowerlineColors): SegmentData {
-    const modelName = hookData.model?.display_name || "Claude";
+    const rawName = hookData.model?.display_name || "Claude";
+    const modelName = formatModelName(rawName);
 
     return {
       text: `${this.symbols.model} ${modelName}`,
@@ -302,7 +307,7 @@ export class SegmentRenderer {
   renderSession(
     usageInfo: UsageInfo,
     colors: PowerlineColors,
-    config?: UsageSegmentConfig
+    config?: UsageSegmentConfig,
   ): SegmentData {
     const type = config?.type || "cost";
     const costSource = config?.costSource;
@@ -321,7 +326,7 @@ export class SegmentRenderer {
       type,
       sessionBudget?.amount,
       sessionBudget?.warningThreshold || 80,
-      sessionBudget?.type
+      sessionBudget?.type,
     );
 
     const text = `${this.symbols.session_cost} ${formattedUsage}`;
@@ -335,7 +340,7 @@ export class SegmentRenderer {
 
   renderTmux(
     sessionId: string | null,
-    colors: PowerlineColors
+    colors: PowerlineColors,
   ): SegmentData | null {
     if (!sessionId) {
       return {
@@ -355,9 +360,19 @@ export class SegmentRenderer {
   renderContext(
     contextInfo: ContextInfo | null,
     colors: PowerlineColors,
-    config?: ContextSegmentConfig
+    config?: ContextSegmentConfig,
   ): SegmentData | null {
+    const barLength = 10;
+
     if (!contextInfo) {
+      if (config?.displayStyle === "bar") {
+        const emptyBar = this.symbols.bar_empty.repeat(barLength);
+        return {
+          text: `${emptyBar} 0%`,
+          bgColor: colors.contextBg,
+          fgColor: colors.contextFg,
+        };
+      }
       return {
         text: `${this.symbols.context_time} 0 (100%)`,
         bgColor: colors.contextBg,
@@ -365,24 +380,43 @@ export class SegmentRenderer {
       };
     }
 
-    const contextLeft = `${contextInfo.contextLeftPercentage}%`;
+    let bgColor = colors.contextBg;
+    let fgColor = colors.contextFg;
 
+    if (contextInfo.contextLeftPercentage <= 20) {
+      bgColor = colors.contextCriticalBg;
+      fgColor = colors.contextCriticalFg;
+    } else if (contextInfo.contextLeftPercentage <= 40) {
+      bgColor = colors.contextWarningBg;
+      fgColor = colors.contextWarningFg;
+    }
+
+    if (config?.displayStyle === "bar") {
+      const usedPct = contextInfo.usablePercentage;
+      const filledCount = Math.round((usedPct / 100) * barLength);
+      const emptyCount = barLength - filledCount;
+      const bar = this.symbols.bar_filled.repeat(filledCount) + this.symbols.bar_empty.repeat(emptyCount);
+
+      const text = config?.showPercentageOnly
+        ? `${bar} ${usedPct}%`
+        : `${bar} ${contextInfo.totalTokens.toLocaleString()} (${usedPct}%)`;
+
+      return { text, bgColor, fgColor };
+    }
+
+    const contextLeft = `${contextInfo.contextLeftPercentage}%`;
     const text = config?.showPercentageOnly
       ? `${this.symbols.context_time} ${contextLeft}`
       : `${this.symbols.context_time} ${contextInfo.totalTokens.toLocaleString()} (${contextLeft})`;
 
-    return {
-      text,
-      bgColor: colors.contextBg,
-      fgColor: colors.contextFg,
-    };
+    return { text, bgColor, fgColor };
   }
 
   renderMetrics(
     metricsInfo: MetricsInfo | null,
     colors: PowerlineColors,
     _blockInfo: BlockInfo | null,
-    config?: MetricsSegmentConfig
+    config?: MetricsSegmentConfig,
   ): SegmentData | null {
     if (!metricsInfo) {
       return {
@@ -426,7 +460,7 @@ export class SegmentRenderer {
       metricsInfo.messageCount !== null
     ) {
       parts.push(
-        `${this.symbols.metrics_messages} ${metricsInfo.messageCount}`
+        `${this.symbols.metrics_messages} ${metricsInfo.messageCount}`,
       );
     }
 
@@ -436,7 +470,7 @@ export class SegmentRenderer {
       metricsInfo.linesAdded > 0
     ) {
       parts.push(
-        `${this.symbols.metrics_lines_added} ${metricsInfo.linesAdded}`
+        `${this.symbols.metrics_lines_added} ${metricsInfo.linesAdded}`,
       );
     }
 
@@ -446,7 +480,7 @@ export class SegmentRenderer {
       metricsInfo.linesRemoved > 0
     ) {
       parts.push(
-        `${this.symbols.metrics_lines_removed} ${metricsInfo.linesRemoved}`
+        `${this.symbols.metrics_lines_removed} ${metricsInfo.linesRemoved}`,
       );
     }
 
@@ -468,7 +502,7 @@ export class SegmentRenderer {
   renderBlock(
     blockInfo: BlockInfo,
     colors: PowerlineColors,
-    config?: BlockSegmentConfig
+    config?: BlockSegmentConfig,
   ): SegmentData {
     let displayText: string;
 
@@ -498,7 +532,7 @@ export class SegmentRenderer {
             "cost",
             blockBudget?.amount,
             blockBudget?.warningThreshold,
-            blockBudget?.type
+            blockBudget?.type,
           );
           break;
         case "tokens":
@@ -509,7 +543,7 @@ export class SegmentRenderer {
             "tokens",
             blockBudget?.amount,
             blockBudget?.warningThreshold,
-            blockBudget?.type
+            blockBudget?.type,
           );
           break;
         case "weighted":
@@ -520,7 +554,7 @@ export class SegmentRenderer {
             const rateLimitStatus = getBudgetStatus(
               blockInfo.weightedTokens,
               rateLimit,
-              blockBudget?.warningThreshold || 80
+              blockBudget?.warningThreshold || 80,
             );
             mainContent = `${weightedDisplay}${rateLimitStatus.displayText}`;
           } else {
@@ -535,7 +569,7 @@ export class SegmentRenderer {
             "both",
             blockBudget?.amount,
             blockBudget?.warningThreshold,
-            blockBudget?.type
+            blockBudget?.type,
           );
           break;
         case "time":
@@ -549,7 +583,7 @@ export class SegmentRenderer {
             "cost",
             blockBudget?.amount,
             blockBudget?.warningThreshold,
-            blockBudget?.type
+            blockBudget?.type,
           );
       }
 
@@ -607,7 +641,7 @@ export class SegmentRenderer {
   renderToday(
     todayInfo: TodayInfo,
     colors: PowerlineColors,
-    type = "cost"
+    type = "cost",
   ): SegmentData {
     const todayBudget = this.config.budget?.today;
     const text = `${this.symbols.today_cost} ${this.formatUsageWithBudget(
@@ -617,7 +651,7 @@ export class SegmentRenderer {
       type,
       todayBudget?.amount,
       todayBudget?.warningThreshold,
-      todayBudget?.type
+      todayBudget?.type,
     )}`;
 
     return {
@@ -629,7 +663,7 @@ export class SegmentRenderer {
 
   private getDisplayDirectoryName(
     currentDir: string,
-    projectDir?: string
+    projectDir?: string,
   ): string {
     if (currentDir.startsWith("~")) {
       return currentDir;
@@ -661,7 +695,7 @@ export class SegmentRenderer {
     cost: number | null,
     tokens: number | null,
     tokenBreakdown: TokenBreakdown | null,
-    type: string
+    type: string,
   ): string {
     switch (type) {
       case "cost":
@@ -677,7 +711,6 @@ export class SegmentRenderer {
     }
   }
 
-
   private formatUsageWithBudget(
     cost: number | null,
     tokens: number | null,
@@ -685,13 +718,13 @@ export class SegmentRenderer {
     type: string,
     budget: number | undefined,
     warningThreshold = 80,
-    budgetType?: "cost" | "tokens"
+    budgetType?: "cost" | "tokens",
   ): string {
     const baseDisplay = this.formatUsageDisplay(
       cost,
       tokens,
       tokenBreakdown,
-      type
+      type,
     );
 
     if (budget && budget > 0) {
@@ -709,7 +742,7 @@ export class SegmentRenderer {
         const budgetStatus = getBudgetStatus(
           budgetValue,
           budget,
-          warningThreshold
+          warningThreshold,
         );
         return baseDisplay + budgetStatus.displayText;
       }
@@ -721,7 +754,7 @@ export class SegmentRenderer {
   renderVersion(
     hookData: ClaudeHookData,
     colors: PowerlineColors,
-    _config?: VersionSegmentConfig
+    _config?: VersionSegmentConfig,
   ): SegmentData | null {
     if (!hookData.version) {
       return null;

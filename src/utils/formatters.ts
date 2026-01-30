@@ -28,16 +28,16 @@ export function formatTokenBreakdown(breakdown: TokenBreakdown | null): string {
   const parts: string[] = [];
 
   if (breakdown.input > 0) {
-    parts.push(`${formatTokens(breakdown.input).replace(" tokens", "")}in`);
+    parts.push(`${formatTokens(breakdown.input).replace(" tokens", "")} in`);
   }
 
   if (breakdown.output > 0) {
-    parts.push(`${formatTokens(breakdown.output).replace(" tokens", "")}out`);
+    parts.push(`${formatTokens(breakdown.output).replace(" tokens", "")} out`);
   }
 
   if (breakdown.cacheCreation > 0 || breakdown.cacheRead > 0) {
     const totalCached = breakdown.cacheCreation + breakdown.cacheRead;
-    parts.push(`${formatTokens(totalCached).replace(" tokens", "")}cached`);
+    parts.push(`${formatTokens(totalCached).replace(" tokens", "")} cached`);
   }
 
   return parts.length > 0 ? parts.join(" + ") : "0 tokens";
@@ -61,4 +61,32 @@ export function formatDuration(seconds: number): string {
   } else {
     return `${(seconds / 86400).toFixed(1)}d`;
   }
+}
+
+const CLAUDE_MODEL_PATTERN =
+  /^(?:(?:global|apac|au|eu|us|us-east-\d|us-west-\d|eu-west-\d|eu-central-\d)\.)?(?:anthropic\.|azure_ai\/|bedrock\/|vertex_ai\/)?claude-(?:(?<family>opus|sonnet|haiku)-(?<newMajor>\d+)(?:-(?<newMinor>\d))?|(?<oldMajor>\d+)(?:-(?<oldMinor>\d))?-(?<oldFamily>opus|sonnet|haiku))(?:[-@]\d{8})?(?:-v\d+:\d+)?(?:-latest)?$/i;
+
+export function formatModelName(rawName: string): string {
+  if (!rawName) {
+    return "Claude";
+  }
+
+  const match = rawName.trim().match(CLAUDE_MODEL_PATTERN);
+  if (!match?.groups) {
+    return rawName;
+  }
+
+  const { family, newMajor, newMinor, oldMajor, oldMinor, oldFamily } = match.groups;
+
+  const modelFamily = family || oldFamily;
+  const major = newMajor || oldMajor;
+  const minor = newMinor || oldMinor;
+
+  if (modelFamily && major) {
+    const capitalizedFamily = modelFamily.charAt(0).toUpperCase() + modelFamily.slice(1).toLowerCase();
+    const version = minor ? `${major}.${minor}` : major;
+    return `${capitalizedFamily} ${version}`;
+  }
+
+  return rawName;
 }
