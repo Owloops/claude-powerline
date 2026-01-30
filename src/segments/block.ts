@@ -21,6 +21,7 @@ export interface BlockInfo {
   timeRemaining: number | null;
   burnRate: number | null;
   tokenBurnRate: number | null;
+  cacheHitRate: number | null;
 }
 
 function getModelRateLimitWeight(model: string): number {
@@ -216,6 +217,7 @@ export class BlockProvider {
           timeRemaining: null,
           burnRate: null,
           tokenBurnRate: null,
+          cacheHitRate: null,
         };
       }
 
@@ -229,6 +231,18 @@ export class BlockProvider {
           entry.usage.cacheReadInputTokens
         );
       }, 0);
+
+      const cacheReadTokens = entries.reduce((sum, entry) => {
+        return sum + (entry.usage.cacheReadInputTokens || 0);
+      }, 0);
+
+      const nonCacheTokens = entries.reduce((sum, entry) => {
+        return sum + (entry.usage.inputTokens || 0) + (entry.usage.cacheCreationInputTokens || 0);
+      }, 0);
+
+      const cacheHitRate = (nonCacheTokens + cacheReadTokens) > 0
+        ? (cacheReadTokens / (nonCacheTokens + cacheReadTokens)) * 100
+        : null;
 
       const weightedTokens = entries.reduce((sum, entry) => {
         const entryTokens =
@@ -296,6 +310,7 @@ export class BlockProvider {
         timeRemaining,
         burnRate,
         tokenBurnRate,
+        cacheHitRate,
       };
     } catch (error) {
       debug("Error getting active block info:", error);
@@ -306,6 +321,7 @@ export class BlockProvider {
         timeRemaining: null,
         burnRate: null,
         tokenBurnRate: null,
+        cacheHitRate: null,
       };
     }
   }

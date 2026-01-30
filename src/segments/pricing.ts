@@ -11,6 +11,27 @@ export interface ModelPricing {
   cache_read: number;
   output: number;
 }
+
+export interface CostBreakdown {
+  input: number;
+  output: number;
+  cacheWrite: number;
+  cacheRead: number;
+  total: number;
+}
+
+export interface DetailedCostResult {
+  breakdown: CostBreakdown;
+  tokensUsed: {
+    input: number;
+    output: number;
+    cacheCreation: number;
+    cacheRead: number;
+  };
+  modelId: string;
+  isOutputEstimated: boolean;
+}
+
 const OFFLINE_PRICING_DATA: Record<string, ModelPricing> = {
   "claude-3-haiku-20240307": {
     name: "Claude 3 Haiku",
@@ -460,7 +481,7 @@ export class PricingService {
     return inputCost + outputCost + cacheCreationCost + cacheReadCost;
   }
 
-  private static extractModelId(entry: any): string {
+  static extractModelId(entry: any): string {
     if (entry.model && typeof entry.model === "string") {
       return entry.model;
     }
@@ -479,5 +500,65 @@ export class PricingService {
     }
 
     return "claude-3-5-sonnet-20241022";
+  }
+
+  /**
+   * Output token estimation ratios by model tier.
+   * Based on typical Claude Code conversation patterns:
+   * - Haiku: Concise, efficient responses (~30% of input)
+   * - Sonnet: Balanced detail (~40% of input)
+   * - Opus: Detailed reasoning, longer outputs (~50% of input)
+   */
+  private static readonly OUTPUT_RATIOS: Record<string, number> = {
+    haiku: 0.30,
+    sonnet: 0.40,
+    opus: 0.50,
+    default: 0.35,
+  };
+
+  static estimateOutputTokens(inputTokens: number, modelId: string): number {
+    const modelLower = modelId.toLowerCase();
+    let ratio = this.OUTPUT_RATIOS.default ?? 0.35;
+
+    if (modelLower.includes('haiku')) ratio = this.OUTPUT_RATIOS.haiku ?? 0.30;
+    else if (modelLower.includes('sonnet')) ratio = this.OUTPUT_RATIOS.sonnet ?? 0.40;
+    else if (modelLower.includes('opus')) ratio = this.OUTPUT_RATIOS.opus ?? 0.50;
+
+    return Math.round(inputTokens * ratio);
+  }
+
+  static async calculateDetailedCost(entry: any): Promise<DetailedCostResult> {
+    const usage = entry.message?.usage;
+    const modelId = this.extractModelId(entry);
+    const pricing = await this.getModelPricing(modelId);
+
+    const inputTokens = usage?.input_tokens || 0;
+    let outputTokens = usage?.output_tokens ?? 0;
+    const cacheCreation = usage?.cache_creation_input_tokens || 0;
+    const cacheRead = usage?.cache_read_input_tokens || 0;
+
+    // Estimate output ONLY if output_tokens is missing (not just 0) and entry is assistant type
+    let isOutputEstimated = false;
+    const isAssistantEntry = entry.type === 'assistant' || entry.message?.role === 'assistant';
+    if (usage?.output_tokens === undefined && isAssistantEntry && inputTokens > 0) {
+      outputTokens = this.estimateOutputTokens(inputTokens, modelId);
+      isOutputEstimated = true;
+    }
+
+    const breakdown: CostBreakdown = {
+      input: (inputTokens / 1_000_000) * pricing.input,
+      output: (outputTokens / 1_000_000) * pricing.output,
+      cacheWrite: (cacheCreation / 1_000_000) * pricing.cache_write_5m,
+      cacheRead: (cacheRead / 1_000_000) * pricing.cache_read,
+      total: 0,
+    };
+    breakdown.total = breakdown.input + breakdown.output + breakdown.cacheWrite + breakdown.cacheRead;
+
+    return {
+      breakdown,
+      tokensUsed: { input: inputTokens, output: outputTokens, cacheCreation, cacheRead },
+      modelId,
+      isOutputEstimated,
+    };
   }
 }

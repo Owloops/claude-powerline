@@ -25,6 +25,7 @@ export {
   OmcRalphSegmentConfig,
   OmcAgentsSegmentConfig,
   OmcSkillSegmentConfig,
+  BurnRateSegmentConfig,
 } from "./renderer";
 export {
   OmcProvider,

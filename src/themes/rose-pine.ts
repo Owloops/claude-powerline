@@ -26,6 +26,9 @@ export const rosePineTheme: ColorTheme = {
   omcAgentOpus: { bg: "#191724", fg: "#eb6f92" },
   omcAgentSonnet: { bg: "#191724", fg: "#f6c177" },
   omcAgentHaiku: { bg: "#191724", fg: "#31748f" },
+  costNormal: { bg: "#31748f", fg: "#e0def4" },
+  costWarning: { bg: "#f6c177", fg: "#191724" },
+  costCritical: { bg: "#eb6f92", fg: "#191724" },
 };
 
 export const rosePineAnsi256Theme: ColorTheme = {
@@ -54,6 +57,9 @@ export const rosePineAnsi256Theme: ColorTheme = {
   omcAgentOpus: { bg: "#1c1c1c", fg: "#ff5f87" },
   omcAgentSonnet: { bg: "#1c1c1c", fg: "#d7af5f" },
   omcAgentHaiku: { bg: "#1c1c1c", fg: "#5f87af" },
+  costNormal: { bg: "#5f87af", fg: "#e4e4e4" },
+  costWarning: { bg: "#d7af5f", fg: "#1c1c1c" },
+  costCritical: { bg: "#ff5f87", fg: "#1c1c1c" },
 };
 
 export const rosePineAnsiTheme: ColorTheme = {
@@ -82,4 +88,7 @@ export const rosePineAnsiTheme: ColorTheme = {
   omcAgentOpus: { bg: "#262626", fg: "#ff5f87" },
   omcAgentSonnet: { bg: "#262626", fg: "#d7af00" },
   omcAgentHaiku: { bg: "#262626", fg: "#0087af" },
+  costNormal: { bg: "#0087af", fg: "#ffffff" },
+  costWarning: { bg: "#d7af00", fg: "#000000" },
+  costCritical: { bg: "#ff5f5f", fg: "#000000" },
 };

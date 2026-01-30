@@ -26,6 +26,9 @@ export const gruvboxTheme: ColorTheme = {
   omcAgentOpus: { bg: "#282828", fg: "#fb4934" },
   omcAgentSonnet: { bg: "#282828", fg: "#fabd2f" },
   omcAgentHaiku: { bg: "#282828", fg: "#b8bb26" },
+  costNormal: { bg: "#b8bb26", fg: "#1d2021" },
+  costWarning: { bg: "#fabd2f", fg: "#1d2021" },
+  costCritical: { bg: "#fb4934", fg: "#1d2021" },
 };
 
 export const gruvboxAnsi256Theme: ColorTheme = {
@@ -54,6 +57,9 @@ export const gruvboxAnsi256Theme: ColorTheme = {
   omcAgentOpus: { bg: "#303030", fg: "#ff5f5f" },
   omcAgentSonnet: { bg: "#303030", fg: "#ffaf00" },
   omcAgentHaiku: { bg: "#303030", fg: "#afaf00" },
+  costNormal: { bg: "#b8bb26", fg: "#1d2021" },
+  costWarning: { bg: "#fabd2f", fg: "#1d2021" },
+  costCritical: { bg: "#fb4934", fg: "#1d2021" },
 };
 
 export const gruvboxAnsiTheme: ColorTheme = {
@@ -82,4 +88,7 @@ export const gruvboxAnsiTheme: ColorTheme = {
   omcAgentOpus: { bg: "#444444", fg: "#ff0000" },
   omcAgentSonnet: { bg: "#444444", fg: "#ffaf00" },
   omcAgentHaiku: { bg: "#444444", fg: "#00ff00" },
+  costNormal: { bg: "#b8bb26", fg: "#1d2021" },
+  costWarning: { bg: "#fabd2f", fg: "#1d2021" },
+  costCritical: { bg: "#fb4934", fg: "#1d2021" },
 };

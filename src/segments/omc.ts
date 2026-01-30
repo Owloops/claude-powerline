@@ -109,6 +109,37 @@ export class OmcProvider {
     return null;
   }
 
+  /**
+   * Parse task-notification system message for completion status.
+   * Returns null if not a task-notification message.
+   */
+  private parseTaskNotification(content: unknown): { taskId: string; status: string } | null {
+    const text = typeof content === 'string'
+      ? content
+      : Array.isArray(content)
+        ? content.map((c: any) => c.type === 'text' ? c.text : '').join('')
+        : '';
+
+    const notificationMatch = text.match(/<task-notification>([\s\S]*?)<\/task-notification>/);
+    if (!notificationMatch?.[1]) return null;
+
+    const notificationContent = notificationMatch[1];
+    const taskIdMatch = notificationContent.match(/<task-id>([^<]+)<\/task-id>/);
+    const statusMatch = notificationContent.match(/<status>([^<]+)<\/status>/);
+
+    if (taskIdMatch?.[1] && statusMatch?.[1]) {
+      return { taskId: taskIdMatch[1].trim(), status: statusMatch[1].trim() };
+    }
+    return null;
+  }
+
+  /**
+   * Check if a status represents terminal completion.
+   */
+  private isTerminalStatus(status: string): boolean {
+    return ['completed', 'failed', 'error', 'cancelled'].includes(status.toLowerCase());
+  }
+
   private async getModeInfo(cwd: string): Promise<OmcModeInfo> {
     const omcDir = join(cwd, ".omc");
 
@@ -295,6 +326,22 @@ export class OmcProvider {
                       bgAgent.endTime = timestamp;
                     }
                   }
+                }
+              }
+            }
+          }
+
+          // Check for task-notification messages in BOTH entry.message.content AND entry.content
+          const contentSources = [entry.message?.content, entry.content].filter(Boolean);
+          for (const contentSource of contentSources) {
+            const notification = this.parseTaskNotification(contentSource);
+            if (notification && this.isTerminalStatus(notification.status)) {
+              const toolUseId = backgroundAgentMap.get(notification.taskId);
+              if (toolUseId) {
+                const bgAgent = agentMap.get(toolUseId);
+                if (bgAgent && bgAgent.status === 'running') {
+                  bgAgent.status = 'completed';
+                  bgAgent.endTime = timestamp;
                 }
               }
             }

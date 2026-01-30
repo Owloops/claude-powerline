@@ -49,6 +49,12 @@ export interface ColorTheme {
   omcAgentOpus?: SegmentColor;
   omcAgentSonnet?: SegmentColor;
   omcAgentHaiku?: SegmentColor;
+  // Cost-based coloring (NEW)
+  costNormal?: SegmentColor;    // Green: cost < $1
+  costWarning?: SegmentColor;   // Yellow: $1 <= cost < $5
+  costCritical?: SegmentColor;  // Red: cost >= $5
+  // Burn rate segment
+  burnRate?: SegmentColor;
 }
 
 export interface PowerlineColors {
@@ -104,6 +110,16 @@ export interface PowerlineColors {
   omcAgentSonnetFg?: string;
   omcAgentHaikuBg?: string;
   omcAgentHaikuFg?: string;
+  // Cost-based coloring (NEW)
+  costNormalBg?: string;
+  costNormalFg?: string;
+  costWarningBg?: string;
+  costWarningFg?: string;
+  costCriticalBg?: string;
+  costCriticalFg?: string;
+  // Burn rate segment
+  burnRateBg?: string;
+  burnRateFg?: string;
 }
 
 export const BUILT_IN_THEMES: Record<string, ColorTheme> = {

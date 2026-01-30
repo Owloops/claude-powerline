@@ -30,6 +30,10 @@ export interface GitSegmentConfig extends SegmentConfig {
 export interface UsageSegmentConfig extends SegmentConfig {
   type: "cost" | "tokens" | "both" | "breakdown";
   costSource?: "calculated" | "official";
+  showBurnRate?: boolean;
+  showCacheHitRate?: boolean;
+  colorByCost?: boolean;
+  costThresholds?: { low: number; medium: number };
 }
 
 export interface TmuxSegmentConfig extends SegmentConfig {}
@@ -51,6 +55,9 @@ export interface MetricsSegmentConfig extends SegmentConfig {
 export interface BlockSegmentConfig extends SegmentConfig {
   type: "cost" | "tokens" | "both" | "time" | "weighted";
   burnType?: "cost" | "tokens" | "both" | "none";
+  showCacheHitRate?: boolean;
+  colorByCost?: boolean;
+  costThresholds?: { low: number; medium: number };
 }
 
 export interface TodaySegmentConfig extends SegmentConfig {
@@ -75,6 +82,10 @@ export interface OmcAgentsSegmentConfig extends SegmentConfig {
 
 export interface OmcSkillSegmentConfig extends SegmentConfig {}
 
+export interface BurnRateSegmentConfig extends SegmentConfig {
+  compact?: boolean;  // Use compact format (default: true)
+}
+
 export type AnySegmentConfig =
   | SegmentConfig
   | DirectorySegmentConfig
@@ -89,7 +100,8 @@ export type AnySegmentConfig =
   | OmcModeSegmentConfig
   | OmcRalphSegmentConfig
   | OmcAgentsSegmentConfig
-  | OmcSkillSegmentConfig;
+  | OmcSkillSegmentConfig
+  | BurnRateSegmentConfig;
 
 import {
   formatCost,
@@ -97,6 +109,9 @@ import {
   formatTokenBreakdown,
   formatTimeSince,
   formatDuration,
+  getCostColorLevel,
+  formatBurnRate,
+  formatCacheHitRate,
 } from "../utils/formatters";
 import { getBudgetStatus } from "../utils/budget";
 import type {
@@ -318,9 +333,10 @@ export class SegmentRenderer {
       if (costSource === "official") return usageInfo.session.officialCost;
       return usageInfo.session.cost;
     };
+    const cost = getCost();
 
     const formattedUsage = this.formatUsageWithBudget(
-      getCost(),
+      cost,
       usageInfo.session.tokens,
       usageInfo.session.tokenBreakdown,
       type,
@@ -329,12 +345,45 @@ export class SegmentRenderer {
       sessionBudget?.type,
     );
 
-    const text = `${this.symbols.session_cost} ${formattedUsage}`;
+    let text = `${this.symbols.session_cost} ${formattedUsage}`;
+    let bgColor = colors.sessionBg;
+    let fgColor = colors.sessionFg;
+
+    // Cost-based coloring
+    if (config?.colorByCost && cost !== null) {
+      const level = getCostColorLevel(cost, config.costThresholds);
+      if (level === 'normal' && colors.costNormalBg) {
+        bgColor = colors.costNormalBg;
+        fgColor = colors.costNormalFg || fgColor;
+      } else if (level === 'warning' && colors.costWarningBg) {
+        bgColor = colors.costWarningBg;
+        fgColor = colors.costWarningFg || fgColor;
+      } else if (level === 'critical' && colors.costCriticalBg) {
+        bgColor = colors.costCriticalBg;
+        fgColor = colors.costCriticalFg || fgColor;
+      }
+    }
+
+    // Cache hit rate stays in session segment
+    if (config?.showCacheHitRate && usageInfo.session.cacheHitRate !== null) {
+      text += `  ${formatCacheHitRate(usageInfo.session.cacheHitRate)}`;
+    }
+
+    return { text, bgColor, fgColor };
+  }
+
+  renderBurnRate(
+    usageInfo: UsageInfo,
+    colors: PowerlineColors,
+    config?: BurnRateSegmentConfig,
+  ): SegmentData | null {
+    const compact = config?.compact !== false;
+    const text = formatBurnRate(usageInfo.session.burnRate, compact);
 
     return {
       text,
-      bgColor: colors.sessionBg,
-      fgColor: colors.sessionFg,
+      bgColor: colors.burnRateBg || colors.metricsBg,
+      fgColor: colors.burnRateFg || colors.metricsFg,
     };
   }
 
@@ -631,10 +680,33 @@ export class SegmentRenderer {
       }
     }
 
+    let bgColor = colors.blockBg;
+    let fgColor = colors.blockFg;
+
+    // Cost-based coloring
+    if (config?.colorByCost && blockInfo.cost !== null) {
+      const level = getCostColorLevel(blockInfo.cost, config.costThresholds);
+      if (level === 'normal' && colors.costNormalBg) {
+        bgColor = colors.costNormalBg;
+        fgColor = colors.costNormalFg || fgColor;
+      } else if (level === 'warning' && colors.costWarningBg) {
+        bgColor = colors.costWarningBg;
+        fgColor = colors.costWarningFg || fgColor;
+      } else if (level === 'critical' && colors.costCriticalBg) {
+        bgColor = colors.costCriticalBg;
+        fgColor = colors.costCriticalFg || fgColor;
+      }
+    }
+
+    // Add cache hit rate
+    if (config?.showCacheHitRate && blockInfo.cacheHitRate !== null) {
+      displayText += ` | ${formatCacheHitRate(blockInfo.cacheHitRate)}`;
+    }
+
     return {
       text: `${this.symbols.block_cost} ${displayText}`,
-      bgColor: colors.blockBg,
-      fgColor: colors.blockFg,
+      bgColor,
+      fgColor,
     };
   }
 
@@ -860,37 +932,58 @@ export class SegmentRenderer {
     let displayText: string;
 
     switch (format) {
-      case 'count':
+      case 'count': {
         displayText = count === 1 && agentsInfo?.agentType
           ? agentsInfo.agentType
           : String(count);
         break;
+      }
 
-      case 'codes':
+      case 'codes': {
         displayText = this.formatAgentCodes(runningAgents, maxDisplay, showModelTier, colors);
         if (count > maxDisplay) displayText += `+${count - maxDisplay}`;
         break;
+      }
 
-      case 'codes-duration':
-        displayText = this.formatAgentCodesWithDuration(runningAgents, maxDisplay, showModelTier, colors);
+      case 'codes-duration': {
+        const grouped = this.groupAgentsByType(runningAgents);
+        displayText = grouped.slice(0, maxDisplay).map(g => {
+          const code = this.getAgentTypeCode(g.type);
+          const formattedCode = showModelTier && g.agents[0]?.model
+            ? this.formatModelTierCode(code, g.agents[0].model, colors)
+            : code;
+          const countSuffix = g.count > 1 ? `×${g.count}` : '';
+          const duration = g.totalDuration ? `(${g.totalDuration})` : '';
+          return `${formattedCode}${countSuffix}${duration}`;
+        }).join('');
         if (count > maxDisplay) displayText += `+${count - maxDisplay}`;
         break;
+      }
 
-      case 'name':
-        displayText = runningAgents.slice(0, maxDisplay)
-          .map(a => a.type.split(':').pop() || 'agent')
-          .join(',');
+      case 'name': {
+        const grouped = this.groupAgentsByType(runningAgents);
+        displayText = grouped.slice(0, maxDisplay).map(g => {
+          const name = g.type.split(':').pop() || 'agent';
+          return g.count > 1 ? `${name}×${g.count}` : name;
+        }).join(',');
         if (count > maxDisplay) displayText += `+${count - maxDisplay}`;
         break;
+      }
 
-      case 'detailed':
-        displayText = '[' + runningAgents.slice(0, maxDisplay).map(a => {
-          const name = a.type.split(':').pop() || 'agent';
-          const duration = this.formatAgentDuration(a);
-          return duration ? `${name}(${duration})` : name;
-        }).join(',') + ']';
-        if (count > maxDisplay) displayText = displayText.slice(0, -1) + `+${count - maxDisplay}]`;
+      case 'detailed': {
+        const grouped = this.groupAgentsByType(runningAgents);
+        const groupedParts = grouped.slice(0, maxDisplay).map(g => {
+          const name = g.type.split(':').pop() || 'agent';
+          const countSuffix = g.count > 1 ? `×${g.count}` : '';
+          const duration = g.totalDuration ? `(${g.totalDuration})` : '';
+          return `${name}${countSuffix}${duration}`;
+        });
+        displayText = '[' + groupedParts.join(',') + ']';
+        if (grouped.length > maxDisplay) {
+          displayText = displayText.slice(0, -1) + `+${grouped.length - maxDisplay}]`;
+        }
         break;
+      }
 
       default:
         displayText = String(count);
@@ -1023,6 +1116,46 @@ export class SegmentRenderer {
     if (seconds < 60) return `${seconds}s`;
     const minutes = Math.floor(seconds / 60);
     return `${minutes}m`;
+  }
+
+  /**
+   * Group agents by type for compact display.
+   * Groups by agent.type only (not model tier).
+   * When showModelTier is true, uses first agent's model as representative.
+   */
+  private groupAgentsByType(agents: ActiveAgent[]): Array<{
+    type: string;
+    count: number;
+    totalDuration: string | null;
+    agents: ActiveAgent[];
+  }> {
+    const groups = new Map<string, ActiveAgent[]>();
+
+    for (const agent of agents) {
+      const key = agent.type;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(agent);
+    }
+
+    return Array.from(groups.entries()).map(([type, agentList]) => {
+      const totalMs = agentList.reduce((sum, a) => {
+        const end = a.endTime || new Date();
+        return sum + (end.getTime() - a.startTime.getTime());
+      }, 0);
+
+      return {
+        type,
+        count: agentList.length,
+        totalDuration: this.formatDurationMs(totalMs),
+        agents: agentList,
+      };
+    });
+  }
+
+  private formatDurationMs(ms: number): string | null {
+    const seconds = Math.floor(ms / 1000);
+    if (seconds < 60) return `${seconds}s`;
+    return `${Math.floor(seconds / 60)}m`;
   }
 
   renderOmcSkill(

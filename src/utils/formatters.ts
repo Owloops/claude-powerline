@@ -5,10 +5,11 @@ interface TokenBreakdown {
   cacheRead: number;
 }
 
-export function formatCost(cost: number | null): string {
+export function formatCost(cost: number | null, estimated = false): string {
   if (cost === null) return "$0.00";
-  if (cost < 0.01) return "<$0.01";
-  return `$${cost.toFixed(2)}`;
+  const prefix = estimated ? "≈" : "";
+  if (cost < 0.01 && cost > 0) return `${prefix}<$0.01`;
+  return `${prefix}$${cost.toFixed(2)}`;
 }
 
 export function formatTokens(tokens: number | null): string {
@@ -89,4 +90,40 @@ export function formatModelName(rawName: string): string {
   }
 
   return rawName;
+}
+
+export type CostColorLevel = 'normal' | 'warning' | 'critical';
+
+export function getCostColorLevel(
+  cost: number,
+  thresholds = { low: 1, medium: 5 }
+): CostColorLevel {
+  if (cost < thresholds.low) return 'normal';
+  if (cost < thresholds.medium) return 'warning';
+  return 'critical';
+}
+
+export function formatBurnRate(costPerHour: number | null, compact = false): string {
+  if (costPerHour === null) return '$0.0/h';
+
+  if (compact) {
+    return costPerHour < 1
+      ? `${(costPerHour * 100).toFixed(0)}c/h`
+      : `$${costPerHour.toFixed(1)}/h`;
+  }
+
+  return costPerHour < 1
+    ? `${(costPerHour * 100).toFixed(0)}c/hr`
+    : `$${costPerHour.toFixed(2)}/hr`;
+}
+
+export function formatCacheHitRate(percentOrCacheRead: number, input?: number, cacheCreate?: number): string {
+  // Single arg = pre-calculated percentage (0-100)
+  if (input === undefined) {
+    return `cache:${percentOrCacheRead.toFixed(0)}%`;
+  }
+  // Three args = raw token calculation
+  const total = input + cacheCreate! + percentOrCacheRead;
+  if (total === 0) return 'cache:0%';
+  return `cache:${((percentOrCacheRead / total) * 100).toFixed(0)}%`;
 }

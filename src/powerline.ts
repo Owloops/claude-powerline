@@ -33,6 +33,7 @@ import {
   OmcRalphSegmentConfig,
   OmcAgentsSegmentConfig,
   OmcSkillSegmentConfig,
+  BurnRateSegmentConfig,
   OmcProvider,
   OmcInfo,
 } from "./segments";
@@ -411,6 +412,14 @@ export class PowerlineRenderer {
       );
     }
 
+    if (segment.type === "burnRate") {
+      return this.renderBurnRateSegment(
+        segment.config as BurnRateSegmentConfig,
+        usageInfo,
+        colors
+      );
+    }
+
     if (segment.type === "tmux") {
       return await this.renderTmuxSegment(colors);
     }
@@ -526,6 +535,15 @@ export class PowerlineRenderer {
   ) {
     if (!usageInfo) return null;
     return this.segmentRenderer.renderSession(usageInfo, colors, config);
+  }
+
+  private renderBurnRateSegment(
+    config: BurnRateSegmentConfig,
+    usageInfo: UsageInfo | null,
+    colors: PowerlineColors
+  ) {
+    if (!usageInfo) return null;
+    return this.segmentRenderer.renderBurnRate(usageInfo, colors, config);
   }
 
   private async renderTmuxSegment(colors: PowerlineColors) {
@@ -740,6 +758,11 @@ export class PowerlineRenderer {
     const omcAgentSonnet = getOptionalSegmentColors("omcAgentSonnet");
     const omcAgentHaiku = getOptionalSegmentColors("omcAgentHaiku");
 
+    const costNormal = getOptionalSegmentColors("costNormal");
+    const costWarning = getOptionalSegmentColors("costWarning");
+    const costCritical = getOptionalSegmentColors("costCritical");
+    const burnRate = getOptionalSegmentColors("burnRate");
+
     return {
       reset: colorSupport === "none" ? "" : RESET_CODE,
       modeBg: directory.bg,
@@ -798,6 +821,22 @@ export class PowerlineRenderer {
       ...(omcAgentHaiku && {
         omcAgentHaikuBg: omcAgentHaiku.bg,
         omcAgentHaikuFg: omcAgentHaiku.fg,
+      }),
+      ...(costNormal && {
+        costNormalBg: costNormal.bg,
+        costNormalFg: costNormal.fg,
+      }),
+      ...(costWarning && {
+        costWarningBg: costWarning.bg,
+        costWarningFg: costWarning.fg,
+      }),
+      ...(costCritical && {
+        costCriticalBg: costCritical.bg,
+        costCriticalFg: costCritical.fg,
+      }),
+      ...(burnRate && {
+        burnRateBg: burnRate.bg,
+        burnRateFg: burnRate.fg,
       }),
     };
   }

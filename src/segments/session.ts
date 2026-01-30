@@ -40,6 +40,9 @@ export interface SessionInfo {
   officialCost: number | null;
   tokens: number | null;
   tokenBreakdown: TokenBreakdown | null;
+  cacheHitRate: number | null;   // 0-100
+  burnRate: number | null;       // $/hour
+  isOutputEstimated: boolean;    // true if any entry used output estimation
 }
 
 export interface UsageInfo {
@@ -133,6 +136,33 @@ export class SessionProvider {
     );
   }
 
+  private calculateBurnRate(
+    cost: number | null,
+    entries: SessionUsageEntry[],
+    hookDurationMs?: number
+  ): number | null {
+    if (!cost || cost === 0) return null;
+
+    // Prefer hook-provided duration
+    if (hookDurationMs && hookDurationMs > 0) {
+      return cost / (hookDurationMs / 3600000);
+    }
+
+    // Fallback: entry timestamps
+    if (entries.length < 2) return null;
+    const times = entries.map(e => new Date(e.timestamp).getTime()).sort((a,b) => a-b);
+    const durationMs = times[times.length-1]! - times[0]!;
+    if (durationMs < 60000) return null;  // Require at least 1 minute
+
+    return cost / (durationMs / 3600000);
+  }
+
+  private calculateCacheHitRate(breakdown: TokenBreakdown): number | null {
+    const total = breakdown.input + breakdown.cacheCreation + breakdown.cacheRead;
+    if (total === 0) return null;
+    return (breakdown.cacheRead / total) * 100;
+  }
+
   async getSessionInfo(
     sessionId: string,
     hookData?: ClaudeHookData
@@ -146,6 +176,9 @@ export class SessionProvider {
         officialCost: null,
         tokens: null,
         tokenBreakdown: null,
+        cacheHitRate: null,
+        burnRate: null,
+        isOutputEstimated: false,
       };
     }
 
@@ -160,12 +193,22 @@ export class SessionProvider {
     const hookDataCost = hookData?.cost?.total_cost_usd ?? null;
     const cost = calculatedCost ?? hookDataCost;
 
+    const cacheHitRate = this.calculateCacheHitRate(tokenBreakdown);
+    const burnRate = this.calculateBurnRate(
+      cost,
+      sessionUsage.entries,
+      hookData?.cost?.total_duration_ms
+    );
+
     return {
       cost,
       calculatedCost,
       officialCost: hookDataCost,
       tokens: totalTokens,
       tokenBreakdown,
+      cacheHitRate,
+      burnRate,
+      isOutputEstimated: false,  // TODO: Track from detailed cost calculation
     };
   }
 }
@@ -197,6 +240,9 @@ export class UsageProvider {
           officialCost: null,
           tokens: null,
           tokenBreakdown: null,
+          cacheHitRate: null,
+          burnRate: null,
+          isOutputEstimated: false,
         },
       };
     }
