@@ -29,6 +29,8 @@ export const SYMBOLS = {
   metrics_lines_removed: "-",
   metrics_burn: "⟢",
   version: "◈",
+  rate_limits_session: "⏱",
+  rate_limits_weekly: "⏳",
   bar_filled: "▪",
   bar_empty: "▫",
 } as const;
@@ -62,6 +64,8 @@ export const TEXT_SYMBOLS = {
   metrics_lines_removed: "-",
   metrics_burn: "~/h",
   version: "V",
+  rate_limits_session: "S%",
+  rate_limits_weekly: "W%",
   bar_filled: "=",
   bar_empty: "-",
 } as const;

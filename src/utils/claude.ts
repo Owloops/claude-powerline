@@ -40,6 +40,16 @@ export interface ClaudeHookData {
       cache_read_input_tokens: number;
     };
   };
+  rate_limits?: {
+    session?: {
+      used_percentage: number;
+      resets_at: string;
+    };
+    weekly?: {
+      used_percentage: number;
+      resets_at: string;
+    };
+  };
 }
 
 export function getClaudePaths(): string[] {

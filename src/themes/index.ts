@@ -35,6 +35,9 @@ export interface ColorTheme {
   contextCritical: SegmentColor;
   metrics: SegmentColor;
   version: SegmentColor;
+  rateLimits: SegmentColor;
+  rateLimitsWarning: SegmentColor;
+  rateLimitsCritical: SegmentColor;
 }
 
 export interface PowerlineColors {
@@ -63,6 +66,12 @@ export interface PowerlineColors {
   metricsFg: string;
   versionBg: string;
   versionFg: string;
+  rateLimitsBg: string;
+  rateLimitsFg: string;
+  rateLimitsWarningBg: string;
+  rateLimitsWarningFg: string;
+  rateLimitsCriticalBg: string;
+  rateLimitsCriticalFg: string;
 }
 
 export const BUILT_IN_THEMES: Record<string, ColorTheme> = {

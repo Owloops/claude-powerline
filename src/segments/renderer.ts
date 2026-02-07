@@ -58,6 +58,12 @@ export interface TodaySegmentConfig extends SegmentConfig {
 
 export interface VersionSegmentConfig extends SegmentConfig {}
 
+export interface RateLimitsSegmentConfig extends SegmentConfig {
+  show?: "both" | "session" | "weekly";
+  showResetTime?: boolean;
+  showExtraUsage?: boolean;
+}
+
 export type AnySegmentConfig =
   | SegmentConfig
   | DirectorySegmentConfig
@@ -68,7 +74,8 @@ export type AnySegmentConfig =
   | MetricsSegmentConfig
   | BlockSegmentConfig
   | TodaySegmentConfig
-  | VersionSegmentConfig;
+  | VersionSegmentConfig
+  | RateLimitsSegmentConfig;
 
 import {
   formatCost,
@@ -86,6 +93,7 @@ import type {
   MetricsInfo,
 } from ".";
 import type { TodayInfo } from "./today";
+import type { RateLimitsInfo } from "./rateLimits";
 
 export interface PowerlineSymbols {
   right: string;
@@ -115,6 +123,8 @@ export interface PowerlineSymbols {
   metrics_lines_removed: string;
   metrics_burn: string;
   version: string;
+  rate_limits_session: string;
+  rate_limits_weekly: string;
   bar_filled: string;
   bar_empty: string;
 }
@@ -737,5 +747,84 @@ export class SegmentRenderer {
       bgColor: colors.versionBg,
       fgColor: colors.versionFg,
     };
+  }
+
+  renderRateLimits(
+    rateLimitsInfo: RateLimitsInfo | null,
+    colors: PowerlineColors,
+    config?: RateLimitsSegmentConfig,
+  ): SegmentData | null {
+    if (!rateLimitsInfo) return null;
+
+    const show = config?.show || "both";
+    const parts: string[] = [];
+
+    const sessionPct = rateLimitsInfo.session?.usedPercentage;
+    const weeklyPct = rateLimitsInfo.weekly?.usedPercentage;
+
+    if ((show === "both" || show === "session") && sessionPct !== undefined) {
+      let resetStr = "";
+      if (config?.showResetTime && rateLimitsInfo.session?.resetsAt) {
+        resetStr = ` ${this.formatResetCountdown(rateLimitsInfo.session.resetsAt)}`;
+      }
+      parts.push(`${this.symbols.rate_limits_session} ${Math.round(sessionPct)}%${resetStr}`);
+    }
+
+    if ((show === "both" || show === "weekly") && weeklyPct !== undefined) {
+      let resetStr = "";
+      if (config?.showResetTime && rateLimitsInfo.weekly?.resetsAt) {
+        resetStr = ` ${this.formatResetCountdown(rateLimitsInfo.weekly.resetsAt)}`;
+      }
+      parts.push(`${this.symbols.rate_limits_weekly} ${Math.round(weeklyPct)}%${resetStr}`);
+    }
+
+    if (
+      config?.showExtraUsage !== false &&
+      rateLimitsInfo.extraUsage?.enabled
+    ) {
+      const extra = rateLimitsInfo.extraUsage;
+      parts.push(`$${extra.usedDollars.toFixed(2)}/$${extra.limitDollars.toFixed(2)}`);
+    }
+
+    if (parts.length === 0) return null;
+
+    const maxPct = Math.max(sessionPct ?? 0, weeklyPct ?? 0);
+
+    let bgColor = colors.rateLimitsBg;
+    let fgColor = colors.rateLimitsFg;
+
+    if (maxPct >= 80) {
+      bgColor = colors.rateLimitsCriticalBg;
+      fgColor = colors.rateLimitsCriticalFg;
+    } else if (maxPct >= 50) {
+      bgColor = colors.rateLimitsWarningBg;
+      fgColor = colors.rateLimitsWarningFg;
+    }
+
+    return {
+      text: parts.join(" "),
+      bgColor,
+      fgColor,
+    };
+  }
+
+  private formatResetCountdown(resetsAt: string): string {
+    const resetDate = new Date(resetsAt);
+    const now = new Date();
+    const diffMs = resetDate.getTime() - now.getTime();
+
+    if (diffMs <= 0) return "";
+
+    const diffMinutes = Math.floor(diffMs / 60000);
+    const hours = Math.floor(diffMinutes / 60);
+    const minutes = diffMinutes % 60;
+
+    if (hours > 24) {
+      const days = Math.floor(hours / 24);
+      const remainingHours = hours % 24;
+      return `(${days}d ${remainingHours}h)`;
+    }
+    if (hours > 0) return `(${hours}h ${minutes}m)`;
+    return `(${minutes}m)`;
   }
 }

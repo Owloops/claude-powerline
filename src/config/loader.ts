@@ -14,6 +14,7 @@ import type {
   BlockSegmentConfig,
   TodaySegmentConfig,
   VersionSegmentConfig,
+  RateLimitsSegmentConfig,
 } from "../segments/renderer";
 
 export interface LineConfig {
@@ -28,6 +29,7 @@ export interface LineConfig {
     context?: ContextSegmentConfig;
     metrics?: MetricsSegmentConfig;
     version?: VersionSegmentConfig;
+    rateLimits?: RateLimitsSegmentConfig;
   };
 }
 
