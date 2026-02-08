@@ -1,7 +1,7 @@
 {
   "_meta": {
     "source": "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json",
-    "updated": "2026-02-01",
+    "updated": "2026-02-08",
     "currency": "USD",
     "unit": "per_million_tokens"
   },
@@ -175,6 +175,22 @@
   },
   "claude-opus-4-5": {
     "name": "claude-opus-4-5",
+    "input": 5,
+    "output": 25,
+    "cache_write_5m": 6.25,
+    "cache_write_1h": 10,
+    "cache_read": 0.5
+  },
+  "claude-opus-4-6": {
+    "name": "claude-opus-4-6",
+    "input": 5,
+    "output": 25,
+    "cache_write_5m": 6.25,
+    "cache_write_1h": 10,
+    "cache_read": 0.5
+  },
+  "claude-opus-4-6-20260205": {
+    "name": "claude-opus-4-6-20260205",
     "input": 5,
     "output": 25,
     "cache_write_5m": 6.25,
