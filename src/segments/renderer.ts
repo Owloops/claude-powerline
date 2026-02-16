@@ -56,6 +56,10 @@ export interface TodaySegmentConfig extends SegmentConfig {
   type: "cost" | "tokens" | "both" | "breakdown";
 }
 
+export interface SessionSummarySegmentConfig extends SegmentConfig {
+  maxLength?: number;
+}
+
 export interface VersionSegmentConfig extends SegmentConfig {}
 
 export type AnySegmentConfig =
@@ -68,6 +72,7 @@ export type AnySegmentConfig =
   | MetricsSegmentConfig
   | BlockSegmentConfig
   | TodaySegmentConfig
+  | SessionSummarySegmentConfig
   | VersionSegmentConfig;
 
 import {
@@ -86,11 +91,13 @@ import type {
   MetricsInfo,
 } from ".";
 import type { TodayInfo } from "./today";
+import type { SessionSummaryInfo } from "./session-summary";
 
 export interface PowerlineSymbols {
   right: string;
   left: string;
   branch: string;
+  session_summary: string;
   model: string;
   git_clean: string;
   git_dirty: string;
@@ -721,6 +728,25 @@ export class SegmentRenderer {
     }
 
     return baseDisplay;
+  }
+
+  renderSessionSummary(
+    sessionSummaryInfo: SessionSummaryInfo | null,
+    colors: PowerlineColors,
+    config?: SessionSummarySegmentConfig,
+  ): SegmentData | null {
+    if (!sessionSummaryInfo) return null;
+
+    let name = sessionSummaryInfo.name;
+    if (config?.maxLength && name.length > config.maxLength) {
+      name = name.slice(0, config.maxLength - 1) + "…";
+    }
+
+    return {
+      text: `${this.symbols.session_summary} ${name}`,
+      bgColor: colors.sessionSummaryBg,
+      fgColor: colors.sessionSummaryFg,
+    };
   }
 
   renderVersion(
