@@ -58,6 +58,7 @@ export interface TodaySegmentConfig extends SegmentConfig {
 
 export interface SessionSummarySegmentConfig extends SegmentConfig {
   maxLength?: number;
+  showIcon?: boolean;
 }
 
 export interface VersionSegmentConfig extends SegmentConfig {}
@@ -743,7 +744,7 @@ export class SegmentRenderer {
     }
 
     return {
-      text: `${this.symbols.session_summary} ${name}`,
+      text: config?.showIcon === false ? name : `${this.symbols.session_summary} ${name}`,
       bgColor: colors.sessionSummaryBg,
       fgColor: colors.sessionSummaryFg,
     };
