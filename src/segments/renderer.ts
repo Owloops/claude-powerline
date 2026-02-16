@@ -59,6 +59,7 @@ export interface TodaySegmentConfig extends SegmentConfig {
 export interface SessionSummarySegmentConfig extends SegmentConfig {
   maxLength?: number;
   showIcon?: boolean;
+  separateLine?: boolean;
 }
 
 export interface VersionSegmentConfig extends SegmentConfig {}

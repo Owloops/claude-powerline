@@ -156,7 +156,7 @@ export class PowerlineRenderer {
       : null;
 
     if (this.config.display.autoWrap) {
-      return this.generateAutoWrapStatusline(
+      const main = await this.generateAutoWrapStatusline(
         hookData,
         usageInfo,
         blockInfo,
@@ -165,6 +165,8 @@ export class PowerlineRenderer {
         metricsInfo,
         sessionSummaryInfo
       );
+      const separate = this.renderSeparateSessionSummary(sessionSummaryInfo);
+      return separate ? `${main}\n${separate}` : main;
     }
 
     const lines = await Promise.all(
@@ -182,7 +184,9 @@ export class PowerlineRenderer {
       )
     );
 
-    return lines.filter((line) => line.length > 0).join("\n");
+    const main = lines.filter((line) => line.length > 0).join("\n");
+    const separate = this.renderSeparateSessionSummary(sessionSummaryInfo);
+    return separate ? `${main}\n${separate}` : main;
   }
 
   private async generateAutoWrapStatusline(
@@ -434,10 +438,12 @@ export class PowerlineRenderer {
     }
 
     if (segment.type === "session-summary") {
+      const summaryConfig = segment.config as SessionSummarySegmentConfig;
+      if (summaryConfig.separateLine) return null;
       return this.segmentRenderer.renderSessionSummary(
         sessionSummaryInfo,
         colors,
-        segment.config as SessionSummarySegmentConfig
+        summaryConfig
       );
     }
 
@@ -543,6 +549,35 @@ export class PowerlineRenderer {
     colors: PowerlineColors
   ) {
     return this.segmentRenderer.renderVersion(hookData, colors, config);
+  }
+
+  private renderSeparateSessionSummary(
+    sessionSummaryInfo: SessionSummaryInfo | null
+  ): string | null {
+    const summaryConfig = this.getSessionSummaryConfig();
+    if (!summaryConfig?.enabled || !summaryConfig.separateLine) return null;
+    if (!sessionSummaryInfo) return null;
+
+    const colors = this.getThemeColors();
+    const segmentData = this.segmentRenderer.renderSessionSummary(
+      sessionSummaryInfo,
+      colors,
+      summaryConfig
+    );
+    if (!segmentData) return null;
+
+    return this.buildLineFromSegments(
+      [{ type: "session-summary", text: segmentData.text, bgColor: segmentData.bgColor, fgColor: segmentData.fgColor }],
+      colors
+    );
+  }
+
+  private getSessionSummaryConfig(): SessionSummarySegmentConfig | null {
+    for (const line of this.config.display.lines) {
+      const config = line.segments["session-summary"];
+      if (config) return config;
+    }
+    return null;
   }
 
   private initializeSymbols(): PowerlineSymbols {
