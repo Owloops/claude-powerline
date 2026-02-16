@@ -408,13 +408,14 @@ Configure context window limits for different model types. Defaults to 200K toke
 </details>
 
 <details>
-<summary><strong>Session Summary</strong> - Shows current session's summary or first user prompt</summary>
+<summary><strong>Session Summary</strong> - Shows current session's name, summary, or first user prompt</summary>
 
 ```json
 "session-summary": {
   "enabled": true,
   "showIcon": false,
-  "maxLength": 50
+  "maxLength": 50,
+  "separateLine": true
 }
 ```
 
@@ -422,12 +423,20 @@ Configure context window limits for different model types. Defaults to 200K toke
 
 - `showIcon`: Show the 💬 icon prefix (default: true)
 - `maxLength`: Truncate text to this length with ellipsis (default: unlimited)
+- `separateLine`: Always render on its own line below the main powerline (default: false)
 
-**Display:** `💬 Implement the session summary segment` or `Implement the session summary segment` (no icon)
+**Display:** `💬 Add session summary segment` or `Add session summary segment` (no icon)
 
 **Symbols:** `💬` Session summary (unicode) • `N` Session summary (text)
 
-**How it works:** First checks `sessions-index.json` for the session summary, then falls back to reading the first user message from the session transcript. System-injected content (command caveats, reminders) is automatically filtered out.
+**Resolution order:** The segment resolves the session name using the first available source:
+
+1. **Custom title** — name set via `/rename` command
+2. **Summary** — auto-generated summary from `sessions-index.json`
+3. **First prompt** — `firstPrompt` field from `sessions-index.json`
+4. **Transcript fallback** — first user message from the session transcript file
+
+System-injected content (command caveats, system reminders) is automatically filtered out.
 
 </details>
 
