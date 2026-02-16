@@ -26,6 +26,9 @@ export class SessionSummaryProvider {
     if (!sessionId) return null;
 
     try {
+      const customTitle = await this.findCustomTitleInTranscript(sessionId);
+      if (customTitle) return { name: customTitle, sessionId };
+
       const name = await this.findInSessionsIndex(sessionId);
       if (name) return { name, sessionId };
 
@@ -62,6 +65,32 @@ export class SessionSummaryProvider {
     }
 
     return null;
+  }
+
+  private async findCustomTitleInTranscript(sessionId: string): Promise<string | null> {
+    const transcriptPath = await findTranscriptFile(sessionId);
+    if (!transcriptPath) return null;
+
+    try {
+      const content = await readFile(transcriptPath, "utf-8");
+      let lastTitle: string | null = null;
+
+      for (const line of content.split("\n")) {
+        if (!line.includes('"custom-title"')) continue;
+        try {
+          const entry = JSON.parse(line);
+          if (entry.type === "custom-title" && entry.customTitle) {
+            lastTitle = entry.customTitle;
+          }
+        } catch {
+          // skip
+        }
+      }
+
+      return lastTitle;
+    } catch {
+      return null;
+    }
   }
 
   private async findFirstPromptInTranscript(sessionId: string): Promise<string | null> {
