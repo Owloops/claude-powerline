@@ -407,6 +407,30 @@ Configure context window limits for different model types. Defaults to 200K toke
 
 </details>
 
+<details>
+<summary><strong>Session Summary</strong> - Shows current session's summary or first user prompt</summary>
+
+```json
+"session-summary": {
+  "enabled": true,
+  "showIcon": false,
+  "maxLength": 50
+}
+```
+
+**Options:**
+
+- `showIcon`: Show the 💬 icon prefix (default: true)
+- `maxLength`: Truncate text to this length with ellipsis (default: unlimited)
+
+**Display:** `💬 Implement the session summary segment` or `Implement the session summary segment` (no icon)
+
+**Symbols:** `💬` Session summary (unicode) • `N` Session summary (text)
+
+**How it works:** First checks `sessions-index.json` for the session summary, then falls back to reading the first user message from the session transcript. System-injected content (command caveats, reminders) is automatically filtered out.
+
+</details>
+
 ### Budget Configuration
 
 ```json
