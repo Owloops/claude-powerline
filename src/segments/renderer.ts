@@ -35,7 +35,7 @@ export interface TmuxSegmentConfig extends SegmentConfig {}
 
 export interface ContextSegmentConfig extends SegmentConfig {
   showPercentageOnly?: boolean;
-  displayStyle?: "text" | "bar";
+  displayStyle?: "text" | "bar" | "blocks" | "squares" | "dots" | "line" | "capped" | "ball" | "filled" | "geometric";
 }
 
 export interface MetricsSegmentConfig extends SegmentConfig {
@@ -336,9 +336,32 @@ export class SegmentRenderer {
   ): SegmentData | null {
     const barLength = 10;
 
+    const BAR_STYLES: Record<string, { filled: string; empty: string; cap?: string; marker?: string }> = {
+      blocks:    { filled: "█", empty: "░" },
+      squares:   { filled: "◼", empty: "◻" },
+      dots:      { filled: "●", empty: "○" },
+      line:      { filled: "━", empty: "┄" },
+      capped:    { filled: "━", empty: "┄", cap: "╸" },
+      ball:      { filled: "─", empty: "─", marker: "●" },
+      filled:    { filled: "■", empty: "□" },
+      geometric: { filled: "▰", empty: "▱" },
+    };
+
+    const style = config?.displayStyle ?? "text";
+    const barStyle = style !== "text" && style !== "bar" && BAR_STYLES[style] ? style : null;
+
     if (!contextInfo) {
-      if (config?.displayStyle === "bar") {
+      if (style === "bar") {
         const emptyBar = this.symbols.bar_empty.repeat(barLength);
+        return {
+          text: `${emptyBar} 0%`,
+          bgColor: colors.contextBg,
+          fgColor: colors.contextFg,
+        };
+      }
+      if (barStyle) {
+        const s = BAR_STYLES[barStyle]!;
+        const emptyBar = s.empty.repeat(barLength);
         return {
           text: `${emptyBar} 0%`,
           bgColor: colors.contextBg,
@@ -363,11 +386,42 @@ export class SegmentRenderer {
       fgColor = colors.contextWarningFg;
     }
 
-    if (config?.displayStyle === "bar") {
+    if (style === "bar") {
       const usedPct = contextInfo.usablePercentage;
       const filledCount = Math.round((usedPct / 100) * barLength);
       const emptyCount = barLength - filledCount;
       const bar = this.symbols.bar_filled.repeat(filledCount) + this.symbols.bar_empty.repeat(emptyCount);
+
+      const text = config?.showPercentageOnly
+        ? `${bar} ${usedPct}%`
+        : `${bar} ${contextInfo.totalTokens.toLocaleString()} (${usedPct}%)`;
+
+      return { text, bgColor, fgColor };
+    }
+
+    if (barStyle) {
+      const s = BAR_STYLES[barStyle]!;
+      const usedPct = contextInfo.usablePercentage;
+      const filledCount = Math.round((usedPct / 100) * barLength);
+      const emptyCount = barLength - filledCount;
+
+      let bar: string;
+      if (s.marker) {
+        // "ball" style: all dashes with a marker at the filled position
+        const pos = Math.min(filledCount, barLength - 1);
+        bar = s.filled.repeat(pos) + s.marker + s.empty.repeat(barLength - pos - 1);
+      } else if (s.cap) {
+        // "capped" style: filled chars, cap at the boundary, then empty
+        if (filledCount === 0) {
+          bar = s.cap + s.empty.repeat(barLength - 1);
+        } else if (filledCount >= barLength) {
+          bar = s.filled.repeat(barLength);
+        } else {
+          bar = s.filled.repeat(filledCount - 1) + s.cap + s.empty.repeat(emptyCount);
+        }
+      } else {
+        bar = s.filled.repeat(filledCount) + s.empty.repeat(emptyCount);
+      }
 
       const text = config?.showPercentageOnly
         ? `${bar} ${usedPct}%`
