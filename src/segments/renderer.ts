@@ -35,7 +35,7 @@ export interface TmuxSegmentConfig extends SegmentConfig {}
 
 export interface ContextSegmentConfig extends SegmentConfig {
   showPercentageOnly?: boolean;
-  displayStyle?: "text" | "bar";
+  displayStyle?: "text" | "bar" | "blocks" | "squares" | "dots" | "line" | "capped" | "ball" | "filled" | "geometric";
 }
 
 export interface MetricsSegmentConfig extends SegmentConfig {
@@ -124,6 +124,24 @@ export interface SegmentData {
   bgColor: string;
   fgColor: string;
 }
+
+interface BarStyleDef {
+  filled: string;
+  empty: string;
+  cap?: string;
+  marker?: string;
+}
+
+const BAR_STYLES: Record<string, BarStyleDef> = {
+  blocks:    { filled: "█", empty: "░" },
+  squares:   { filled: "◼", empty: "◻" },
+  dots:      { filled: "●", empty: "○" },
+  line:      { filled: "━", empty: "┄" },
+  capped:    { filled: "━", empty: "┄", cap: "╸" },
+  ball:      { filled: "─", empty: "─", marker: "●" },
+  filled:    { filled: "■", empty: "□" },
+  geometric: { filled: "▰", empty: "▱" },
+};
 
 export class SegmentRenderer {
   constructor(
@@ -335,10 +353,15 @@ export class SegmentRenderer {
     config?: ContextSegmentConfig,
   ): SegmentData | null {
     const barLength = 10;
+    const style = config?.displayStyle ?? "text";
+
+    const barStyleDef = style === "bar"
+      ? { filled: this.symbols.bar_filled, empty: this.symbols.bar_empty } as BarStyleDef
+      : BAR_STYLES[style] ?? null;
 
     if (!contextInfo) {
-      if (config?.displayStyle === "bar") {
-        const emptyBar = this.symbols.bar_empty.repeat(barLength);
+      if (barStyleDef) {
+        const emptyBar = barStyleDef.empty.repeat(barLength);
         return {
           text: `${emptyBar} 0%`,
           bgColor: colors.contextBg,
@@ -363,11 +386,11 @@ export class SegmentRenderer {
       fgColor = colors.contextWarningFg;
     }
 
-    if (config?.displayStyle === "bar") {
+    if (barStyleDef) {
       const usedPct = contextInfo.usablePercentage;
       const filledCount = Math.round((usedPct / 100) * barLength);
       const emptyCount = barLength - filledCount;
-      const bar = this.symbols.bar_filled.repeat(filledCount) + this.symbols.bar_empty.repeat(emptyCount);
+      const bar = this.buildBar(barStyleDef, filledCount, emptyCount, barLength);
 
       const text = config?.showPercentageOnly
         ? `${bar} ${usedPct}%`
@@ -382,6 +405,23 @@ export class SegmentRenderer {
       : `${this.symbols.context_time} ${contextInfo.totalTokens.toLocaleString()} (${contextLeft})`;
 
     return { text, bgColor, fgColor };
+  }
+
+  private buildBar(s: BarStyleDef, filledCount: number, emptyCount: number, barLength: number): string {
+    if (s.marker) {
+      const pos = Math.min(filledCount, barLength - 1);
+      return s.filled.repeat(pos) + s.marker + s.empty.repeat(barLength - pos - 1);
+    }
+    if (s.cap) {
+      if (filledCount === 0) {
+        return s.cap + s.empty.repeat(barLength - 1);
+      }
+      if (filledCount >= barLength) {
+        return s.filled.repeat(barLength);
+      }
+      return s.filled.repeat(filledCount - 1) + s.cap + s.empty.repeat(emptyCount);
+    }
+    return s.filled.repeat(filledCount) + s.empty.repeat(emptyCount);
   }
 
   renderMetrics(

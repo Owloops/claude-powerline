@@ -286,15 +286,30 @@ Config files reload automatically and no restart needed.
 ```json
 "context": {
   "enabled": true,
-  "showPercentageOnly": false
+  "showPercentageOnly": false,
+  "displayStyle": "text"
 }
 ```
 
 **Options:**
 
 - `showPercentageOnly`: Show only percentage remaining (default: false)
+- `displayStyle`: Visual style for context display (default: `"text"`)
 
-**Display:** `◔ 34,040 (79%)` or `◔ 79%` (percentage only)
+**Display Styles:**
+
+| Style | Example | Description |
+|-------|---------|-------------|
+| `text` | `◔ 34,040 (79%)` | Text with token count (default) |
+| `bar` | `▪▪▪▪▫▫▫▫▫▫ 40%` | Bar using theme symbols |
+| `blocks` | `████░░░░░░ 40%` | Solid/shaded blocks |
+| `squares` | `◼◼◼◼◻◻◻◻◻◻ 40%` | Filled/empty squares |
+| `dots` | `●●●●○○○○○○ 40%` | Filled/empty circles |
+| `line` | `━━━━┄┄┄┄┄┄ 40%` | Thick/dashed line |
+| `capped` | `━━━╸┄┄┄┄┄┄ 40%` | Line with boundary cap |
+| `ball` | `───●────── 40%` | Position marker on a track |
+| `filled` | `■■■■□□□□□□ 40%` | Filled/empty squares (alt) |
+| `geometric` | `▰▰▰▰▱▱▱▱▱▱ 40%` | Geometric triangles |
 
 **Symbols:** `◔` Context (unicode) • `C` Context (text)
 
