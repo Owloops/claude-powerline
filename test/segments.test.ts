@@ -257,4 +257,124 @@ describe("Segment Time Logic", () => {
       expect(result?.text).toContain("v1.0.80");
     });
   });
+
+  describe("Context Segment Bar Styles", () => {
+    const config = { theme: "dark", display: { style: "minimal" } } as any;
+    const symbols = {
+      context_time: "◔",
+      bar_filled: "▪",
+      bar_empty: "▫",
+    } as any;
+    const colors = {
+      contextBg: "#1e1e2e",
+      contextFg: "#cdd6f4",
+      contextWarningBg: "#92400e",
+      contextWarningFg: "#fbbf24",
+      contextCriticalBg: "#991b1b",
+      contextCriticalFg: "#fca5a5",
+    } as any;
+
+    const mkContext = (usedPct: number) => ({
+      totalTokens: usedPct * 2000,
+      percentage: usedPct,
+      usablePercentage: usedPct,
+      contextLeftPercentage: 100 - usedPct,
+      maxTokens: 200000,
+      usableTokens: (100 - usedPct) * 2000,
+    });
+
+    let renderer: SegmentRenderer;
+
+    beforeEach(() => {
+      renderer = new SegmentRenderer(config, symbols);
+    });
+
+    it("should render text style by default and fall back to text on null context", () => {
+      const result = renderer.renderContext(mkContext(50), colors);
+      expect(result!.text).toContain("◔");
+      expect(result!.text).toContain("50%");
+
+      const nullResult = renderer.renderContext(null, colors);
+      expect(nullResult!.text).toMatch(/◔.*0.*100%/);
+    });
+
+    it("should use bar_filled/bar_empty symbols for 'bar' style and BAR_STYLES chars for custom styles", () => {
+      const bar = renderer.renderContext(mkContext(50), colors, { enabled: true, displayStyle: "bar" });
+      expect(bar!.text).toContain("▪");
+      expect(bar!.text).toContain("▫");
+
+      const blocks = renderer.renderContext(mkContext(50), colors, { enabled: true, displayStyle: "blocks" });
+      expect(blocks!.text).toContain("█");
+      expect(blocks!.text).toContain("░");
+    });
+
+    it("should render all standard styles with 10-char bars and correct fill/empty", () => {
+      const styles: Array<{ name: "blocks" | "squares" | "dots" | "line" | "filled" | "geometric"; filled: string; empty: string }> = [
+        { name: "blocks", filled: "█", empty: "░" },
+        { name: "squares", filled: "◼", empty: "◻" },
+        { name: "dots", filled: "●", empty: "○" },
+        { name: "line", filled: "━", empty: "┄" },
+        { name: "filled", filled: "■", empty: "□" },
+        { name: "geometric", filled: "▰", empty: "▱" },
+      ];
+
+      for (const { name, filled, empty } of styles) {
+        const result = renderer.renderContext(mkContext(50), colors, { enabled: true, displayStyle: name });
+        const barPart = result!.text.split(" ")[0]!;
+        expect(barPart).toHaveLength(10);
+        expect(barPart).toContain(filled);
+        expect(barPart).toContain(empty);
+      }
+    });
+
+    it("should handle capped style edge cases: 0%, mid, and 100%", () => {
+      const at0 = renderer.renderContext(mkContext(0), colors, { enabled: true, displayStyle: "capped" });
+      expect(at0!.text).toMatch(/^╸┄{9}/);
+
+      const at50 = renderer.renderContext(mkContext(50), colors, { enabled: true, displayStyle: "capped" });
+      expect(at50!.text).toContain("━");
+      expect(at50!.text).toContain("╸");
+      expect(at50!.text).toContain("┄");
+
+      const at100 = renderer.renderContext(mkContext(100), colors, { enabled: true, displayStyle: "capped" });
+      expect(at100!.text).toMatch(/^━{10}/);
+    });
+
+    it("should render ball style with exactly one position marker", () => {
+      const result = renderer.renderContext(mkContext(50), colors, { enabled: true, displayStyle: "ball" });
+      const barPart = result!.text.split(" ")[0]!;
+      expect(barPart).toHaveLength(10);
+      expect((barPart.match(/●/g) || []).length).toBe(1);
+    });
+
+    it("should render empty bars on null context and text fallback for text style", () => {
+      const barNull = renderer.renderContext(null, colors, { enabled: true, displayStyle: "squares" });
+      expect(barNull!.text).toContain("◻".repeat(10));
+      expect(barNull!.text).toContain("0%");
+
+      const textNull = renderer.renderContext(null, colors, { enabled: true, displayStyle: "text" });
+      expect(textNull!.text).toContain("◔");
+    });
+
+    it("should apply warning/critical colors based on context left percentage", () => {
+      const warning = renderer.renderContext(mkContext(70), colors, { enabled: true, displayStyle: "blocks" });
+      expect(warning!.bgColor).toBe(colors.contextWarningBg);
+
+      const critical = renderer.renderContext(mkContext(90), colors, { enabled: true, displayStyle: "blocks" });
+      expect(critical!.bgColor).toBe(colors.contextCriticalBg);
+
+      const normal = renderer.renderContext(mkContext(50), colors, { enabled: true, displayStyle: "blocks" });
+      expect(normal!.bgColor).toBe(colors.contextBg);
+    });
+
+    it("should toggle token count display with showPercentageOnly", () => {
+      const withTokens = renderer.renderContext(mkContext(50), colors, { enabled: true, displayStyle: "blocks" });
+      expect(withTokens!.text).toContain((100000).toLocaleString());
+      expect(withTokens!.text).toContain("50%");
+
+      const pctOnly = renderer.renderContext(mkContext(50), colors, { enabled: true, displayStyle: "blocks", showPercentageOnly: true });
+      expect(pctOnly!.text).toContain("50%");
+      expect(pctOnly!.text).not.toContain((100000).toLocaleString());
+    });
+  });
 });
