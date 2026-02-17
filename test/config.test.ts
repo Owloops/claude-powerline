@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import os from "node:os";
+import path from "node:path";
 import { DEFAULT_CONFIG } from "../src/config/defaults";
 import { loadConfig, loadConfigFromCLI } from "../src/config/loader";
 
@@ -34,7 +35,7 @@ describe("config", () => {
     it("should merge project config over defaults", () => {
       const projectConfig = { theme: "dark" };
       mockFs.existsSync.mockImplementation(
-        (path) => path === "/project/.claude-powerline.json"
+        (p) => p === path.join("/project", ".claude-powerline.json")
       );
       mockFs.readFileSync.mockReturnValue(JSON.stringify(projectConfig));
 
@@ -201,7 +202,7 @@ describe("config", () => {
 
     it("should prioritize CLI over environment over file", () => {
       mockFs.existsSync.mockImplementation(
-        (path) => path === "/project/.claude-powerline.json"
+        (p) => p === path.join("/project", ".claude-powerline.json")
       );
       mockFs.readFileSync.mockReturnValue(
         JSON.stringify({ theme: "light", display: { style: "minimal" } })
@@ -229,7 +230,7 @@ describe("config", () => {
     it("should fallback invalid theme in config file to dark", () => {
       const consoleSpy = jest.spyOn(console, "warn").mockImplementation();
       mockFs.existsSync.mockImplementation(
-        (path) => path === "/project/.claude-powerline.json"
+        (p) => p === path.join("/project", ".claude-powerline.json")
       );
       mockFs.readFileSync.mockReturnValue(
         JSON.stringify({ theme: "invalid-theme" })
@@ -246,7 +247,7 @@ describe("config", () => {
     it("should fallback invalid style in config file to minimal", () => {
       const consoleSpy = jest.spyOn(console, "warn").mockImplementation();
       mockFs.existsSync.mockImplementation(
-        (path) => path === "/project/.claude-powerline.json"
+        (p) => p === path.join("/project", ".claude-powerline.json")
       );
       mockFs.readFileSync.mockReturnValue(
         JSON.stringify({ display: { style: "invalid-style" } })
@@ -262,7 +263,7 @@ describe("config", () => {
 
     it("should accept capsule style in config file", () => {
       mockFs.existsSync.mockImplementation(
-        (path) => path === "/project/.claude-powerline.json"
+        (p) => p === path.join("/project", ".claude-powerline.json")
       );
       mockFs.readFileSync.mockReturnValue(
         JSON.stringify({ display: { style: "capsule" } })
