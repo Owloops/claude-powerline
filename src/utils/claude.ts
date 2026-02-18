@@ -356,10 +356,61 @@ async function parseJsonlFileStreaming(
   });
 }
 
+type FileStat = { filePath: string; mtime: Date };
+
+async function statFile(filePath: string): Promise<FileStat | null> {
+  try {
+    const mtime = await getFileModificationDate(filePath);
+    return mtime ? { filePath, mtime } : null;
+  } catch {
+    return null;
+  }
+}
+
+async function collectProjectFiles(
+  projectPath: string,
+  fileFilter?: (filePath: string, modTime: Date) => boolean
+): Promise<FileStat[]> {
+  try {
+    const entries = await readdir(projectPath, { withFileTypes: true });
+
+    const sessionFiles = entries
+      .filter((e) => !e.isDirectory() && e.name.endsWith(".jsonl"))
+      .map((e) => statFile(posix.join(projectPath, e.name)));
+
+    const subagentFiles = entries
+      .filter((e) => e.isDirectory())
+      .map(async (e) => {
+        const subagentsDir = posix.join(projectPath, e.name, "subagents");
+        try {
+          const files = await readdir(subagentsDir);
+          return files
+            .filter((f) => f.startsWith("agent-") && f.endsWith(".jsonl"))
+            .map((f) => statFile(posix.join(subagentsDir, f)));
+        } catch {
+          return [];
+        }
+      });
+
+    const [sessionResults, subagentResults] = await Promise.all([
+      Promise.all(sessionFiles),
+      Promise.all(subagentFiles).then((nested) => Promise.all(nested.flat())),
+    ]);
+
+    return [...sessionResults, ...subagentResults].filter(
+      (s): s is FileStat =>
+        s !== null && (!fileFilter || fileFilter(s.filePath, s.mtime))
+    );
+  } catch (dirError) {
+    debug(`Failed to read project directory ${projectPath}:`, dirError);
+    return [];
+  }
+}
+
 /**
  * Loads entries from Claude projects with deterministic deduplication.
  * @param timeFilter Optional filter to apply based on timestamp
- * @param fileFilter Optional filter to apply based on file path and modification time  
+ * @param fileFilter Optional filter to apply based on file path and modification time
  * @param sortFiles Whether to sort files by modification time
  * @returns Deduplicated entries sorted by timestamp
  * @note Sorts entries by timestamp before deduplication to ensure consistent
@@ -375,30 +426,9 @@ export async function loadEntriesFromProjects(
   const projectPaths = await findProjectPaths(claudePaths);
   const processedHashes = new Set<string>();
 
-  const allFilesPromises = projectPaths.map(async (projectPath) => {
-    try {
-      const files = await readdir(projectPath);
-      const jsonlFiles = files.filter((file) => file.endsWith(".jsonl"));
-
-      const fileStatsPromises = jsonlFiles.map(async (file) => {
-        const filePath = posix.join(projectPath, file);
-        if (existsSync(filePath)) {
-          const mtime = await getFileModificationDate(filePath);
-          return { filePath, mtime };
-        }
-        return null;
-      });
-
-      const fileStats = await Promise.all(fileStatsPromises);
-      return fileStats.filter(
-        (stat) =>
-          stat?.mtime && (!fileFilter || fileFilter(stat.filePath, stat.mtime))
-      );
-    } catch (dirError) {
-      debug(`Failed to read project directory ${projectPath}:`, dirError);
-      return [];
-    }
-  });
+  const allFilesPromises = projectPaths.map((projectPath) =>
+    collectProjectFiles(projectPath, fileFilter)
+  );
 
   const allFileResults = await Promise.all(allFilesPromises);
   const allFilesWithMtime = allFileResults
