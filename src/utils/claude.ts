@@ -120,12 +120,14 @@ export async function findAgentTranscripts(
 ): Promise<string[]> {
   const agentFiles: string[] = [];
 
+  const subagentsDir = posix.join(projectPath, sessionId, "subagents");
+
   try {
-    const files = await readdir(projectPath);
+    const files = await readdir(subagentsDir);
     const agentFileNames = files.filter((f) => f.startsWith("agent-") && f.endsWith(".jsonl"));
 
     for (const fileName of agentFileNames) {
-      const filePath = posix.join(projectPath, fileName);
+      const filePath = posix.join(subagentsDir, fileName);
       try {
         const content = await readFile(filePath, "utf-8");
         const firstLine = content.split("\n")[0];
@@ -140,7 +142,7 @@ export async function findAgentTranscripts(
       }
     }
   } catch (error) {
-    debug(`Failed to read project directory ${projectPath}:`, error);
+    debug(`Failed to read subagents directory ${subagentsDir}:`, error);
   }
 
   return agentFiles;
