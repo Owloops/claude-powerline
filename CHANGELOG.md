@@ -1,3 +1,17 @@
+# [1.17.0](https://github.com/Owloops/claude-powerline/compare/v1.16.1...v1.17.0) (2026-02-18)
+
+
+### Bug Fixes
+
+* check both ~/.config/claude and ~/.claude paths independently ([#51](https://github.com/Owloops/claude-powerline/issues/51)) ([7b8e031](https://github.com/Owloops/claude-powerline/commit/7b8e031216fc44628db4be2c9016e45eff6a68cc)), closes [#47](https://github.com/Owloops/claude-powerline/issues/47)
+* **ci:** use GH_TOKEN to bypass branch protection for automated pushes ([#55](https://github.com/Owloops/claude-powerline/issues/55)) ([fcf6619](https://github.com/Owloops/claude-powerline/commit/fcf661922532831209617362435d3113f02c1a42))
+* **tests:** use path.join in config test mocks for cross-platform compat ([#52](https://github.com/Owloops/claude-powerline/issues/52)) ([36e2f72](https://github.com/Owloops/claude-powerline/commit/36e2f72e6f0a1332d42ee912842ad6445b75c691))
+
+
+### Features
+
+* **context:** add 8 bar display styles for context segment ([01aaa74](https://github.com/Owloops/claude-powerline/commit/01aaa746b18bc5af3070fa24895696e2eb98267e))
+
 ## [1.16.1](https://github.com/Owloops/claude-powerline/compare/v1.16.0...v1.16.1) (2026-01-15)
 
 
