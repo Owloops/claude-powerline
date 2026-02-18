@@ -62,7 +62,8 @@ export function getClaudePaths(): string[] {
 
     if (existsSync(configPath)) {
       paths.push(configPath);
-    } else if (existsSync(claudePath)) {
+    }
+    if (existsSync(claudePath)) {
       paths.push(claudePath);
     }
   }
