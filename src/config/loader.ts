@@ -13,6 +13,7 @@ import type {
   MetricsSegmentConfig,
   BlockSegmentConfig,
   TodaySegmentConfig,
+  SessionSummarySegmentConfig,
   VersionSegmentConfig,
 } from "../segments/renderer";
 
@@ -27,6 +28,7 @@ export interface LineConfig {
     tmux?: TmuxSegmentConfig;
     context?: ContextSegmentConfig;
     metrics?: MetricsSegmentConfig;
+    "session-summary"?: SessionSummarySegmentConfig;
     version?: VersionSegmentConfig;
   };
 }

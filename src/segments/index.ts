@@ -9,6 +9,7 @@ export {
 } from "./session";
 export { ContextProvider, ContextInfo } from "./context";
 export { MetricsProvider, MetricsInfo } from "./metrics";
+export { SessionSummaryProvider, SessionSummaryInfo } from "./session-summary";
 export {
   SegmentRenderer,
   PowerlineSymbols,
@@ -20,5 +21,6 @@ export {
   MetricsSegmentConfig,
   BlockSegmentConfig,
   TodaySegmentConfig,
+  SessionSummarySegmentConfig,
   VersionSegmentConfig,
 } from "./renderer";

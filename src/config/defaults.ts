@@ -30,6 +30,7 @@ export const DEFAULT_CONFIG: PowerlineConfig = {
           session: { enabled: true, type: "tokens", costSource: "calculated" },
           today: { enabled: true, type: "cost" },
           block: { enabled: false, type: "cost", burnType: "cost" },
+          "session-summary": { enabled: false },
           version: { enabled: false },
           tmux: { enabled: false },
           context: { enabled: true, showPercentageOnly: false, displayStyle: "text" },

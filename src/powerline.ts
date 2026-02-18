@@ -28,6 +28,9 @@ import {
   MetricsSegmentConfig,
   BlockSegmentConfig,
   TodaySegmentConfig,
+  SessionSummarySegmentConfig,
+  SessionSummaryProvider,
+  SessionSummaryInfo,
   VersionSegmentConfig,
 } from "./segments";
 import { BlockProvider, BlockInfo } from "./segments/block";
@@ -51,6 +54,7 @@ export class PowerlineRenderer {
   private _gitService?: GitService;
   private _tmuxService?: TmuxService;
   private _metricsProvider?: MetricsProvider;
+  private _sessionSummaryProvider?: SessionSummaryProvider;
   private _segmentRenderer?: SegmentRenderer;
 
   constructor(private readonly config: PowerlineConfig) {
@@ -106,6 +110,13 @@ export class PowerlineRenderer {
     return this._metricsProvider;
   }
 
+  private get sessionSummaryProvider(): SessionSummaryProvider {
+    if (!this._sessionSummaryProvider) {
+      this._sessionSummaryProvider = new SessionSummaryProvider();
+    }
+    return this._sessionSummaryProvider;
+  }
+
   private get segmentRenderer(): SegmentRenderer {
     if (!this._segmentRenderer) {
       this._segmentRenderer = new SegmentRenderer(this.config, this.symbols);
@@ -140,15 +151,22 @@ export class PowerlineRenderer {
       ? await this.metricsProvider.getMetricsInfo(hookData.session_id, hookData)
       : null;
 
+    const sessionSummaryInfo = this.needsSegmentInfo("session-summary")
+      ? await this.sessionSummaryProvider.getSessionSummaryInfo(hookData)
+      : null;
+
     if (this.config.display.autoWrap) {
-      return this.generateAutoWrapStatusline(
+      const main = await this.generateAutoWrapStatusline(
         hookData,
         usageInfo,
         blockInfo,
         todayInfo,
         contextInfo,
-        metricsInfo
+        metricsInfo,
+        sessionSummaryInfo
       );
+      const separate = this.renderSeparateSessionSummary(sessionSummaryInfo);
+      return separate ? `${main}\n${separate}` : main;
     }
 
     const lines = await Promise.all(
@@ -160,12 +178,15 @@ export class PowerlineRenderer {
           blockInfo,
           todayInfo,
           contextInfo,
-          metricsInfo
+          metricsInfo,
+          sessionSummaryInfo
         )
       )
     );
 
-    return lines.filter((line) => line.length > 0).join("\n");
+    const main = lines.filter((line) => line.length > 0).join("\n");
+    const separate = this.renderSeparateSessionSummary(sessionSummaryInfo);
+    return separate ? `${main}\n${separate}` : main;
   }
 
   private async generateAutoWrapStatusline(
@@ -174,7 +195,8 @@ export class PowerlineRenderer {
     blockInfo: BlockInfo | null,
     todayInfo: TodayInfo | null,
     contextInfo: ContextInfo | null,
-    metricsInfo: MetricsInfo | null
+    metricsInfo: MetricsInfo | null,
+    sessionSummaryInfo: SessionSummaryInfo | null
   ): Promise<string> {
     const colors = this.getThemeColors();
     const currentDir = hookData.workspace?.current_dir || hookData.cwd || "/";
@@ -199,6 +221,7 @@ export class PowerlineRenderer {
           todayInfo,
           contextInfo,
           metricsInfo,
+          sessionSummaryInfo,
           colors,
           currentDir
         );
@@ -297,7 +320,8 @@ export class PowerlineRenderer {
     blockInfo: BlockInfo | null,
     todayInfo: TodayInfo | null,
     contextInfo: ContextInfo | null,
-    metricsInfo: MetricsInfo | null
+    metricsInfo: MetricsInfo | null,
+    sessionSummaryInfo: SessionSummaryInfo | null
   ): Promise<string> {
     const colors = this.getThemeColors();
     const currentDir = hookData.workspace?.current_dir || hookData.cwd || "/";
@@ -318,6 +342,7 @@ export class PowerlineRenderer {
         todayInfo,
         contextInfo,
         metricsInfo,
+        sessionSummaryInfo,
         colors,
         currentDir
       );
@@ -343,6 +368,7 @@ export class PowerlineRenderer {
     todayInfo: TodayInfo | null,
     contextInfo: ContextInfo | null,
     metricsInfo: MetricsInfo | null,
+    sessionSummaryInfo: SessionSummaryInfo | null,
     colors: PowerlineColors,
     currentDir: string
   ) {
@@ -408,6 +434,16 @@ export class PowerlineRenderer {
         segment.config as TodaySegmentConfig,
         todayInfo,
         colors
+      );
+    }
+
+    if (segment.type === "session-summary") {
+      const summaryConfig = segment.config as SessionSummarySegmentConfig;
+      if (summaryConfig.separateLine) return null;
+      return this.segmentRenderer.renderSessionSummary(
+        sessionSummaryInfo,
+        colors,
+        summaryConfig
       );
     }
 
@@ -515,6 +551,35 @@ export class PowerlineRenderer {
     return this.segmentRenderer.renderVersion(hookData, colors, config);
   }
 
+  private renderSeparateSessionSummary(
+    sessionSummaryInfo: SessionSummaryInfo | null
+  ): string | null {
+    const summaryConfig = this.getSessionSummaryConfig();
+    if (!summaryConfig?.enabled || !summaryConfig.separateLine) return null;
+    if (!sessionSummaryInfo) return null;
+
+    const colors = this.getThemeColors();
+    const segmentData = this.segmentRenderer.renderSessionSummary(
+      sessionSummaryInfo,
+      colors,
+      summaryConfig
+    );
+    if (!segmentData) return null;
+
+    return this.buildLineFromSegments(
+      [{ type: "session-summary", text: segmentData.text, bgColor: segmentData.bgColor, fgColor: segmentData.fgColor }],
+      colors
+    );
+  }
+
+  private getSessionSummaryConfig(): SessionSummarySegmentConfig | null {
+    for (const line of this.config.display.lines) {
+      const config = line.segments["session-summary"];
+      if (config) return config;
+    }
+    return null;
+  }
+
   private initializeSymbols(): PowerlineSymbols {
     const style = this.config.display.style;
     const charset = this.config.display.charset || "unicode";
@@ -549,6 +614,7 @@ export class PowerlineRenderer {
       metrics_lines_added: symbolSet.metrics_lines_added,
       metrics_lines_removed: symbolSet.metrics_lines_removed,
       metrics_burn: symbolSet.metrics_burn,
+      session_summary: symbolSet.session_summary,
       version: symbolSet.version,
       bar_filled: symbolSet.bar_filled,
       bar_empty: symbolSet.bar_empty,
@@ -618,6 +684,7 @@ export class PowerlineRenderer {
     const contextWarning = getSegmentColors("contextWarning");
     const contextCritical = getSegmentColors("contextCritical");
     const metrics = getSegmentColors("metrics");
+    const sessionSummary = getSegmentColors("sessionSummary");
     const version = getSegmentColors("version");
 
     return {
@@ -644,6 +711,8 @@ export class PowerlineRenderer {
       contextCriticalFg: contextCritical.fg,
       metricsBg: metrics.bg,
       metricsFg: metrics.fg,
+      sessionSummaryBg: sessionSummary.bg,
+      sessionSummaryFg: sessionSummary.fg,
       versionBg: version.bg,
       versionFg: version.fg,
     };
@@ -672,6 +741,8 @@ export class PowerlineRenderer {
         return colors.contextBg;
       case "metrics":
         return colors.metricsBg;
+      case "session-summary":
+        return colors.sessionSummaryBg;
       case "version":
         return colors.versionBg;
       default:

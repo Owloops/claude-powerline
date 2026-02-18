@@ -422,6 +422,39 @@ Configure context window limits for different model types. Defaults to 200K toke
 
 </details>
 
+<details>
+<summary><strong>Session Summary</strong> - Shows current session's name, summary, or first user prompt</summary>
+
+```json
+"session-summary": {
+  "enabled": true,
+  "showIcon": false,
+  "maxLength": 50,
+  "separateLine": true
+}
+```
+
+**Options:**
+
+- `showIcon`: Show the 💬 icon prefix (default: true)
+- `maxLength`: Truncate text to this length with ellipsis (default: unlimited)
+- `separateLine`: Always render on its own line below the main powerline (default: false)
+
+**Display:** `💬 Add session summary segment` or `Add session summary segment` (no icon)
+
+**Symbols:** `💬` Session summary (unicode) • `N` Session summary (text)
+
+**Resolution order:** The segment resolves the session name using the first available source:
+
+1. **Custom title** — name set via `/rename` command
+2. **Summary** — auto-generated summary from `sessions-index.json`
+3. **First prompt** — `firstPrompt` field from `sessions-index.json`
+4. **Transcript fallback** — first user message from the session transcript file
+
+System-injected content (command caveats, system reminders) is automatically filtered out.
+
+</details>
+
 ### Budget Configuration
 
 ```json
