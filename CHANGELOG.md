@@ -1,3 +1,10 @@
+## [1.17.2](https://github.com/Owloops/claude-powerline/compare/v1.17.1...v1.17.2) (2026-02-18)
+
+
+### Bug Fixes
+
+* **usage:** include subagent tokens in usage calculations ([#56](https://github.com/Owloops/claude-powerline/issues/56)) ([181b045](https://github.com/Owloops/claude-powerline/commit/181b04546d9a8535c39af600447209544f402f2c))
+
 ## [1.17.1](https://github.com/Owloops/claude-powerline/compare/v1.17.0...v1.17.1) (2026-02-18)
 
 
