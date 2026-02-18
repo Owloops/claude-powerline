@@ -1,3 +1,10 @@
+## [1.17.1](https://github.com/Owloops/claude-powerline/compare/v1.17.0...v1.17.1) (2026-02-18)
+
+
+### Bug Fixes
+
+* **session:** look in <session-uuid>/subagents/ for agent transcripts ([#54](https://github.com/Owloops/claude-powerline/issues/54)) ([2c3cb27](https://github.com/Owloops/claude-powerline/commit/2c3cb277bb8922fd9bdee3848282d739bb08b346)), closes [#53](https://github.com/Owloops/claude-powerline/issues/53)
+
 # [1.17.0](https://github.com/Owloops/claude-powerline/compare/v1.16.1...v1.17.0) (2026-02-18)
 
 
