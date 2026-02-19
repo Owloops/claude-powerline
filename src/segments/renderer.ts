@@ -35,7 +35,7 @@ export interface TmuxSegmentConfig extends SegmentConfig {}
 
 export interface ContextSegmentConfig extends SegmentConfig {
   showPercentageOnly?: boolean;
-  displayStyle?: "text" | "ball" | "bar" | "blocks" | "capped" | "dots" | "filled" | "geometric" | "line" | "squares";
+  displayStyle?: "text" | "ball" | "bar" | "blocks" | "blocks-line" | "capped" | "dots" | "emoji" | "filled" | "geometric" | "line" | "mono" | "mono-dot" | "squares";
 }
 
 export interface MetricsSegmentConfig extends SegmentConfig {
@@ -133,14 +133,18 @@ interface BarStyleDef {
 }
 
 const BAR_STYLES: Record<string, BarStyleDef> = {
-  ball:      { filled: "─", empty: "─", marker: "●" },
-  blocks:    { filled: "█", empty: "░" },
-  capped:    { filled: "━", empty: "┄", cap: "╸" },
-  dots:      { filled: "●", empty: "○" },
-  filled:    { filled: "■", empty: "□" },
-  geometric: { filled: "▰", empty: "▱" },
-  line:      { filled: "━", empty: "┄" },
-  squares:   { filled: "◼", empty: "◻" },
+  ball:          { filled: "─", empty: "─", marker: "●" },
+  blocks:        { filled: "█", empty: "░" },
+  "blocks-line": { filled: "█", empty: "─" },
+  capped:        { filled: "━", empty: "┄", cap: "╸" },
+  dots:          { filled: "●", empty: "○" },
+  emoji:         { filled: "🟩", empty: "⬛" },
+  filled:        { filled: "■", empty: "□" },
+  geometric:     { filled: "▰", empty: "▱" },
+  line:          { filled: "━", empty: "┄" },
+  mono:          { filled: "⬜", empty: "─" },
+  "mono-dot":    { filled: "⬜", empty: "•" },
+  squares:       { filled: "◼", empty: "◻" },
 };
 
 export class SegmentRenderer {
