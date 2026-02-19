@@ -35,7 +35,7 @@ export interface TmuxSegmentConfig extends SegmentConfig {}
 
 export interface ContextSegmentConfig extends SegmentConfig {
   showPercentageOnly?: boolean;
-  displayStyle?: "text" | "bar" | "blocks" | "squares" | "dots" | "line" | "capped" | "ball" | "filled" | "geometric";
+  displayStyle?: "text" | "ball" | "bar" | "blocks" | "capped" | "dots" | "filled" | "geometric" | "line" | "squares";
 }
 
 export interface MetricsSegmentConfig extends SegmentConfig {
@@ -133,14 +133,14 @@ interface BarStyleDef {
 }
 
 const BAR_STYLES: Record<string, BarStyleDef> = {
-  blocks:    { filled: "█", empty: "░" },
-  squares:   { filled: "◼", empty: "◻" },
-  dots:      { filled: "●", empty: "○" },
-  line:      { filled: "━", empty: "┄" },
-  capped:    { filled: "━", empty: "┄", cap: "╸" },
   ball:      { filled: "─", empty: "─", marker: "●" },
+  blocks:    { filled: "█", empty: "░" },
+  capped:    { filled: "━", empty: "┄", cap: "╸" },
+  dots:      { filled: "●", empty: "○" },
   filled:    { filled: "■", empty: "□" },
   geometric: { filled: "▰", empty: "▱" },
+  line:      { filled: "━", empty: "┄" },
+  squares:   { filled: "◼", empty: "◻" },
 };
 
 export class SegmentRenderer {

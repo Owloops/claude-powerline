@@ -298,18 +298,18 @@ Config files reload automatically and no restart needed.
 
 **Display Styles:**
 
-| Style | Example | Description |
-|-------|---------|-------------|
-| `text` | `◔ 34,040 (79%)` | Text with token count (default) |
-| `bar` | `▪▪▪▪▫▫▫▫▫▫ 40%` | Bar using theme symbols |
-| `blocks` | `████░░░░░░ 40%` | Solid/shaded blocks |
-| `squares` | `◼◼◼◼◻◻◻◻◻◻ 40%` | Filled/empty squares |
-| `dots` | `●●●●○○○○○○ 40%` | Filled/empty circles |
-| `line` | `━━━━┄┄┄┄┄┄ 40%` | Thick/dashed line |
-| `capped` | `━━━╸┄┄┄┄┄┄ 40%` | Line with boundary cap |
-| `ball` | `───●────── 40%` | Position marker on a track |
-| `filled` | `■■■■□□□□□□ 40%` | Filled/empty squares (alt) |
-| `geometric` | `▰▰▰▰▱▱▱▱▱▱ 40%` | Geometric triangles |
+| Style | Filled | Empty | Example |
+|-------|--------|-------|---------|
+| `text` | — | — | `◔ 34,040 (79%)` |
+| `ball` | ─ | ─ | `─────●──── 50%` |
+| `bar` | ▓ | ░ | `▓▓▓▓▓░░░░░ 50%` |
+| `blocks` | █ | ░ | `█████░░░░░ 50%` |
+| `capped` | ━ | ┄ | `━━━━╸┄┄┄┄┄ 50%` |
+| `dots` | ● | ○ | `●●●●●○○○○○ 50%` |
+| `filled` | ■ | □ | `■■■■■□□□□□ 50%` |
+| `geometric` | ▰ | ▱ | `▰▰▰▰▰▱▱▱▱▱ 50%` |
+| `line` | ━ | ┄ | `━━━━━┄┄┄┄┄ 50%` |
+| `squares` | ◼ | ◻ | `◼◼◼◼◼◻◻◻◻◻ 50%` |
 
 **Symbols:** `◔` Context (unicode) • `C` Context (text)
 
