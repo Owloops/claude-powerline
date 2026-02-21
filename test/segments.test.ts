@@ -258,6 +258,74 @@ describe("Segment Time Logic", () => {
     });
   });
 
+  describe("Env Segment", () => {
+    const config = { theme: "dark", display: { style: "minimal" } } as any;
+    const symbols = { env: "⚙" } as any;
+    const colors = { envBg: "#2d2d3d", envFg: "#d0a0d0" } as any;
+
+    let renderer: SegmentRenderer;
+
+    beforeEach(() => {
+      renderer = new SegmentRenderer(config, symbols);
+    });
+
+    afterEach(() => {
+      delete process.env.TEST_ENV_SEGMENT;
+    });
+
+    it("should return null when env var is unset", () => {
+      delete process.env.TEST_ENV_SEGMENT;
+      const result = renderer.renderEnv(colors, {
+        enabled: true,
+        variable: "TEST_ENV_SEGMENT",
+      });
+      expect(result).toBeNull();
+    });
+
+    it("should return null when env var is empty string", () => {
+      process.env.TEST_ENV_SEGMENT = "";
+      const result = renderer.renderEnv(colors, {
+        enabled: true,
+        variable: "TEST_ENV_SEGMENT",
+      });
+      expect(result).toBeNull();
+    });
+
+    it("should render with variable name as default prefix", () => {
+      process.env.TEST_ENV_SEGMENT = "my-value";
+      const result = renderer.renderEnv(colors, {
+        enabled: true,
+        variable: "TEST_ENV_SEGMENT",
+      });
+      expect(result).not.toBeNull();
+      expect(result!.text).toBe("⚙ TEST_ENV_SEGMENT: my-value");
+      expect(result!.bgColor).toBe(colors.envBg);
+      expect(result!.fgColor).toBe(colors.envFg);
+    });
+
+    it("should render with custom prefix", () => {
+      process.env.TEST_ENV_SEGMENT = "work-org";
+      const result = renderer.renderEnv(colors, {
+        enabled: true,
+        variable: "TEST_ENV_SEGMENT",
+        prefix: "Acct",
+      });
+      expect(result).not.toBeNull();
+      expect(result!.text).toBe("⚙ Acct: work-org");
+    });
+
+    it("should render without prefix or colon when prefix is empty string", () => {
+      process.env.TEST_ENV_SEGMENT = "work-org";
+      const result = renderer.renderEnv(colors, {
+        enabled: true,
+        variable: "TEST_ENV_SEGMENT",
+        prefix: "",
+      });
+      expect(result).not.toBeNull();
+      expect(result!.text).toBe("⚙ work-org");
+    });
+  });
+
   describe("Context Segment Bar Styles", () => {
     const config = { theme: "dark", display: { style: "minimal" } } as any;
     const symbols = {
