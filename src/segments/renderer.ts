@@ -58,6 +58,11 @@ export interface TodaySegmentConfig extends SegmentConfig {
 
 export interface VersionSegmentConfig extends SegmentConfig {}
 
+export interface EnvSegmentConfig extends SegmentConfig {
+  variable: string;
+  prefix?: string;
+}
+
 export type AnySegmentConfig =
   | SegmentConfig
   | DirectorySegmentConfig
@@ -68,7 +73,8 @@ export type AnySegmentConfig =
   | MetricsSegmentConfig
   | BlockSegmentConfig
   | TodaySegmentConfig
-  | VersionSegmentConfig;
+  | VersionSegmentConfig
+  | EnvSegmentConfig;
 
 import {
   formatCost,
@@ -117,6 +123,7 @@ export interface PowerlineSymbols {
   version: string;
   bar_filled: string;
   bar_empty: string;
+  env: string;
 }
 
 export interface SegmentData {
@@ -777,5 +784,18 @@ export class SegmentRenderer {
       bgColor: colors.versionBg,
       fgColor: colors.versionFg,
     };
+  }
+
+  renderEnv(
+    colors: PowerlineColors,
+    config: EnvSegmentConfig,
+  ): SegmentData | null {
+    const value = process.env[config.variable];
+    if (!value) return null;
+    const prefix = config.prefix ?? config.variable;
+    const text = prefix
+      ? `${this.symbols.env} ${prefix}: ${value}`
+      : `${this.symbols.env} ${value}`;
+    return { text, bgColor: colors.envBg, fgColor: colors.envFg };
   }
 }

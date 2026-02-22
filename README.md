@@ -422,6 +422,28 @@ Configure context window limits for different model types. Defaults to 200K toke
 
 </details>
 
+<details>
+<summary><strong>Env</strong> - Shows the value of an environment variable</summary>
+
+```json
+"env": {
+  "enabled": true,
+  "variable": "CLAUDE_ACCOUNT",
+  "prefix": "Acct"
+}
+```
+
+**Options:**
+
+- `variable` (required): Environment variable name to read
+- `prefix`: Label shown before the value. Defaults to the variable name
+
+Hidden when the variable is unset or empty.
+
+**Symbols:** `⚙` Env (unicode) • `$` Env (text)
+
+</details>
+
 ### Budget Configuration
 
 ```json

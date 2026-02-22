@@ -29,6 +29,7 @@ import {
   BlockSegmentConfig,
   TodaySegmentConfig,
   VersionSegmentConfig,
+  EnvSegmentConfig,
 } from "./segments";
 import { BlockProvider, BlockInfo } from "./segments/block";
 import { TodayProvider, TodayInfo } from "./segments/today";
@@ -419,6 +420,10 @@ export class PowerlineRenderer {
       );
     }
 
+    if (segment.type === "env") {
+      return this.segmentRenderer.renderEnv(colors, segment.config as EnvSegmentConfig);
+    }
+
     return null;
   }
 
@@ -552,6 +557,7 @@ export class PowerlineRenderer {
       version: symbolSet.version,
       bar_filled: symbolSet.bar_filled,
       bar_empty: symbolSet.bar_empty,
+      env: symbolSet.env,
     };
   }
 
@@ -619,6 +625,7 @@ export class PowerlineRenderer {
     const contextCritical = getSegmentColors("contextCritical");
     const metrics = getSegmentColors("metrics");
     const version = getSegmentColors("version");
+    const env = getSegmentColors("env");
 
     return {
       reset: colorSupport === "none" ? "" : RESET_CODE,
@@ -646,6 +653,8 @@ export class PowerlineRenderer {
       metricsFg: metrics.fg,
       versionBg: version.bg,
       versionFg: version.fg,
+      envBg: env.bg,
+      envFg: env.fg,
     };
   }
 
@@ -674,6 +683,8 @@ export class PowerlineRenderer {
         return colors.metricsBg;
       case "version":
         return colors.versionBg;
+      case "env":
+        return colors.envBg;
       default:
         return colors.modeBg;
     }
