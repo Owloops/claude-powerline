@@ -307,12 +307,9 @@ Config files reload automatically and no restart needed.
 | `blocks-line` | █ | ─ | `█████───── 50%` |
 | `capped` | ━ | ┄ | `━━━━╸┄┄┄┄┄ 50%` |
 | `dots` | ● | ○ | `●●●●●○○○○○ 50%` |
-| `emoji` | 🟩 | ⬛ | `🟩🟩🟩🟩🟩⬛⬛⬛⬛⬛ 50%` |
 | `filled` | ■ | □ | `■■■■■□□□□□ 50%` |
 | `geometric` | ▰ | ▱ | `▰▰▰▰▰▱▱▱▱▱ 50%` |
 | `line` | ━ | ┄ | `━━━━━┄┄┄┄┄ 50%` |
-| `mono` | ⬜ | ─ | `⬜⬜⬜⬜⬜───── 50%` |
-| `mono-dot` | ⬜ | • | `⬜⬜⬜⬜⬜••••• 50%` |
 | `squares` | ◼ | ◻ | `◼◼◼◼◼◻◻◻◻◻ 50%` |
 
 **Symbols:** `◔` Context (unicode) • `C` Context (text)
