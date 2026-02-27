@@ -326,6 +326,71 @@ describe("Segment Time Logic", () => {
     });
   });
 
+  describe("Session Segment", () => {
+    const config = { theme: "dark", display: { style: "minimal" } } as any;
+    const symbols = { session_cost: "§" } as any;
+    const colors = { sessionBg: "#1e1e2e", sessionFg: "#cdd6f4" } as any;
+
+    const mockUsageInfo = {
+      session: {
+        cost: 0.05,
+        calculatedCost: 0.05,
+        officialCost: 0.04,
+        tokens: 1600,
+        tokenBreakdown: { input: 1000, output: 500, cacheCreation: 50, cacheRead: 50 },
+      },
+    } as any;
+
+    let renderer: SegmentRenderer;
+
+    beforeEach(() => {
+      renderer = new SegmentRenderer(config, symbols);
+    });
+
+    it("should not include session id by default", () => {
+      const result = renderer.renderSession(mockUsageInfo, colors, { enabled: true, type: "cost" });
+      expect(result.text).not.toContain("id:");
+    });
+
+    it("should append session id when showSessionId is true", () => {
+      const sessionId = "01abc123-def4-5678-9012-345678901234";
+      const result = renderer.renderSession(
+        mockUsageInfo, colors,
+        { enabled: true, type: "cost", showSessionId: true },
+        sessionId
+      );
+      expect(result.text).toContain(`id: ${sessionId}`);
+    });
+
+    it("should not append suffix when showSessionId is true but no sessionId provided", () => {
+      const result = renderer.renderSession(
+        mockUsageInfo, colors,
+        { enabled: true, type: "cost", showSessionId: true }
+      );
+      expect(result.text).not.toContain("id:");
+    });
+
+    it("should not append suffix when showSessionId is false even with sessionId", () => {
+      const result = renderer.renderSession(
+        mockUsageInfo, colors,
+        { enabled: true, type: "cost", showSessionId: false },
+        "some-session-id"
+      );
+      expect(result.text).not.toContain("id:");
+    });
+
+    it("should work with tokens type and session id", () => {
+      const sessionId = "01abc123-def4-5678-9012-345678901234";
+      const result = renderer.renderSession(
+        mockUsageInfo, colors,
+        { enabled: true, type: "tokens", showSessionId: true },
+        sessionId
+      );
+      expect(result.text).toContain(`id: ${sessionId}`);
+      expect(result.text).toContain("1.6K");
+    });
+  });
+
   describe("Context Segment Bar Styles", () => {
     const config = { theme: "dark", display: { style: "minimal" } } as any;
     const symbols = {

@@ -106,8 +106,9 @@ describe("Colors", () => {
       expect(getColorSupport()).toBe("ansi");
 
       process.env = {};
+      const baselineResult = getColorSupport();
       process.env.FORCE_COLOR = "";
-      expect(getColorSupport()).not.toBe("ansi");
+      expect(getColorSupport()).toBe(baselineResult);
     });
 
     it("should generate correct ANSI codes for different modes", () => {

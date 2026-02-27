@@ -371,7 +371,8 @@ export class PowerlineRenderer {
       return this.renderSessionSegment(
         segment.config as UsageSegmentConfig,
         usageInfo,
-        colors
+        colors,
+        hookData
       );
     }
 
@@ -458,10 +459,11 @@ export class PowerlineRenderer {
   private renderSessionSegment(
     config: UsageSegmentConfig,
     usageInfo: UsageInfo | null,
-    colors: PowerlineColors
+    colors: PowerlineColors,
+    hookData?: ClaudeHookData
   ) {
     if (!usageInfo) return null;
-    return this.segmentRenderer.renderSession(usageInfo, colors, config);
+    return this.segmentRenderer.renderSession(usageInfo, colors, config, hookData?.session_id);
   }
 
   private async renderTmuxSegment(colors: PowerlineColors) {

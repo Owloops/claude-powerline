@@ -29,6 +29,7 @@ export interface GitSegmentConfig extends SegmentConfig {
 export interface UsageSegmentConfig extends SegmentConfig {
   type: "cost" | "tokens" | "both" | "breakdown";
   costSource?: "calculated" | "official";
+  showSessionId?: boolean;
 }
 
 export interface TmuxSegmentConfig extends SegmentConfig {}
@@ -306,6 +307,7 @@ export class SegmentRenderer {
     usageInfo: UsageInfo,
     colors: PowerlineColors,
     config?: UsageSegmentConfig,
+    sessionId?: string,
   ): SegmentData {
     const type = config?.type || "cost";
     const costSource = config?.costSource;
@@ -327,7 +329,11 @@ export class SegmentRenderer {
       sessionBudget?.type,
     );
 
-    const text = `${this.symbols.session_cost} ${formattedUsage}`;
+    const sessionIdSuffix = config?.showSessionId && sessionId
+      ? ` id: ${sessionId}`
+      : "";
+
+    const text = `${this.symbols.session_cost} ${formattedUsage}${sessionIdSuffix}`;
 
     return {
       text,
