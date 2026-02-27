@@ -1,3 +1,10 @@
+# [1.19.0](https://github.com/Owloops/claude-powerline/compare/v1.18.0...v1.19.0) (2026-02-27)
+
+
+### Features
+
+* add env segment to display environment variables ([#59](https://github.com/Owloops/claude-powerline/issues/59)) ([e5e9d71](https://github.com/Owloops/claude-powerline/commit/e5e9d716a7890231c882bf7b618ea6e88d49cb99)), closes [#42](https://github.com/Owloops/claude-powerline/issues/42)
+
 # [1.18.0](https://github.com/Owloops/claude-powerline/compare/v1.17.2...v1.18.0) (2026-02-27)
 
 
