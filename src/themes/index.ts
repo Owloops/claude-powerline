@@ -35,6 +35,7 @@ export interface ColorTheme {
   contextCritical: SegmentColor;
   metrics: SegmentColor;
   version: SegmentColor;
+  env: SegmentColor;
 }
 
 export interface PowerlineColors {
@@ -63,6 +64,8 @@ export interface PowerlineColors {
   metricsFg: string;
   versionBg: string;
   versionFg: string;
+  envBg: string;
+  envFg: string;
 }
 
 export const BUILT_IN_THEMES: Record<string, ColorTheme> = {

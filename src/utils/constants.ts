@@ -31,6 +31,7 @@ export const SYMBOLS = {
   version: "◈",
   bar_filled: "▪",
   bar_empty: "▫",
+  env: "⚙",
 } as const;
 
 export const TEXT_SYMBOLS = {
@@ -64,5 +65,6 @@ export const TEXT_SYMBOLS = {
   version: "V",
   bar_filled: "=",
   bar_empty: "-",
+  env: "$",
 } as const;
 
