@@ -1,3 +1,10 @@
+# [1.18.0](https://github.com/Owloops/claude-powerline/compare/v1.17.2...v1.18.0) (2026-02-27)
+
+
+### Features
+
+* **context:** add blocks-line display style ([#61](https://github.com/Owloops/claude-powerline/issues/61)) ([d9cde4c](https://github.com/Owloops/claude-powerline/commit/d9cde4cdb5510709660be1cbcdb4d27f1b7bef04))
+
 ## [1.17.2](https://github.com/Owloops/claude-powerline/compare/v1.17.1...v1.17.2) (2026-02-18)
 
 
