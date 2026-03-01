@@ -73,8 +73,13 @@ export class GitService {
     projectDir?: string
   ): Promise<GitInfo | null> {
     let gitDir: string;
+    const isWorktreeDir = this.isWorktree(workingDir);
 
-    if (projectDir && this.isGitRepo(projectDir)) {
+    if (isWorktreeDir) {
+      // Worktree's .git is a file pointing to the main repo;
+      // git commands must run from the worktree directory.
+      gitDir = workingDir;
+    } else if (projectDir && this.isGitRepo(projectDir)) {
       gitDir = projectDir;
     } else if (this.isGitRepo(workingDir)) {
       gitDir = workingDir;
@@ -182,7 +187,7 @@ export class GitService {
 
       if (options.showRepoName) {
         result.repoName = resultMap.get("repoName") || undefined;
-        result.isWorktree = this.isWorktree(gitDir);
+        result.isWorktree = isWorktreeDir;
       }
 
       return result;
