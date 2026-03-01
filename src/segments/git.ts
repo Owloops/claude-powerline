@@ -211,9 +211,21 @@ export class GitService {
     }
   }
 
+  private resolveGitDir(workingDir: string): string {
+    const dotGit = path.join(workingDir, ".git");
+    if (fs.existsSync(dotGit) && fs.statSync(dotGit).isFile()) {
+      const content = fs.readFileSync(dotGit, "utf-8");
+      const match = content.match(/^gitdir:\s*(.+)$/m);
+      if (match?.[1]) {
+        return path.resolve(workingDir, match[1].trim());
+      }
+    }
+    return dotGit;
+  }
+
   private getOngoingOperation(workingDir: string): string | null {
     try {
-      const gitDir = path.join(workingDir, ".git");
+      const gitDir = this.resolveGitDir(workingDir);
 
       if (fs.existsSync(path.join(gitDir, "MERGE_HEAD"))) return "MERGE";
       if (fs.existsSync(path.join(gitDir, "CHERRY_PICK_HEAD")))
