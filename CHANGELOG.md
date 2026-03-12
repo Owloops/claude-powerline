@@ -1,3 +1,46 @@
+## [1.19.6](https://github.com/Owloops/claude-powerline/compare/v1.19.5...v1.19.6) (2026-03-12)
+
+
+### Bug Fixes
+
+* **context:** default percentageMode based on display style ([8efe45f](https://github.com/Owloops/claude-powerline/commit/8efe45f5eeb767caa2551b224e9b8268ce8e541c))
+
+## [1.19.5](https://github.com/Owloops/claude-powerline/compare/v1.19.4...v1.19.5) (2026-03-12)
+
+
+### Bug Fixes
+
+* **context:** add configurable percentageMode for remaining vs used display ([d811c31](https://github.com/Owloops/claude-powerline/commit/d811c3158901e5d608cadb959a509376618fb5ae))
+
+## [1.19.4](https://github.com/Owloops/claude-powerline/compare/v1.19.3...v1.19.4) (2026-03-12)
+
+
+### Bug Fixes
+
+* **git:** correct gitDir resolution and operation detection in worktrees ([#63](https://github.com/Owloops/claude-powerline/issues/63)) ([5d6f694](https://github.com/Owloops/claude-powerline/commit/5d6f694a5d34e9f6b9eafa3c78945ab9e8f3f3a1))
+
+## [1.19.3](https://github.com/Owloops/claude-powerline/compare/v1.19.2...v1.19.3) (2026-03-12)
+
+
+### Bug Fixes
+
+* **context:** add explicit autocompactBuffer default to config files ([3070dc2](https://github.com/Owloops/claude-powerline/commit/3070dc28080ee8daf3c322ad240a2576539a6036))
+* **context:** make autocompact buffer configurable via segment config ([d42b60d](https://github.com/Owloops/claude-powerline/commit/d42b60da199fd74e81e3642c96f7d2bca03bc6a4))
+
+## [1.19.2](https://github.com/Owloops/claude-powerline/compare/v1.19.1...v1.19.2) (2026-03-12)
+
+
+### Bug Fixes
+
+* **context:** use autocompact buffer instead of 0.75 factor for usable context ([#64](https://github.com/Owloops/claude-powerline/issues/64)) ([5e34e69](https://github.com/Owloops/claude-powerline/commit/5e34e696ac3fe2cad7c1fdcd7453cf6e4eaecec0))
+
+## [1.19.1](https://github.com/Owloops/claude-powerline/compare/v1.19.0...v1.19.1) (2026-03-12)
+
+
+### Bug Fixes
+
+* fish-style directory shows full path for projects outside $HOME ([#67](https://github.com/Owloops/claude-powerline/issues/67)) ([83faa43](https://github.com/Owloops/claude-powerline/commit/83faa4363033844dc6f2f99baca5b78da8c6bb81)), closes [#66](https://github.com/Owloops/claude-powerline/issues/66)
+
 # [1.19.0](https://github.com/Owloops/claude-powerline/compare/v1.18.0...v1.19.0) (2026-02-27)
 
 

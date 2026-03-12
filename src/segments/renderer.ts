@@ -36,6 +36,8 @@ export interface TmuxSegmentConfig extends SegmentConfig {}
 export interface ContextSegmentConfig extends SegmentConfig {
   showPercentageOnly?: boolean;
   displayStyle?: "text" | "ball" | "bar" | "blocks" | "blocks-line" | "capped" | "dots" | "filled" | "geometric" | "line" | "squares";
+  autocompactBuffer?: number;
+  percentageMode?: "remaining" | "used";
 }
 
 export interface MetricsSegmentConfig extends SegmentConfig {
@@ -382,22 +384,25 @@ export class SegmentRenderer {
   ): SegmentData | null {
     const barLength = 10;
     const style = config?.displayStyle ?? "text";
+    const defaultMode = style === "text" ? "remaining" : "used";
+    const mode = config?.percentageMode ?? defaultMode;
 
     const barStyleDef = style === "bar"
       ? { filled: this.symbols.bar_filled, empty: this.symbols.bar_empty } as BarStyleDef
       : BAR_STYLES[style] ?? null;
 
+    const emptyPct = mode === "remaining" ? "100%" : "0%";
     if (!contextInfo) {
       if (barStyleDef) {
         const emptyBar = barStyleDef.empty.repeat(barLength);
         return {
-          text: `${emptyBar} 0%`,
+          text: `${emptyBar} ${emptyPct}`,
           bgColor: colors.contextBg,
           fgColor: colors.contextFg,
         };
       }
       return {
-        text: `${this.symbols.context_time} 0 (100%)`,
+        text: `${this.symbols.context_time} 0 (${emptyPct})`,
         bgColor: colors.contextBg,
         fgColor: colors.contextFg,
       };
@@ -414,23 +419,25 @@ export class SegmentRenderer {
       fgColor = colors.contextWarningFg;
     }
 
+    const pct = mode === "remaining"
+      ? contextInfo.contextLeftPercentage
+      : contextInfo.usablePercentage;
+    const filledCount = Math.round((contextInfo.usablePercentage / 100) * barLength);
+    const emptyCount = barLength - filledCount;
+
     if (barStyleDef) {
-      const usedPct = contextInfo.usablePercentage;
-      const filledCount = Math.round((usedPct / 100) * barLength);
-      const emptyCount = barLength - filledCount;
       const bar = this.buildBar(barStyleDef, filledCount, emptyCount, barLength);
 
       const text = config?.showPercentageOnly
-        ? `${bar} ${usedPct}%`
-        : `${bar} ${contextInfo.totalTokens.toLocaleString()} (${usedPct}%)`;
+        ? `${bar} ${pct}%`
+        : `${bar} ${contextInfo.totalTokens.toLocaleString()} (${pct}%)`;
 
       return { text, bgColor, fgColor };
     }
 
-    const contextLeft = `${contextInfo.contextLeftPercentage}%`;
     const text = config?.showPercentageOnly
-      ? `${this.symbols.context_time} ${contextLeft}`
-      : `${this.symbols.context_time} ${contextInfo.totalTokens.toLocaleString()} (${contextLeft})`;
+      ? `${this.symbols.context_time} ${pct}%`
+      : `${this.symbols.context_time} ${contextInfo.totalTokens.toLocaleString()} (${pct}%)`;
 
     return { text, bgColor, fgColor };
   }
@@ -714,10 +721,9 @@ export class SegmentRenderer {
         const relativePath = currentDir.slice(projectDir.length + 1);
         return relativePath || path.basename(projectDir) || "project";
       }
-      return path.basename(currentDir) || "root";
     }
 
-    return path.basename(currentDir) || "root";
+    return currentDir;
   }
 
   private abbreviateFishStyle(dirPath: string): string {

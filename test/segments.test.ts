@@ -234,6 +234,92 @@ describe("Segment Time Logic", () => {
     });
   });
 
+  describe("Directory Segment", () => {
+    const config = { theme: "dark", display: { style: "minimal" } } as any;
+    const symbols = {} as any;
+    const colors = { modeBg: "#1e1e2e", modeFg: "#cdd6f4" } as any;
+
+    let renderer: SegmentRenderer;
+    let originalHome: string | undefined;
+
+    beforeEach(() => {
+      renderer = new SegmentRenderer(config, symbols);
+      originalHome = process.env.HOME;
+    });
+
+    afterEach(() => {
+      if (originalHome !== undefined) {
+        process.env.HOME = originalHome;
+      }
+    });
+
+    it("should fish-style abbreviate paths under HOME", () => {
+      process.env.HOME = "/home/user";
+      const hookData: ClaudeHookData = {
+        hook_event_name: "Status",
+        session_id: "test",
+        transcript_path: "/tmp/test.json",
+        cwd: "/home/user/repos/dotfiles",
+        model: { id: "claude-3-5-sonnet", display_name: "Claude" },
+        workspace: {
+          current_dir: "/home/user/repos/dotfiles",
+          project_dir: "/home/user/repos/dotfiles",
+        },
+      };
+
+      const result = renderer.renderDirectory(hookData, colors, {
+        enabled: true,
+        style: "fish",
+      });
+
+      expect(result.text).toBe("~/r/dotfiles");
+    });
+
+    it("should fish-style abbreviate paths outside HOME", () => {
+      process.env.HOME = "/home/user";
+      const hookData: ClaudeHookData = {
+        hook_event_name: "Status",
+        session_id: "test",
+        transcript_path: "/tmp/test.json",
+        cwd: "/mnt/c/Users/andyb/repos/dotfiles",
+        model: { id: "claude-3-5-sonnet", display_name: "Claude" },
+        workspace: {
+          current_dir: "/mnt/c/Users/andyb/repos/dotfiles",
+          project_dir: "/mnt/c/Users/andyb/repos/dotfiles",
+        },
+      };
+
+      const result = renderer.renderDirectory(hookData, colors, {
+        enabled: true,
+        style: "fish",
+      });
+
+      expect(result.text).toBe("/m/c/U/a/r/dotfiles");
+    });
+
+    it("should show relative path when inside a subdirectory of project", () => {
+      process.env.HOME = "/home/user";
+      const hookData: ClaudeHookData = {
+        hook_event_name: "Status",
+        session_id: "test",
+        transcript_path: "/tmp/test.json",
+        cwd: "/home/user/repos/dotfiles/src/components",
+        model: { id: "claude-3-5-sonnet", display_name: "Claude" },
+        workspace: {
+          current_dir: "/home/user/repos/dotfiles/src/components",
+          project_dir: "/home/user/repos/dotfiles",
+        },
+      };
+
+      const result = renderer.renderDirectory(hookData, colors, {
+        enabled: true,
+        style: "fish",
+      });
+
+      expect(result.text).toBe("~/r/d/s/components");
+    });
+  });
+
   describe("Version Segment", () => {
     it("should render version from hook data", () => {
       const config = { theme: "dark", display: { style: "minimal" } } as any;

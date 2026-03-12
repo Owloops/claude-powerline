@@ -53,14 +53,15 @@ export class ContextProvider {
 
   private calculatePercentages(
     totalTokens: number,
-    contextLimit: number
+    contextLimit: number,
+    autocompactBuffer: number = 33000,
   ): Pick<ContextInfo, "percentage" | "usablePercentage" | "contextLeftPercentage" | "usableTokens"> {
     const percentage = Math.min(
       100,
       Math.max(0, Math.round((totalTokens / contextLimit) * 100))
     );
 
-    const usableLimit = Math.round(contextLimit * 0.75);
+    const usableLimit = Math.max(1, contextLimit - autocompactBuffer);
     const usablePercentage = Math.min(
       100,
       Math.max(0, Math.round((totalTokens / usableLimit) * 100))
@@ -80,7 +81,7 @@ export class ContextProvider {
    * Calculate context info from native Claude Code context_window data (preferred).
    * Requires Claude Code 2.0.70+ with current_usage field.
    */
-  calculateContextFromHookData(hookData: ClaudeHookData): ContextInfo | null {
+  calculateContextFromHookData(hookData: ClaudeHookData, autocompactBuffer: number = 33000): ContextInfo | null {
     const currentUsage = hookData.context_window?.current_usage;
     if (!currentUsage) {
       debug("No current_usage in hook data, falling back to transcript parsing");
@@ -97,7 +98,7 @@ export class ContextProvider {
       `Native current_usage: input=${currentUsage.input_tokens}, cache_create=${currentUsage.cache_creation_input_tokens}, cache_read=${currentUsage.cache_read_input_tokens}, total=${totalTokens} (limit: ${contextLimit})`
     );
 
-    const percentages = this.calculatePercentages(totalTokens, contextLimit);
+    const percentages = this.calculatePercentages(totalTokens, contextLimit, autocompactBuffer);
 
     return {
       totalTokens,
@@ -112,7 +113,8 @@ export class ContextProvider {
    */
   async calculateContextTokensFromTranscript(
     transcriptPath: string,
-    modelId?: string
+    modelId?: string,
+    autocompactBuffer: number = 33000,
   ): Promise<ContextInfo | null> {
     try {
       debug(`Calculating context tokens from transcript: ${transcriptPath}`);
@@ -164,7 +166,7 @@ export class ContextProvider {
           `Most recent main chain context: ${totalTokens} tokens (limit: ${contextLimit})`
         );
 
-        const percentages = this.calculatePercentages(totalTokens, contextLimit);
+        const percentages = this.calculatePercentages(totalTokens, contextLimit, autocompactBuffer);
 
         return {
           totalTokens,
@@ -186,15 +188,16 @@ export class ContextProvider {
   /**
    * Get context info using native data if available, falling back to transcript parsing.
    */
-  async getContextInfo(hookData: ClaudeHookData): Promise<ContextInfo | null> {
-    const nativeContext = this.calculateContextFromHookData(hookData);
+  async getContextInfo(hookData: ClaudeHookData, autocompactBuffer: number = 33000): Promise<ContextInfo | null> {
+    const nativeContext = this.calculateContextFromHookData(hookData, autocompactBuffer);
     if (nativeContext) {
       return nativeContext;
     }
 
     return this.calculateContextTokensFromTranscript(
       hookData.transcript_path,
-      hookData.model?.id
+      hookData.model?.id,
+      autocompactBuffer,
     );
   }
 }
