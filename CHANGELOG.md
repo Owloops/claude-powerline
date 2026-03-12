@@ -1,3 +1,10 @@
+## [1.19.6](https://github.com/Owloops/claude-powerline/compare/v1.19.5...v1.19.6) (2026-03-12)
+
+
+### Bug Fixes
+
+* **context:** default percentageMode based on display style ([8efe45f](https://github.com/Owloops/claude-powerline/commit/8efe45f5eeb767caa2551b224e9b8268ce8e541c))
+
 ## [1.19.5](https://github.com/Owloops/claude-powerline/compare/v1.19.4...v1.19.5) (2026-03-12)
 
 
