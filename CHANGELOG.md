@@ -1,3 +1,10 @@
+## [1.19.4](https://github.com/Owloops/claude-powerline/compare/v1.19.3...v1.19.4) (2026-03-12)
+
+
+### Bug Fixes
+
+* **git:** correct gitDir resolution and operation detection in worktrees ([#63](https://github.com/Owloops/claude-powerline/issues/63)) ([5d6f694](https://github.com/Owloops/claude-powerline/commit/5d6f694a5d34e9f6b9eafa3c78945ab9e8f3f3a1))
+
 ## [1.19.3](https://github.com/Owloops/claude-powerline/compare/v1.19.2...v1.19.3) (2026-03-12)
 
 
