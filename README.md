@@ -287,7 +287,8 @@ Config files reload automatically and no restart needed.
 "context": {
   "enabled": true,
   "showPercentageOnly": false,
-  "displayStyle": "text"
+  "displayStyle": "text",
+  "autocompactBuffer": 33000
 }
 ```
 
@@ -295,6 +296,7 @@ Config files reload automatically and no restart needed.
 
 - `showPercentageOnly`: Show only percentage remaining (default: false)
 - `displayStyle`: Visual style for context display (default: `"text"`)
+- `autocompactBuffer`: Number of tokens reserved as the auto-compact trigger zone (default: `33000`). The usable percentage reflects how close you are to the point where compaction fires. Set to `0` if you have auto-compact disabled to show raw context usage instead
 
 **Display Styles:**
 

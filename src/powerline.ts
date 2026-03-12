@@ -133,8 +133,12 @@ export class PowerlineRenderer {
       ? await this.todayProvider.getTodayInfo()
       : null;
 
+    const contextSegmentConfig = this.config.display.lines
+      .map((line) => line.segments.context)
+      .find((c) => c?.enabled) as ContextSegmentConfig | undefined;
+    const autocompactBuffer = contextSegmentConfig?.autocompactBuffer ?? 33000;
     const contextInfo = this.needsSegmentInfo("context")
-      ? await this.contextProvider.getContextInfo(hookData)
+      ? await this.contextProvider.getContextInfo(hookData, autocompactBuffer)
       : null;
 
     const metricsInfo = this.needsSegmentInfo("metrics")

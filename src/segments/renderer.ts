@@ -36,6 +36,7 @@ export interface TmuxSegmentConfig extends SegmentConfig {}
 export interface ContextSegmentConfig extends SegmentConfig {
   showPercentageOnly?: boolean;
   displayStyle?: "text" | "ball" | "bar" | "blocks" | "blocks-line" | "capped" | "dots" | "filled" | "geometric" | "line" | "squares";
+  autocompactBuffer?: number;
 }
 
 export interface MetricsSegmentConfig extends SegmentConfig {
