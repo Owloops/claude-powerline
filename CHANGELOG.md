@@ -1,3 +1,10 @@
+## [1.19.5](https://github.com/Owloops/claude-powerline/compare/v1.19.4...v1.19.5) (2026-03-12)
+
+
+### Bug Fixes
+
+* **context:** add configurable percentageMode for remaining vs used display ([d811c31](https://github.com/Owloops/claude-powerline/commit/d811c3158901e5d608cadb959a509376618fb5ae))
+
 ## [1.19.4](https://github.com/Owloops/claude-powerline/compare/v1.19.3...v1.19.4) (2026-03-12)
 
 
