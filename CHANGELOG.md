@@ -1,3 +1,10 @@
+## [1.19.2](https://github.com/Owloops/claude-powerline/compare/v1.19.1...v1.19.2) (2026-03-12)
+
+
+### Bug Fixes
+
+* **context:** use autocompact buffer instead of 0.75 factor for usable context ([#64](https://github.com/Owloops/claude-powerline/issues/64)) ([5e34e69](https://github.com/Owloops/claude-powerline/commit/5e34e696ac3fe2cad7c1fdcd7453cf6e4eaecec0))
+
 ## [1.19.1](https://github.com/Owloops/claude-powerline/compare/v1.19.0...v1.19.1) (2026-03-12)
 
 
