@@ -50,7 +50,8 @@
             "enabled": true,
             "showPercentageOnly": false,
             "displayStyle": "text",
-            "autocompactBuffer": 33000
+            "autocompactBuffer": 33000,
+            "percentageMode": "remaining"
           },
           "tmux": {
             "enabled": false
