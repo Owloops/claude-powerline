@@ -29,7 +29,6 @@ export interface GitSegmentConfig extends SegmentConfig {
 export interface UsageSegmentConfig extends SegmentConfig {
   type: "cost" | "tokens" | "both" | "breakdown";
   costSource?: "calculated" | "official";
-  showSessionId?: boolean;
 }
 
 export interface TmuxSegmentConfig extends SegmentConfig {}
@@ -59,6 +58,10 @@ export interface TodaySegmentConfig extends SegmentConfig {
 
 export interface VersionSegmentConfig extends SegmentConfig {}
 
+export interface SessionIdSegmentConfig extends SegmentConfig {
+  showIdLabel?: boolean;
+}
+
 export interface EnvSegmentConfig extends SegmentConfig {
   variable: string;
   prefix?: string;
@@ -75,6 +78,7 @@ export type AnySegmentConfig =
   | BlockSegmentConfig
   | TodaySegmentConfig
   | VersionSegmentConfig
+  | SessionIdSegmentConfig
   | EnvSegmentConfig;
 
 import {
@@ -307,7 +311,6 @@ export class SegmentRenderer {
     usageInfo: UsageInfo,
     colors: PowerlineColors,
     config?: UsageSegmentConfig,
-    sessionId?: string,
   ): SegmentData {
     const type = config?.type || "cost";
     const costSource = config?.costSource;
@@ -329,11 +332,22 @@ export class SegmentRenderer {
       sessionBudget?.type,
     );
 
-    const sessionIdSuffix = config?.showSessionId && sessionId
-      ? ` id: ${sessionId}`
-      : "";
+    const text = `${this.symbols.session_cost} ${formattedUsage}`;
 
-    const text = `${this.symbols.session_cost} ${formattedUsage}${sessionIdSuffix}`;
+    return {
+      text,
+      bgColor: colors.sessionBg,
+      fgColor: colors.sessionFg,
+    };
+  }
+
+  renderSessionId(
+    sessionId: string,
+    colors: PowerlineColors,
+    config?: SessionIdSegmentConfig,
+  ): SegmentData {
+    const showLabel = config?.showIdLabel !== false;
+    const text = showLabel ? `id: ${sessionId}` : sessionId;
 
     return {
       text,
