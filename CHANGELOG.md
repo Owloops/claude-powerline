@@ -1,3 +1,10 @@
+## [1.19.1](https://github.com/Owloops/claude-powerline/compare/v1.19.0...v1.19.1) (2026-03-12)
+
+
+### Bug Fixes
+
+* fish-style directory shows full path for projects outside $HOME ([#67](https://github.com/Owloops/claude-powerline/issues/67)) ([83faa43](https://github.com/Owloops/claude-powerline/commit/83faa4363033844dc6f2f99baca5b78da8c6bb81)), closes [#66](https://github.com/Owloops/claude-powerline/issues/66)
+
 # [1.19.0](https://github.com/Owloops/claude-powerline/compare/v1.18.0...v1.19.0) (2026-02-27)
 
 
