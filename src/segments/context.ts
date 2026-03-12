@@ -60,7 +60,8 @@ export class ContextProvider {
       Math.max(0, Math.round((totalTokens / contextLimit) * 100))
     );
 
-    const usableLimit = Math.round(contextLimit * 0.75);
+    const autocompactBuffer = 33000;
+    const usableLimit = Math.max(1, contextLimit - autocompactBuffer);
     const usablePercentage = Math.min(
       100,
       Math.max(0, Math.round((totalTokens / usableLimit) * 100))
