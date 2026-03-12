@@ -1,3 +1,11 @@
+## [1.19.3](https://github.com/Owloops/claude-powerline/compare/v1.19.2...v1.19.3) (2026-03-12)
+
+
+### Bug Fixes
+
+* **context:** add explicit autocompactBuffer default to config files ([3070dc2](https://github.com/Owloops/claude-powerline/commit/3070dc28080ee8daf3c322ad240a2576539a6036))
+* **context:** make autocompact buffer configurable via segment config ([d42b60d](https://github.com/Owloops/claude-powerline/commit/d42b60da199fd74e81e3642c96f7d2bca03bc6a4))
+
 ## [1.19.2](https://github.com/Owloops/claude-powerline/compare/v1.19.1...v1.19.2) (2026-03-12)
 
 
