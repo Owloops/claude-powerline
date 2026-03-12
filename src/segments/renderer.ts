@@ -694,10 +694,9 @@ export class SegmentRenderer {
         const relativePath = currentDir.slice(projectDir.length + 1);
         return relativePath || path.basename(projectDir) || "project";
       }
-      return path.basename(currentDir) || "root";
     }
 
-    return path.basename(currentDir) || "root";
+    return currentDir;
   }
 
   private abbreviateFishStyle(dirPath: string): string {
