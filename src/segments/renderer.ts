@@ -364,7 +364,8 @@ export class SegmentRenderer {
   ): SegmentData | null {
     const barLength = 10;
     const style = config?.displayStyle ?? "text";
-    const mode = config?.percentageMode ?? "remaining";
+    const defaultMode = style === "text" ? "remaining" : "used";
+    const mode = config?.percentageMode ?? defaultMode;
 
     const barStyleDef = style === "bar"
       ? { filled: this.symbols.bar_filled, empty: this.symbols.bar_empty } as BarStyleDef

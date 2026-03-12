@@ -288,8 +288,7 @@ Config files reload automatically and no restart needed.
   "enabled": true,
   "showPercentageOnly": false,
   "displayStyle": "text",
-  "autocompactBuffer": 33000,
-  "percentageMode": "remaining"
+  "autocompactBuffer": 33000
 }
 ```
 
@@ -298,7 +297,7 @@ Config files reload automatically and no restart needed.
 - `showPercentageOnly`: Show only percentage remaining (default: false)
 - `displayStyle`: Visual style for context display (default: `"text"`)
 - `autocompactBuffer`: Number of tokens reserved as the auto-compact trigger zone (default: `33000`). The usable percentage reflects how close you are to the point where compaction fires. Set to `0` if you have auto-compact disabled to show raw context usage instead
-- `percentageMode`: How to display the percentage (default: `"remaining"`). `"remaining"` counts down from 100% (context left), `"used"` counts up from 0% (context consumed)
+- `percentageMode`: How to display the percentage. `"remaining"` counts down from 100% (context left), `"used"` counts up from 0% (context consumed). Default depends on display style: `"remaining"` for `text`, `"used"` for bar styles
 
 **Display Styles:**
 
