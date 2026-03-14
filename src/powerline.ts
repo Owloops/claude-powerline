@@ -569,6 +569,7 @@ export class PowerlineRenderer {
       bar_filled: symbolSet.bar_filled,
       bar_empty: symbolSet.bar_empty,
       env: symbolSet.env,
+      session_id: symbolSet.session_id,
     };
   }
 

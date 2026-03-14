@@ -131,6 +131,7 @@ export interface PowerlineSymbols {
   bar_filled: string;
   bar_empty: string;
   env: string;
+  session_id: string;
 }
 
 export interface SegmentData {
@@ -349,7 +350,7 @@ export class SegmentRenderer {
     config?: SessionIdSegmentConfig,
   ): SegmentData {
     const showLabel = config?.showIdLabel !== false;
-    const text = showLabel ? `id: ${sessionId}` : sessionId;
+    const text = showLabel ? `${this.symbols.session_id} ${sessionId}` : sessionId;
 
     return {
       text,

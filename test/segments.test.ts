@@ -414,7 +414,7 @@ describe("Segment Time Logic", () => {
 
   describe("Session ID Segment", () => {
     const config = { theme: "dark", display: { style: "minimal" } } as any;
-    const symbols = {} as any;
+    const symbols = { session_id: "⌗" } as any;
     const colors = { sessionBg: "#1e1e2e", sessionFg: "#cdd6f4" } as any;
     const sessionId = "01abc123-def4-5678-9012-345678901234";
 
@@ -426,12 +426,12 @@ describe("Segment Time Logic", () => {
 
     it("should render session id with label by default", () => {
       const result = renderer.renderSessionId(sessionId, colors);
-      expect(result.text).toBe(`id: ${sessionId}`);
+      expect(result.text).toBe(`⌗ ${sessionId}`);
     });
 
     it("should render session id with label when showIdLabel is true", () => {
       const result = renderer.renderSessionId(sessionId, colors, { enabled: true, showIdLabel: true });
-      expect(result.text).toBe(`id: ${sessionId}`);
+      expect(result.text).toBe(`⌗ ${sessionId}`);
     });
 
     it("should render session id without label when showIdLabel is false", () => {
