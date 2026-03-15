@@ -1,25 +1,9 @@
 {
   "_meta": {
     "source": "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json",
-    "updated": "2026-03-08",
+    "updated": "2026-03-15",
     "currency": "USD",
     "unit": "per_million_tokens"
-  },
-  "claude-3-5-haiku-20241022": {
-    "name": "claude-3-5-haiku-20241022",
-    "input": 0.8,
-    "output": 4,
-    "cache_write_5m": 1,
-    "cache_write_1h": 1.6,
-    "cache_read": 0.08
-  },
-  "claude-3-5-haiku-latest": {
-    "name": "claude-3-5-haiku-latest",
-    "input": 1,
-    "output": 5,
-    "cache_write_5m": 1.25,
-    "cache_write_1h": 2,
-    "cache_read": 0.1
   },
   "claude-haiku-4-5-20251001": {
     "name": "claude-haiku-4-5-20251001",
@@ -37,40 +21,8 @@
     "cache_write_1h": 2,
     "cache_read": 0.1
   },
-  "claude-3-5-sonnet-20240620": {
-    "name": "claude-3-5-sonnet-20240620",
-    "input": 3,
-    "output": 15,
-    "cache_write_5m": 3.75,
-    "cache_write_1h": 6,
-    "cache_read": 0.3
-  },
-  "claude-3-5-sonnet-20241022": {
-    "name": "claude-3-5-sonnet-20241022",
-    "input": 3,
-    "output": 15,
-    "cache_write_5m": 3.75,
-    "cache_write_1h": 6,
-    "cache_read": 0.3
-  },
-  "claude-3-5-sonnet-latest": {
-    "name": "claude-3-5-sonnet-latest",
-    "input": 3,
-    "output": 15,
-    "cache_write_5m": 3.75,
-    "cache_write_1h": 6,
-    "cache_read": 0.3
-  },
   "claude-3-7-sonnet-20250219": {
     "name": "claude-3-7-sonnet-20250219",
-    "input": 3,
-    "output": 15,
-    "cache_write_5m": 3.75,
-    "cache_write_1h": 6,
-    "cache_read": 0.3
-  },
-  "claude-3-7-sonnet-latest": {
-    "name": "claude-3-7-sonnet-latest",
     "input": 3,
     "output": 15,
     "cache_write_5m": 3.75,
@@ -87,14 +39,6 @@
   },
   "claude-3-opus-20240229": {
     "name": "claude-3-opus-20240229",
-    "input": 15,
-    "output": 75,
-    "cache_write_5m": 18.75,
-    "cache_write_1h": 30,
-    "cache_read": 1.5
-  },
-  "claude-3-opus-latest": {
-    "name": "claude-3-opus-latest",
     "input": 15,
     "output": 75,
     "cache_write_5m": 18.75,
