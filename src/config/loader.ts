@@ -14,6 +14,7 @@ import type {
   BlockSegmentConfig,
   TodaySegmentConfig,
   VersionSegmentConfig,
+  SessionIdSegmentConfig,
   EnvSegmentConfig,
 } from "../segments/renderer";
 
@@ -29,6 +30,7 @@ export interface LineConfig {
     context?: ContextSegmentConfig;
     metrics?: MetricsSegmentConfig;
     version?: VersionSegmentConfig;
+    sessionId?: SessionIdSegmentConfig;
     env?: EnvSegmentConfig;
   };
 }

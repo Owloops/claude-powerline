@@ -352,6 +352,26 @@ Configure context window limits for different model types. Defaults to 200K toke
 </details>
 
 <details>
+<summary><strong>Session ID</strong> - Shows the current Claude session identifier</summary>
+
+```json
+"sessionId": {
+  "enabled": false,
+  "showIdLabel": true
+}
+```
+
+**Options:**
+
+- `showIdLabel`: Show the `⌗` icon prefix before the session ID (default: `true`)
+
+**Display:** `⌗ a1b2c3d4-...`
+
+**Symbols:** `⌗` Session ID (unicode) • `#` Session ID (text)
+
+</details>
+
+<details>
 <summary><strong>Version</strong> - Shows Claude Code version</summary>
 
 ```json

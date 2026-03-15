@@ -60,6 +60,10 @@ export interface TodaySegmentConfig extends SegmentConfig {
 
 export interface VersionSegmentConfig extends SegmentConfig {}
 
+export interface SessionIdSegmentConfig extends SegmentConfig {
+  showIdLabel?: boolean;
+}
+
 export interface EnvSegmentConfig extends SegmentConfig {
   variable: string;
   prefix?: string;
@@ -76,6 +80,7 @@ export type AnySegmentConfig =
   | BlockSegmentConfig
   | TodaySegmentConfig
   | VersionSegmentConfig
+  | SessionIdSegmentConfig
   | EnvSegmentConfig;
 
 import {
@@ -126,6 +131,7 @@ export interface PowerlineSymbols {
   bar_filled: string;
   bar_empty: string;
   env: string;
+  session_id: string;
 }
 
 export interface SegmentData {
@@ -330,6 +336,21 @@ export class SegmentRenderer {
     );
 
     const text = `${this.symbols.session_cost} ${formattedUsage}`;
+
+    return {
+      text,
+      bgColor: colors.sessionBg,
+      fgColor: colors.sessionFg,
+    };
+  }
+
+  renderSessionId(
+    sessionId: string,
+    colors: PowerlineColors,
+    config?: SessionIdSegmentConfig,
+  ): SegmentData {
+    const showLabel = config?.showIdLabel !== false;
+    const text = showLabel ? `${this.symbols.session_id} ${sessionId}` : sessionId;
 
     return {
       text,
