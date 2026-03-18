@@ -2,7 +2,7 @@
 
 exports[`TUI Panel Rendering Edge cases should handle context at critical level 1`] = `
 "[?2026h╭─ claude 3.5 sonnet ──────────────────────────────────────────────────────────── claude-powerline ╮
-│ ▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▫▫▫▫  90%  180k/200k                                         │
+│ ▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▫▫▫▫▫▫▫▫  90%  180k/200k │
 │ ◱ $0.12 · 60h 0m left 1%          § $0.05 · 42.1K          ☉ $1.87 today 4%          ⧗ 2m · ◆ 12 │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ ⎇ feat/tui-mode ● ↑2  /h/u/project           ◈ v1.19.6 · tmux:dev · ⧖ 2.3s · +48 · -15 · ↗ 45c/h │
@@ -11,7 +11,7 @@ exports[`TUI Panel Rendering Edge cases should handle context at critical level 
 
 exports[`TUI Panel Rendering Edge cases should handle context at warning level 1`] = `
 "[?2026h╭─ claude 3.5 sonnet ──────────────────────────────────────────────────────────── claude-powerline ╮
-│ ▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▫▫▫▫▫▫▫▫▫▫▫▫  70%  140k/200k                                         │
+│ ▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫  70%  140k/200k │
 │ ◱ $0.12 · 60h 0m left 1%          § $0.05 · 42.1K          ☉ $1.87 today 4%          ⧗ 2m · ◆ 12 │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ ⎇ feat/tui-mode ● ↑2  /h/u/project           ◈ v1.19.6 · tmux:dev · ⧖ 2.3s · +48 · -15 · ↗ 45c/h │
@@ -20,12 +20,12 @@ exports[`TUI Panel Rendering Edge cases should handle context at warning level 1
 
 exports[`TUI Panel Rendering Edge cases should handle minimum panel width 1`] = `
 "[?2026h╭─ claude 3.5 sonnet ──────────╮
-│ ▪▪▪▪▪▫▫▫▫▫▫▫  45%  90k/200k  │
+│ ▪▪▪▪▪▪▫▫▫▫▫▫▫  45%  90k/200k │
 │ ◱ $0.12 · 60h 0m left 1%     │
 │ § $0.05        ☉ $1.87 today │
 ├──────────────────────────────┤
-│ ⎇ feat/tui-mode ● ↑2  /h/u/… │
-│ ◈ v1.19.6 · tmux:dev · ⧖ 2.… │
+│ ⎇ feat/tui-mode ● ↑2  /h/u/…[0m │
+│ ◈ v1.19.6 · tmux:dev · ⧖ 2.…[0m │
 ╰──────────────────────────────╯[?2026l"
 `;
 
@@ -39,25 +39,34 @@ exports[`TUI Panel Rendering Edge cases should handle missing context info 1`] =
 
 exports[`TUI Panel Rendering Edge cases should handle null terminal width 1`] = `
 "[?2026h╭─ claude 3.5 sonnet ──────────────────────────────────────── claude-powerline ╮
-│ ▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫  45%  90k/200k                            │
+│ ▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫  45%  90k/200k │
 │ ◱ $0.12 · 60h 0m left 1%   § $0.05 · 42.1K   ☉ $1.87 today 4%   ⧗ 2m · ◆ 12  │
 ├──────────────────────────────────────────────────────────────────────────────┤
-│ ⎇ feat/tui-mode ● ↑2  /h/u/project  ◈ v1.19.6 · tmux:dev · ⧖ 2.3s · +48 · -… │
+│ ⎇ feat/tui-mode ● ↑2  /h/u/project  ◈ v1.19.6 · tmux:dev · ⧖ 2.3s · +48 · -…[0m │
 ╰──────────────────────────────────────────────────────────────────────────────╯[?2026l"
 `;
 
 exports[`TUI Panel Rendering Edge cases should show git working tree counts 1`] = `
 "[?2026h╭─ claude 3.5 sonnet ──────────────────────────────────────────────────────────── claude-powerline ╮
-│ ▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫  45%  90k/200k                                          │
+│ ▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫  45%  90k/200k │
 │ ◱ $0.12 · 60h 0m left 1%          § $0.05 · 42.1K          ☉ $1.87 today 4%          ⧗ 2m · ◆ 12 │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ ⎇ main ● (+3 ~2 ?1)  /h/u/project            ◈ v1.19.6 · tmux:dev · ⧖ 2.3s · +48 · -15 · ↗ 45c/h │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯[?2026l"
 `;
 
+exports[`TUI Panel Rendering Hardcoded layout unchanged without grid config should use hardcoded layouts when display.tui is absent 1`] = `
+"[?2026h╭─ claude 3.5 sonnet ──────────────────────────────────────────────────────────── claude-powerline ╮
+│ ▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫  45%  90k/200k │
+│ ◱ $0.12 · 60h 0m left 1%          § $0.05 · 42.1K          ☉ $1.87 today 4%          ⧗ 2m · ◆ 12 │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ ⎇ feat/tui-mode ● ↑2  /h/u/project           ◈ v1.19.6 · tmux:dev · ⧖ 2.3s · +48 · -15 · ↗ 45c/h │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯[?2026l"
+`;
+
 exports[`TUI Panel Rendering Medium layout (55-79 cols) should render metrics across 2 lines 1`] = `
 "[?2026h╭─ claude 3.5 sonnet ───────────────────────── claude-powerline ╮
-│ ▪▪▪▪▪▪▪▪▪▪▪▪▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫  45%  90k/200k                    │
+│ ▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫  45%  90k/200k │
 │ ◱ $0.12 · 60h 0m left 1%                     ☉ $1.87 today 4% │
 │ § $0.05 · 42.1K                                   ⧗ 2m · ◆ 12 │
 ├───────────────────────────────────────────────────────────────┤
@@ -69,18 +78,18 @@ exports[`TUI Panel Rendering Medium layout (55-79 cols) should render metrics ac
 
 exports[`TUI Panel Rendering Narrow layout (<55 cols) should stack everything vertically 1`] = `
 "[?2026h╭─ claude 3.5 sonnet ──────────────────╮
-│ ▪▪▪▪▪▪▪▫▫▫▫▫▫▫▫▫  45%  90k/200k      │
+│ ▪▪▪▪▪▪▪▪▪▫▫▫▫▫▫▫▫▫▫▫▫  45%  90k/200k │
 │ ◱ $0.12 · 60h 0m left 1%             │
 │ § $0.05                ☉ $1.87 today │
 ├──────────────────────────────────────┤
 │ ⎇ feat/tui-mode ● ↑2    /h/u/project │
-│ ◈ v1.19.6 · tmux:dev · ⧖ 2.3s · +48… │
+│ ◈ v1.19.6 · tmux:dev · ⧖ 2.3s · +48…[0m │
 ╰──────────────────────────────────────╯[?2026l"
 `;
 
 exports[`TUI Panel Rendering Wide layout (80+ cols) should render full panel with all data 1`] = `
 "[?2026h╭─ claude 3.5 sonnet ──────────────────────────────────────────────────────────── claude-powerline ╮
-│ ▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫  45%  90k/200k                                          │
+│ ▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫  45%  90k/200k │
 │ ◱ $0.12 · 60h 0m left 1%          § $0.05 · 42.1K          ☉ $1.87 today 4%          ⧗ 2m · ◆ 12 │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ ⎇ feat/tui-mode ● ↑2  /h/u/project           ◈ v1.19.6 · tmux:dev · ⧖ 2.3s · +48 · -15 · ↗ 45c/h │
@@ -89,7 +98,7 @@ exports[`TUI Panel Rendering Wide layout (80+ cols) should render full panel wit
 
 exports[`TUI Panel Rendering Wide layout (80+ cols) should render with minimal data 1`] = `
 "[?2026h╭─ claude 3.5 sonnet ──────────────────────────────────────────────────────────── claude-powerline ╮
-│ ▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫  45%  90k/200k                                          │
+│ ▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫  45%  90k/200k │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ /h/u/project                                                                           ◈ v1.19.6 │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯[?2026l"

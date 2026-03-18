@@ -1,4 +1,5 @@
 import { execSync } from "node:child_process";
+import { getWindowsTerminalColumns } from "./win32-terminal";
 
 const ESC = String.fromCharCode(27);
 const ANSI_REGEX = new RegExp(`${ESC}\\[[0-9;]*m`, "g");
@@ -80,11 +81,13 @@ function getUnixTerminalWidth(): number | null {
 }
 
 /**
- * @info Returns 70% of terminal width to reserve space for Claude Code's
- * right-side UI messages (e.g., "ctrl-g to edit prompt in Nvim", "Thinking off")
+ * @info Reserves 45 characters for Claude Code's right-side UI messages
+ * (e.g., "Current: 2.1.78 · latest: 2.1.78", "Thinking off")
  */
+const RESERVED_CHARS = 45;
+
 export function getTerminalWidth(): number | null {
-  const applyReserve = (w: number) => Math.floor(w * 0.7);
+  const applyReserve = (w: number) => Math.max(1, w - RESERVED_CHARS);
 
   const envColumns = process.env.COLUMNS;
   if (envColumns) {
@@ -103,6 +106,20 @@ export function getTerminalWidth(): number | null {
 
   const width = getUnixTerminalWidth();
   return width ? applyReserve(width) : null;
+}
+
+export async function getRawTerminalWidth(): Promise<number | null> {
+  // Skip COLUMNS env and process.stdout.columns — Claude Code sets those
+  // to an already-reserved panel width. We need the actual terminal width
+  // so the grid engine can apply its own widthReserve.
+  if (process.platform === "win32") {
+    const wtCols = await getWindowsTerminalColumns();
+    if (wtCols) return wtCols;
+    const width = getWindowsTerminalWidth();
+    if (width) return width;
+  }
+
+  return getUnixTerminalWidth();
 }
 
 export function stripAnsi(str: string): string {

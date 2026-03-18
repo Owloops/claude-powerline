@@ -3,6 +3,8 @@ import path from "node:path";
 import os from "node:os";
 import { DEFAULT_CONFIG } from "./defaults";
 import type { ColorTheme } from "../themes";
+import type { TuiGridConfig } from "../tui/types";
+import { VALID_SEGMENT_NAMES } from "../tui/types";
 import type {
   SegmentConfig,
   DirectorySegmentConfig,
@@ -44,6 +46,7 @@ export interface DisplayConfig {
   colorCompatibility?: "auto" | "ansi" | "ansi256" | "truecolor";
   autoWrap?: boolean;
   padding?: number;
+  tui?: TuiGridConfig;
 }
 
 export interface BudgetItemConfig {
@@ -244,6 +247,127 @@ function parseCLIOverrides(args: string[]): Partial<PowerlineConfig> {
   return config;
 }
 
+function validateGridConfig(tui: TuiGridConfig): string | null {
+  if (!tui.breakpoints || !Array.isArray(tui.breakpoints) || tui.breakpoints.length === 0) {
+    return "grid config must have at least one breakpoint";
+  }
+
+  for (let bpIdx = 0; bpIdx < tui.breakpoints.length; bpIdx++) {
+    const bp = tui.breakpoints[bpIdx]!;
+    const prefix = `breakpoint[${bpIdx}]`;
+
+    if (typeof bp.minWidth !== "number" || bp.minWidth < 0) {
+      return `${prefix}: minWidth must be a non-negative number`;
+    }
+
+    if (!bp.areas || !Array.isArray(bp.areas) || bp.areas.length === 0) {
+      return `${prefix}: areas must be a non-empty array of strings`;
+    }
+
+    if (!bp.columns || !Array.isArray(bp.columns) || bp.columns.length === 0) {
+      return `${prefix}: columns must be a non-empty array`;
+    }
+
+    const colCount = bp.columns.length;
+
+    // Validate column definitions
+    for (const col of bp.columns) {
+      if (typeof col !== "string") {
+        return `${prefix}: column definition must be a string`;
+      }
+      if (!/^(\d+fr|\d+|auto)$/.test(col)) {
+        return `${prefix}: invalid column definition "${col}" (use "auto", "Nfr", or a fixed integer)`;
+      }
+    }
+
+    // Validate align array
+    if (bp.align !== undefined) {
+      if (!Array.isArray(bp.align)) {
+        return `${prefix}: align must be an array`;
+      }
+      if (bp.align.length !== colCount) {
+        return `${prefix}: align length (${bp.align.length}) must match columns length (${colCount})`;
+      }
+      for (const a of bp.align) {
+        if (a !== "left" && a !== "center" && a !== "right") {
+          return `${prefix}: invalid align value "${a}"`;
+        }
+      }
+    }
+
+    // Validate areas rows
+    const seenSegments = new Set<string>();
+    for (let rowIdx = 0; rowIdx < bp.areas.length; rowIdx++) {
+      const row = bp.areas[rowIdx]!;
+
+      // Divider row
+      if (row.trim() === "---") continue;
+
+      const cells = row.trim().split(/\s+/);
+      if (cells.length !== colCount) {
+        return `${prefix}: row "${row}" has ${cells.length} cells but expected ${colCount} columns`;
+      }
+
+      // Check segment names and contiguity
+      let prevCell = "";
+      let spanName = "";
+      for (const cell of cells) {
+        if (cell !== ".") {
+          if (!VALID_SEGMENT_NAMES.has(cell)) {
+            return `${prefix}: unknown segment name "${cell}"`;
+          }
+          // Check for non-contiguous spans
+          if (cell === spanName) {
+            // still in the same span, ok
+          } else if (seenSegments.has(cell)) {
+            return `${prefix}: segment "${cell}" appears on multiple rows`;
+          }
+        }
+
+        // Track span contiguity
+        if (cell !== prevCell) {
+          if (spanName && prevCell !== spanName && prevCell !== ".") {
+            // finished a span
+          }
+          spanName = cell;
+        }
+        prevCell = cell;
+      }
+
+      // Check for non-contiguous spans within this row
+      const seen = new Map<string, number>();
+      for (let i = 0; i < cells.length; i++) {
+        const cell = cells[i]!;
+        if (cell === "." || cell === "---") continue;
+        const lastIdx = seen.get(cell);
+        if (lastIdx !== undefined && lastIdx !== i - 1) {
+          // Check if all intermediate cells are the same
+          let contiguous = true;
+          for (let j = lastIdx + 1; j < i; j++) {
+            if (cells[j] !== cell) {
+              contiguous = false;
+              break;
+            }
+          }
+          if (!contiguous) {
+            return `${prefix}: segment "${cell}" has non-contiguous span in row "${row}"`;
+          }
+        }
+        seen.set(cell, i);
+      }
+
+      // Record segments from this row
+      for (const cell of cells) {
+        if (cell !== "." && cell !== "---") {
+          seenSegments.add(cell);
+        }
+      }
+    }
+  }
+
+  return null; // valid
+}
+
 export function loadConfig(
   args: string[] = process.argv,
   projectDir?: string,
@@ -293,6 +417,15 @@ export function loadConfig(
 
   const cliOverrides = parseCLIOverrides(args);
   config = deepMerge(config, cliOverrides);
+
+  // Validate grid config if present
+  if (config.display?.tui) {
+    const error = validateGridConfig(config.display.tui);
+    if (error) {
+      process.stderr.write(`Warning: invalid grid config: ${error}. Falling back to hardcoded layout.\n`);
+      delete config.display.tui;
+    }
+  }
 
   return config;
 }

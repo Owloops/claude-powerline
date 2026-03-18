@@ -36,6 +36,50 @@ export type SymbolSet = typeof SYMBOLS | typeof TEXT_SYMBOLS;
 
 export type LayoutMode = "wide" | "medium" | "narrow";
 
+export type SegmentName =
+  | "context"
+  | "block"
+  | "session"
+  | "today"
+  | "git"
+  | "dir"
+  | "version"
+  | "tmux"
+  | "metrics"
+  | "activity"
+  | "burn"
+  | "env";
+
+export const VALID_SEGMENT_NAMES: ReadonlySet<string> = new Set<SegmentName>([
+  "context", "block", "session", "today", "git", "dir",
+  "version", "tmux", "metrics", "activity", "burn", "env",
+]);
+
+export type AlignValue = "left" | "center" | "right";
+
+export interface GridCell {
+  segment: string;    // segment name, "." for empty, "---" for divider
+  spanStart: boolean; // true if this is the first cell of a span
+  spanSize: number;   // number of columns this cell spans (1 if no span)
+}
+
+export interface TuiGridBreakpoint {
+  minWidth: number;
+  areas: string[];
+  columns: string[];
+  align?: AlignValue[];
+}
+
+export interface TuiGridConfig {
+  widthReserve?: number;
+  minWidth?: number;
+  separator?: {
+    column?: string;
+    divider?: string;
+  };
+  breakpoints: TuiGridBreakpoint[];
+}
+
 export interface RenderCtx {
   lines: string[];
   data: TuiData;

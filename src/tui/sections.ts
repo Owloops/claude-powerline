@@ -1,6 +1,6 @@
 import type { PowerlineConfig } from "../config/loader";
 import type { PowerlineColors } from "../themes";
-import type { TuiData, SymbolSet, BoxChars } from "./types";
+import type { TuiData, SymbolSet, BoxChars, SegmentName, RenderCtx } from "./types";
 
 import {
   formatCost,
@@ -57,17 +57,11 @@ export function buildContextLine(
   reset: string,
   colors: PowerlineColors,
 ): string | null {
-  const barLen = Math.min(Math.floor(contentWidth * 0.45), 40);
-
   if (!data.contextInfo) {
     return null;
   }
 
   const usedPct = data.contextInfo.usablePercentage;
-  const filledCount = Math.round((usedPct / 100) * barLen);
-  const emptyCount = barLen - filledCount;
-  const bar =
-    sym.bar_filled.repeat(filledCount) + sym.bar_empty.repeat(emptyCount);
 
   const tokenStr =
     data.contextInfo.totalTokens >= 1000
@@ -79,6 +73,13 @@ export function buildContextLine(
       ? `${(data.contextInfo.maxTokens / 1000).toFixed(0)}k`
       : `${data.contextInfo.maxTokens}`;
 
+  // Build text suffix first, then let the bar fill the remaining space
+  const suffix = `  ${usedPct}%  ${tokenStr}/${maxStr}`;
+  const barLen = Math.max(4, contentWidth - suffix.length);
+  const filledCount = Math.round((usedPct / 100) * barLen);
+  const emptyCount = barLen - filledCount;
+  const bar = sym.bar_filled.repeat(filledCount) + sym.bar_empty.repeat(emptyCount);
+
   let fgColor = colors.contextFg;
   if (usedPct >= 80) {
     fgColor = colors.contextCriticalFg;
@@ -86,7 +87,7 @@ export function buildContextLine(
     fgColor = colors.contextWarningFg;
   }
 
-  return colorize(`${bar}  ${usedPct}%  ${tokenStr}/${maxStr}`, fgColor, reset);
+  return colorize(`${bar}${suffix}`, fgColor, reset);
 }
 
 function getDirectoryDisplay(hookData: TuiData["hookData"]): string {
@@ -389,4 +390,110 @@ export function formatTodaySegment(
   }
 
   return text;
+}
+
+export function formatBurnSegment(blockInfo: TuiData["blockInfo"], sym: SymbolSet): string {
+  if (!blockInfo || blockInfo.burnRate === null || blockInfo.burnRate === undefined || blockInfo.burnRate <= 0) {
+    return "";
+  }
+  const burnStr = blockInfo.burnRate < 1
+    ? `${(blockInfo.burnRate * 100).toFixed(0)}c/h`
+    : `$${blockInfo.burnRate.toFixed(2)}/h`;
+  return `${sym.metrics_burn} ${burnStr}`;
+}
+
+function formatMetricsSegment(data: TuiData, sym: SymbolSet): string {
+  if (!data.metricsInfo) return "";
+  const parts: string[] = [];
+  if (data.metricsInfo.responseTime !== null && !isNaN(data.metricsInfo.responseTime) && data.metricsInfo.responseTime > 0) {
+    parts.push(`${sym.metrics_response} ${formatResponseTime(data.metricsInfo.responseTime)}`);
+  }
+  if (data.metricsInfo.linesAdded !== null && data.metricsInfo.linesAdded > 0) {
+    parts.push(`${sym.metrics_lines_added}${data.metricsInfo.linesAdded}`);
+  }
+  if (data.metricsInfo.linesRemoved !== null && data.metricsInfo.linesRemoved > 0) {
+    parts.push(`${sym.metrics_lines_removed}${data.metricsInfo.linesRemoved}`);
+  }
+  return parts.length > 0 ? parts.join(" · ") : "";
+}
+
+function formatActivitySegment(data: TuiData, sym: SymbolSet): string {
+  const parts = collectActivityParts(data, sym);
+  return parts.length > 0 ? parts.join(" · ") : "";
+}
+
+function formatGitSegment(data: TuiData, sym: SymbolSet): string {
+  if (!data.gitInfo) return "";
+  let gitText = `${sym.branch} ${data.gitInfo.branch}`;
+  if (data.gitInfo.status === "conflicts") {
+    gitText += ` ${sym.git_conflicts}`;
+  } else if (data.gitInfo.status === "dirty") {
+    gitText += ` ${sym.git_dirty}`;
+  } else {
+    gitText += ` ${sym.git_clean}`;
+  }
+  if (data.gitInfo.ahead > 0) {
+    gitText += ` ${sym.git_ahead}${data.gitInfo.ahead}`;
+  }
+  if (data.gitInfo.behind > 0) {
+    gitText += ` ${sym.git_behind}${data.gitInfo.behind}`;
+  }
+  const counts: string[] = [];
+  if (data.gitInfo.staged && data.gitInfo.staged > 0) counts.push(`+${data.gitInfo.staged}`);
+  if (data.gitInfo.unstaged && data.gitInfo.unstaged > 0) counts.push(`~${data.gitInfo.unstaged}`);
+  if (data.gitInfo.untracked && data.gitInfo.untracked > 0) counts.push(`?${data.gitInfo.untracked}`);
+  if (counts.length > 0) {
+    gitText += ` (${counts.join(" ")})`;
+  }
+  return gitText;
+}
+
+function formatDirSegment(data: TuiData): string {
+  return abbreviateFishStyle(getDirectoryDisplay(data.hookData));
+}
+
+function formatVersionSegment(data: TuiData, sym: SymbolSet): string {
+  if (!data.hookData.version) return "";
+  return `${sym.version} v${data.hookData.version}`;
+}
+
+function formatTmuxSegment(data: TuiData): string {
+  if (!data.tmuxSessionId) return "";
+  return `tmux:${data.tmuxSessionId}`;
+}
+
+function formatEnvSegment(config: PowerlineConfig): string {
+  const envConfig = config.display.lines
+    .map((line) => line.segments.env)
+    .find((env) => env?.enabled);
+
+  if (!envConfig || !envConfig.variable) return "";
+  const envVal = process.env[envConfig.variable];
+  if (!envVal) return "";
+  const prefix = envConfig.prefix ?? envConfig.variable;
+  return prefix ? `${prefix}:${envVal}` : envVal;
+}
+
+export function resolveSegments(data: TuiData, ctx: RenderCtx): Record<SegmentName, string> {
+  const { sym, config, reset, colors } = ctx;
+
+  const colorizeOrEmpty = (text: string, color: string): string =>
+    text ? colorize(text, color, reset) : "";
+
+  const contextLine = buildContextLine(data, ctx.contentWidth, sym, reset, colors);
+
+  return {
+    context: contextLine ?? "",
+    block: data.blockInfo ? colorizeOrEmpty(formatBlockSegment(data.blockInfo, sym, config), colors.blockFg) : "",
+    session: data.usageInfo ? colorizeOrEmpty(formatSessionSegment(data.usageInfo, sym, config), colors.sessionFg) : "",
+    today: data.todayInfo ? colorizeOrEmpty(formatTodaySegment(data.todayInfo, sym, config), colors.todayFg) : "",
+    git: colorizeOrEmpty(formatGitSegment(data, sym), colors.gitFg),
+    dir: colorizeOrEmpty(formatDirSegment(data), colors.modeFg),
+    version: colorizeOrEmpty(formatVersionSegment(data, sym), colors.versionFg),
+    tmux: colorizeOrEmpty(formatTmuxSegment(data), colors.tmuxFg),
+    metrics: colorizeOrEmpty(formatMetricsSegment(data, sym), colors.metricsFg),
+    activity: colorizeOrEmpty(formatActivitySegment(data, sym), colors.metricsFg),
+    burn: colorizeOrEmpty(formatBurnSegment(data.blockInfo, sym), colors.metricsFg),
+    env: colorizeOrEmpty(formatEnvSegment(config), colors.envFg),
+  };
 }

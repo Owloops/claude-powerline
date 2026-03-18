@@ -17,6 +17,25 @@ export function padRight(text: string, width: number): string {
   return text + " ".repeat(width - visible);
 }
 
+export function padLeft(text: string, width: number): string {
+  const visible = visibleLength(text);
+  if (visible >= width) {
+    return text;
+  }
+  return " ".repeat(width - visible) + text;
+}
+
+export function padCenter(text: string, width: number): string {
+  const visible = visibleLength(text);
+  if (visible >= width) {
+    return text;
+  }
+  const totalPad = width - visible;
+  const leftPad = Math.floor(totalPad / 2);
+  const rightPad = totalPad - leftPad;
+  return " ".repeat(leftPad) + text + " ".repeat(rightPad);
+}
+
 const ESC = String.fromCharCode(27);
 const ANSI_SPLIT = new RegExp(`(${ESC}\\[[0-9;]*m)`);
 
@@ -35,7 +54,7 @@ export function truncateAnsi(text: string, maxWidth: number): string {
     }
     for (const char of part) {
       if (width >= maxWidth - 1) {
-        result += "…";
+        result += "…\x1b[0m";
         return result;
       }
       result += char;

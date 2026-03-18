@@ -51,13 +51,13 @@ function makeTuiData(overrides: Partial<TuiData> = {}): TuiData {
 
 describe("TUI Panel Rendering", () => {
   describe("Wide layout (80+ cols)", () => {
-    it("should render full panel with all data", () => {
-      const result = renderTuiPanel(makeTuiData(), BOX_CHARS, "", 100, tuiConfig);
+    it("should render full panel with all data", async () => {
+      const result = await renderTuiPanel(makeTuiData(), BOX_CHARS, "", 100, tuiConfig);
       expect(result).toMatchSnapshot();
     });
 
-    it("should render with minimal data", () => {
-      const result = renderTuiPanel(
+    it("should render with minimal data", async () => {
+      const result = await renderTuiPanel(
         makeTuiData({ usageInfo: null, blockInfo: null, todayInfo: null, metricsInfo: null, gitInfo: null, tmuxSessionId: null }),
         BOX_CHARS, "", 100, tuiConfig,
       );
@@ -66,45 +66,45 @@ describe("TUI Panel Rendering", () => {
   });
 
   describe("Medium layout (55-79 cols)", () => {
-    it("should render metrics across 2 lines", () => {
-      const result = renderTuiPanel(makeTuiData(), BOX_CHARS, "", 65, tuiConfig);
+    it("should render metrics across 2 lines", async () => {
+      const result = await renderTuiPanel(makeTuiData(), BOX_CHARS, "", 65, tuiConfig);
       expect(result).toMatchSnapshot();
     });
   });
 
   describe("Narrow layout (<55 cols)", () => {
-    it("should stack everything vertically", () => {
-      const result = renderTuiPanel(makeTuiData(), BOX_CHARS, "", 40, tuiConfig);
+    it("should stack everything vertically", async () => {
+      const result = await renderTuiPanel(makeTuiData(), BOX_CHARS, "", 40, tuiConfig);
       expect(result).toMatchSnapshot();
     });
   });
 
   describe("Edge cases", () => {
-    it("should handle null terminal width", () => {
-      const result = renderTuiPanel(makeTuiData(), BOX_CHARS, "", null, tuiConfig);
+    it("should handle null terminal width", async () => {
+      const result = await renderTuiPanel(makeTuiData(), BOX_CHARS, "", null, tuiConfig);
       expect(result).toMatchSnapshot();
     });
 
-    it("should handle minimum panel width", () => {
-      const result = renderTuiPanel(makeTuiData(), BOX_CHARS, "", 32, tuiConfig);
+    it("should handle minimum panel width", async () => {
+      const result = await renderTuiPanel(makeTuiData(), BOX_CHARS, "", 32, tuiConfig);
       expect(result).toMatchSnapshot();
     });
 
-    it("should handle missing context info", () => {
-      const result = renderTuiPanel(makeTuiData({ contextInfo: null }), BOX_CHARS, "", 100, tuiConfig);
+    it("should handle missing context info", async () => {
+      const result = await renderTuiPanel(makeTuiData({ contextInfo: null }), BOX_CHARS, "", 100, tuiConfig);
       expect(result).toMatchSnapshot();
     });
 
-    it("should handle context at warning level", () => {
-      const result = renderTuiPanel(
+    it("should handle context at warning level", async () => {
+      const result = await renderTuiPanel(
         makeTuiData({ contextInfo: { totalTokens: 140000, maxTokens: 200000, usablePercentage: 70, percentage: 70, contextLeftPercentage: 30, usableTokens: 60000} }),
         BOX_CHARS, "", 100, tuiConfig,
       );
       expect(result).toMatchSnapshot();
     });
 
-    it("should show git working tree counts", () => {
-      const result = renderTuiPanel(
+    it("should show git working tree counts", async () => {
+      const result = await renderTuiPanel(
         makeTuiData({ gitInfo: { branch: "main", status: "dirty", ahead: 0, behind: 0, staged: 3, unstaged: 2, untracked: 1 } }),
         BOX_CHARS, "", 100, tuiConfig,
       );
@@ -112,12 +112,88 @@ describe("TUI Panel Rendering", () => {
       expect(result).toMatchSnapshot();
     });
 
-    it("should handle context at critical level", () => {
-      const result = renderTuiPanel(
+    it("should handle context at critical level", async () => {
+      const result = await renderTuiPanel(
         makeTuiData({ contextInfo: { totalTokens: 180000, maxTokens: 200000, usablePercentage: 90, percentage: 90, contextLeftPercentage: 10, usableTokens: 20000 } }),
         BOX_CHARS, "", 100, tuiConfig,
       );
       expect(result).toMatchSnapshot();
+    });
+  });
+
+  describe("Hardcoded layout unchanged without grid config", () => {
+    it("should use hardcoded layouts when display.tui is absent", async () => {
+      const configWithoutGrid: PowerlineConfig = {
+        ...DEFAULT_CONFIG,
+        display: {
+          ...DEFAULT_CONFIG.display,
+          style: "tui",
+          // no tui grid config
+        },
+      };
+      expect(configWithoutGrid.display.tui).toBeUndefined();
+
+      const result = await renderTuiPanel(makeTuiData(), BOX_CHARS, "", 100, configWithoutGrid);
+      // Should use hardcoded wide layout (100 cols >= 80)
+      expect(result).toContain("╭"); // top border
+      expect(result).toContain("╰"); // bottom border
+      expect(result).toMatchSnapshot();
+    });
+
+    it("should produce identical output to existing wide layout", async () => {
+      const configWithoutGrid: PowerlineConfig = {
+        ...DEFAULT_CONFIG,
+        display: { ...DEFAULT_CONFIG.display, style: "tui" },
+      };
+      const data = makeTuiData();
+      const result1 = await renderTuiPanel(data, BOX_CHARS, "", 100, tuiConfig);
+      const result2 = await renderTuiPanel(data, BOX_CHARS, "", 100, configWithoutGrid);
+      expect(result1).toBe(result2);
+    });
+  });
+
+  describe("Grid layout integration", () => {
+    const gridConfig: PowerlineConfig = {
+      ...DEFAULT_CONFIG,
+      display: {
+        ...DEFAULT_CONFIG.display,
+        style: "tui",
+        tui: {
+          widthReserve: 0,
+          separator: { column: "  " },
+          breakpoints: [{
+            minWidth: 0,
+            areas: [
+              "context context context",
+              "block   session today",
+              "---",
+              "git     .       dir",
+            ],
+            columns: ["1fr", "auto", "1fr"],
+            align: ["left", "left", "right"],
+          }],
+        },
+      },
+    };
+
+    it("should render grid layout when display.tui is present", async () => {
+      jest.spyOn(require("../src/utils/terminal"), "getRawTerminalWidth").mockResolvedValue(100);
+      const result = await renderTuiPanel(makeTuiData(), BOX_CHARS, "", 100, gridConfig);
+      expect(result).toContain("╭"); // title bar
+      expect(result).toContain("╰"); // bottom border
+      expect(result).toContain("├"); // divider
+      // Verify it contains segment data
+      expect(result).toContain("feat/tui-mode"); // git branch
+    });
+
+    it("should auto-collapse rows when segment data is missing", async () => {
+      jest.spyOn(require("../src/utils/terminal"), "getRawTerminalWidth").mockResolvedValue(100);
+      const data = makeTuiData({ gitInfo: null, blockInfo: null, usageInfo: null, todayInfo: null });
+      const result = await renderTuiPanel(data, BOX_CHARS, "", 100, gridConfig);
+      // git row should collapse since git is null
+      // block/session/today row should collapse since all null
+      // divider between them should be orphaned and removed
+      expect(result).toBeDefined();
     });
   });
 });

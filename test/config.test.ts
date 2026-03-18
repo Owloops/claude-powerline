@@ -273,4 +273,180 @@ describe("config", () => {
       expect(config.display.style).toBe("capsule");
     });
   });
+
+  describe("grid config validation", () => {
+    let stderrSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      stderrSpy = jest.spyOn(process.stderr, "write").mockImplementation(() => true);
+    });
+
+    afterEach(() => {
+      stderrSpy.mockRestore();
+    });
+
+    function loadWithGrid(tui: any) {
+      mockFs.existsSync.mockImplementation(
+        (p) => p === path.join("/project", ".claude-powerline.json")
+      );
+      mockFs.readFileSync.mockReturnValue(
+        JSON.stringify({ display: { style: "tui", tui } })
+      );
+      return loadConfig();
+    }
+
+    it("should accept valid grid config", () => {
+      const config = loadWithGrid({
+        breakpoints: [{
+          minWidth: 0,
+          areas: ["block session"],
+          columns: ["1fr", "1fr"],
+          align: ["left", "right"],
+        }],
+      });
+      expect(config.display.tui).toBeDefined();
+      expect(stderrSpy).not.toHaveBeenCalled();
+    });
+
+    it("should reject grid config with no breakpoints", () => {
+      const config = loadWithGrid({ breakpoints: [] });
+      expect(config.display.tui).toBeUndefined();
+      expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining("at least one breakpoint"));
+    });
+
+    it("should reject grid config with missing breakpoints", () => {
+      const config = loadWithGrid({});
+      expect(config.display.tui).toBeUndefined();
+    });
+
+    it("should reject grid config with negative minWidth", () => {
+      const config = loadWithGrid({
+        breakpoints: [{ minWidth: -1, areas: ["block"], columns: ["1fr"] }],
+      });
+      expect(config.display.tui).toBeUndefined();
+      expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining("minWidth"));
+    });
+
+    it("should reject grid config with column count mismatch", () => {
+      const config = loadWithGrid({
+        breakpoints: [{
+          minWidth: 0,
+          areas: ["block session today"],
+          columns: ["1fr", "1fr"], // 2 columns but 3 cells
+        }],
+      });
+      expect(config.display.tui).toBeUndefined();
+      expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining("cells but expected"));
+    });
+
+    it("should reject grid config with unknown segment name", () => {
+      const config = loadWithGrid({
+        breakpoints: [{
+          minWidth: 0,
+          areas: ["block unknown_seg"],
+          columns: ["1fr", "1fr"],
+        }],
+      });
+      expect(config.display.tui).toBeUndefined();
+      expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining("unknown segment"));
+    });
+
+    it("should reject grid config with align length mismatch", () => {
+      const config = loadWithGrid({
+        breakpoints: [{
+          minWidth: 0,
+          areas: ["block session"],
+          columns: ["1fr", "1fr"],
+          align: ["left"], // 1 align but 2 columns
+        }],
+      });
+      expect(config.display.tui).toBeUndefined();
+      expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining("align length"));
+    });
+
+    it("should reject grid config with invalid align value", () => {
+      const config = loadWithGrid({
+        breakpoints: [{
+          minWidth: 0,
+          areas: ["block session"],
+          columns: ["1fr", "1fr"],
+          align: ["left", "middle"],
+        }],
+      });
+      expect(config.display.tui).toBeUndefined();
+      expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining("invalid align"));
+    });
+
+    it("should reject grid config with invalid column definition", () => {
+      const config = loadWithGrid({
+        breakpoints: [{
+          minWidth: 0,
+          areas: ["block session"],
+          columns: ["1fr", "minmax(10,1fr)"],
+        }],
+      });
+      expect(config.display.tui).toBeUndefined();
+      expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining("invalid column definition"));
+    });
+
+    it("should reject grid config with non-contiguous spans", () => {
+      const config = loadWithGrid({
+        breakpoints: [{
+          minWidth: 0,
+          areas: ["block session block"], // block is not contiguous
+          columns: ["1fr", "1fr", "1fr"],
+        }],
+      });
+      expect(config.display.tui).toBeUndefined();
+      expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining("non-contiguous"));
+    });
+
+    it("should reject grid config with segment on multiple rows", () => {
+      const config = loadWithGrid({
+        breakpoints: [{
+          minWidth: 0,
+          areas: ["block session", "block today"],
+          columns: ["1fr", "1fr"],
+        }],
+      });
+      expect(config.display.tui).toBeUndefined();
+      expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining("multiple rows"));
+    });
+
+    it("should allow . cells and --- divider rows", () => {
+      const config = loadWithGrid({
+        breakpoints: [{
+          minWidth: 0,
+          areas: ["block . session", "---", "git . dir"],
+          columns: ["1fr", "auto", "1fr"],
+        }],
+      });
+      expect(config.display.tui).toBeDefined();
+      expect(stderrSpy).not.toHaveBeenCalled();
+    });
+
+    it("should allow contiguous spans", () => {
+      const config = loadWithGrid({
+        breakpoints: [{
+          minWidth: 0,
+          areas: ["context context context"],
+          columns: ["1fr", "1fr", "1fr"],
+        }],
+      });
+      expect(config.display.tui).toBeDefined();
+      expect(stderrSpy).not.toHaveBeenCalled();
+    });
+
+    it("should accept valid column types: auto, fr, fixed", () => {
+      const config = loadWithGrid({
+        breakpoints: [{
+          minWidth: 0,
+          areas: ["block session today"],
+          columns: ["auto", "2fr", "20"],
+        }],
+      });
+      expect(config.display.tui).toBeDefined();
+      expect(stderrSpy).not.toHaveBeenCalled();
+    });
+  });
 });

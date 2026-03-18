@@ -1,11 +1,55 @@
 {
-  "theme": "custom",
+  "theme": "tokyo-night",
   "display": {
     "padding": 1,
-    "style": "capsule",
+    "style": "tui",
     "charset": "unicode",
     "colorCompatibility": "auto",
     "autoWrap": true,
+    "tui": {
+      "widthReserve": 45,
+      "separator": { "column": " │ " },
+      "breakpoints": [
+        {
+          "minWidth": 80,
+          "areas": [
+            "git      git      git      dir",
+            "---",
+            "context  context  .        .",
+            "block    session  today    burn",
+            "version  activity metrics  metrics"
+          ],
+          "columns": ["1fr", "auto", "auto", "1fr"],
+          "align": ["left", "left", "left", "right"]
+        },
+        {
+          "minWidth": 55,
+          "areas": [
+            "git     dir",
+            "---",
+            "context context",
+            "block   today",
+            "session activity"
+          ],
+          "columns": ["1fr", "1fr"],
+          "align": ["left", "right"]
+        },
+        {
+          "minWidth": 0,
+          "areas": [
+            "git",
+            "dir",
+            "---",
+            "context",
+            "block",
+            "session",
+            "today"
+          ],
+          "columns": ["1fr"],
+          "align": ["left"]
+        }
+      ]
+    },
     "lines": [
       {
         "segments": {
@@ -54,6 +98,10 @@
           },
           "tmux": {
             "enabled": false
+          },
+          "sessionId": {
+            "enabled": true,
+            "showIdLabel": true
           }
         }
       },
