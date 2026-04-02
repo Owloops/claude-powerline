@@ -59,16 +59,8 @@ export function formatContextParts(
   if (!data.contextInfo) return { bar: "", pct: "", tokens: "" };
 
   const usedPct = data.contextInfo.usablePercentage;
-
-  const tokenStr =
-    data.contextInfo.totalTokens >= 1000
-      ? `${(data.contextInfo.totalTokens / 1000).toFixed(0)}k`
-      : `${data.contextInfo.totalTokens}`;
-
-  const maxStr =
-    data.contextInfo.maxTokens >= 1000
-      ? `${(data.contextInfo.maxTokens / 1000).toFixed(0)}k`
-      : `${data.contextInfo.maxTokens}`;
+  const tokenStr = formatTokens(data.contextInfo.totalTokens).replace(" tokens", "");
+  const maxStr = formatTokens(data.contextInfo.maxTokens).replace(" tokens", "");
 
   return {
     bar: " ",
@@ -109,18 +101,8 @@ export function buildContextLine(
   }
 
   const usedPct = data.contextInfo.usablePercentage;
-
-  const tokenStr =
-    data.contextInfo.totalTokens >= 1000
-      ? `${(data.contextInfo.totalTokens / 1000).toFixed(0)}k`
-      : `${data.contextInfo.totalTokens}`;
-
-  const maxStr =
-    data.contextInfo.maxTokens >= 1000
-      ? `${(data.contextInfo.maxTokens / 1000).toFixed(0)}k`
-      : `${data.contextInfo.maxTokens}`;
-
-  // Build text suffix first, then let the bar fill the remaining space
+  const tokenStr = formatTokens(data.contextInfo.totalTokens).replace(" tokens", "");
+  const maxStr = formatTokens(data.contextInfo.maxTokens).replace(" tokens", "");
   const suffix = `  ${usedPct}%  ${tokenStr}/${maxStr}`;
   const barLen = Math.max(4, contentWidth - suffix.length);
   const filledCount = Math.round((usedPct / 100) * barLen);
@@ -226,33 +208,8 @@ export function collectWorkspaceParts(
 ): string[] {
   const parts: string[] = [];
 
-  if (data.gitInfo) {
-    let gitText = `${sym.branch} ${data.gitInfo.branch}`;
-    if (data.gitInfo.status === "conflicts") {
-      gitText += ` ${sym.git_conflicts}`;
-    } else if (data.gitInfo.status === "dirty") {
-      gitText += ` ${sym.git_dirty}`;
-    } else {
-      gitText += ` ${sym.git_clean}`;
-    }
-    if (data.gitInfo.ahead > 0) {
-      gitText += ` ${sym.git_ahead}${data.gitInfo.ahead}`;
-    }
-    if (data.gitInfo.behind > 0) {
-      gitText += ` ${sym.git_behind}${data.gitInfo.behind}`;
-    }
-    const counts: string[] = [];
-    if (data.gitInfo.staged && data.gitInfo.staged > 0)
-      counts.push(`+${data.gitInfo.staged}`);
-    if (data.gitInfo.unstaged && data.gitInfo.unstaged > 0)
-      counts.push(`~${data.gitInfo.unstaged}`);
-    if (data.gitInfo.untracked && data.gitInfo.untracked > 0)
-      counts.push(`?${data.gitInfo.untracked}`);
-    if (counts.length > 0) {
-      gitText += ` (${counts.join(" ")})`;
-    }
-    parts.push(colorize(gitText, colors.gitFg, reset));
-  }
+  const gitStr = formatGitSegment(data, sym);
+  if (gitStr) parts.push(colorize(gitStr, colors.gitFg, reset));
 
   const dir = abbreviateFishStyle(getDirectoryDisplay(data.hookData));
   parts.push(colorize(dir, colors.modeFg, reset));

@@ -492,7 +492,7 @@ describe("renderGrid", () => {
       git: "GIT",
       dir: "DIR",
     };
-    const lines = renderGrid(gridConfig, data, box, 80);
+    const { lines } = renderGrid(gridConfig, data, box, 80);
     expect(lines.length).toBeGreaterThan(0);
     // Should have content rows and a divider
     const dividerLines = lines.filter(l => l.includes("├") && l.includes("┤") && l.includes("─"));
@@ -509,7 +509,7 @@ describe("renderGrid", () => {
       }],
     };
     const data: Record<string, string> = { block: "", session: "" };
-    const lines = renderGrid(gridConfig, data, box, 80);
+    const { lines } = renderGrid(gridConfig, data, box, 80);
     expect(lines).toHaveLength(0);
   });
 
@@ -532,9 +532,9 @@ describe("renderGrid", () => {
     const data: Record<string, string> = { block: "B", session: "S", today: "T" };
 
     // Wide: 3 columns -> 1 content row
-    const wideLines = renderGrid(gridConfig, data, box, 100);
+    const { lines: wideLines } = renderGrid(gridConfig, data, box, 100);
     // Narrow: 1 column -> 3 content rows
-    const narrowLines = renderGrid(gridConfig, data, box, 50);
+    const { lines: narrowLines } = renderGrid(gridConfig, data, box, 50);
     expect(narrowLines.length).toBeGreaterThan(wideLines.length);
   });
 
@@ -548,7 +548,7 @@ describe("renderGrid", () => {
       }],
     };
     const data: Record<string, string> = { block: "B" };
-    const lines = renderGrid(gridConfig, data, box, 120);
+    const { lines } = renderGrid(gridConfig, data, box, 120);
     // Panel width = max(32, 120 - 45) = 75
     // Each line should have box chars: "│ content │"
     // Line width = panelWidth = 75
@@ -571,7 +571,7 @@ describe("renderGrid", () => {
       }],
     };
     const data: Record<string, string> = { block: "B" };
-    const lines = renderGrid(gridConfig, data, box, 50);
+    const { lines } = renderGrid(gridConfig, data, box, 50);
     // Panel width = max(40, 50 - 200) = max(40, -150) = 40
     expect(lines.length).toBeGreaterThan(0);
   });
@@ -591,7 +591,7 @@ describe("renderGrid", () => {
     };
     // session is empty, so its row collapses + divider becomes orphaned
     const data: Record<string, string> = { block: "B", session: "" };
-    const lines = renderGrid(gridConfig, data, box, 80);
+    const { lines } = renderGrid(gridConfig, data, box, 80);
     // Should only have the block row
     expect(lines).toHaveLength(1);
     expect(lines[0]).toContain("B");
@@ -610,7 +610,7 @@ describe("renderGrid", () => {
       }],
     };
     const data: Record<string, string> = { block: "BLK", session: "SES" };
-    const lines = renderGrid(gridConfig, data, box, 80);
+    const { lines } = renderGrid(gridConfig, data, box, 80);
     // The content row should contain the separator
     const contentLine = lines.find(l => l.includes("BLK"));
     expect(contentLine).toContain(" | ");
@@ -627,7 +627,7 @@ describe("renderGrid", () => {
       }],
     };
     const data: Record<string, string> = { block: "BLK" };
-    const lines = renderGrid(gridConfig, data, box, 80);
+    const { lines } = renderGrid(gridConfig, data, box, 80);
     const contentLine = lines[0]!;
     // Content should be left-aligned (starts with box + space + content)
     expect(contentLine).toMatch(/^│ BLK/);
@@ -644,7 +644,7 @@ describe("renderGrid", () => {
       }],
     };
     const data: Record<string, string> = { block: "B", session: "S" };
-    const lines = renderGrid(gridConfig, data, box, 80);
+    const { lines } = renderGrid(gridConfig, data, box, 80);
     const dividerLine = lines.find(l => l.includes("├") && l.includes("┤"));
     expect(dividerLine).toBeDefined();
     expect(dividerLine).toContain("=");
@@ -711,7 +711,7 @@ describe("dot-notation in grid areas", () => {
       "session.cost": "$1.23",
       "session.tokens": "45k",
     };
-    const lines = renderGrid(gridConfig, data, box, 80);
+    const { lines } = renderGrid(gridConfig, data, box, 80);
     expect(lines).toHaveLength(1);
     const line = lines[0]!;
     expect(line).toContain("§");
@@ -734,7 +734,7 @@ describe("dot-notation in grid areas", () => {
       "git.status": "✓",
       dir: "~/projects",
     };
-    const lines = renderGrid(gridConfig, data, box, 80);
+    const { lines } = renderGrid(gridConfig, data, box, 80);
     expect(lines).toHaveLength(1);
     const line = lines[0]!;
     expect(line).toContain("main");
@@ -752,7 +752,7 @@ describe("dot-notation in grid areas", () => {
       }],
     };
     const data: Record<string, string> = { "session.budget": "" };
-    const lines = renderGrid(gridConfig, data, box, 80);
+    const { lines } = renderGrid(gridConfig, data, box, 80);
     expect(lines).toHaveLength(0);
   });
 });

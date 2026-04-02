@@ -725,6 +725,13 @@ export class PowerlineRenderer {
       }
     }
 
+    const convertHex = (hex: string, isBg: boolean): string => {
+      if (colorSupport === "none") return "";
+      if (colorSupport === "ansi") return hexToBasicAnsi(hex, isBg);
+      if (colorSupport === "ansi256") return hexTo256Ansi(hex, isBg);
+      return hexToAnsi(hex, isBg);
+    };
+
     const fallbackTheme = getTheme("dark", colorSupport)!;
 
     const isTui = this.config.display.style === "tui";
@@ -739,27 +746,10 @@ export class PowerlineRenderer {
         fgHex = colors.bg;
       }
 
-      if (colorSupport === "none") {
-        return {
-          bg: "",
-          fg: "",
-        };
-      } else if (colorSupport === "ansi") {
-        return {
-          bg: hexToBasicAnsi(colors.bg, true),
-          fg: hexToBasicAnsi(fgHex, false),
-        };
-      } else if (colorSupport === "ansi256") {
-        return {
-          bg: hexTo256Ansi(colors.bg, true),
-          fg: hexTo256Ansi(fgHex, false),
-        };
-      } else {
-        return {
-          bg: hexToAnsi(colors.bg, true),
-          fg: hexToAnsi(fgHex, false),
-        };
-      }
+      return {
+        bg: convertHex(colors.bg, true),
+        fg: convertHex(fgHex, false),
+      };
     };
 
     const directory = getSegmentColors("directory");
@@ -807,29 +797,22 @@ export class PowerlineRenderer {
       envFg: env.fg,
       weeklyBg: weekly.bg,
       weeklyFg: weekly.fg,
-      partFg: this.resolvePartColors(colorSupport),
+      partFg: this.resolvePartColors(convertHex),
     };
   }
 
   private resolvePartColors(
-    colorSupport: "none" | "ansi" | "ansi256" | "truecolor",
+    convertHex: (hex: string, isBg: boolean) => string,
   ): Record<string, string> {
     const custom = this.config.colors?.custom as Record<string, any> | undefined;
-    if (!custom || colorSupport === "none") return {};
+    if (!custom) return {};
 
     const result: Record<string, string> = {};
     for (const key of Object.keys(custom)) {
       if (!key.includes(".")) continue;
       const entry = custom[key];
       if (!entry?.fg) continue;
-
-      if (colorSupport === "ansi") {
-        result[key] = hexToBasicAnsi(entry.fg, false);
-      } else if (colorSupport === "ansi256") {
-        result[key] = hexTo256Ansi(entry.fg, false);
-      } else {
-        result[key] = hexToAnsi(entry.fg, false);
-      }
+      result[key] = convertHex(entry.fg, false);
     }
     return result;
   }
