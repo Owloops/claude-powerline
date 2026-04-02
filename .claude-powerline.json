@@ -1,35 +1,32 @@
 {
-  "theme": "tokyo-night",
   "display": {
-    "padding": 1,
+    "colorCompatibility": "truecolor",
+    "autoWrap": false,
     "style": "tui",
     "charset": "unicode",
-    "colorCompatibility": "auto",
-    "autoWrap": true,
     "tui": {
-      "widthReserve": 45,
-      "separator": { "column": " │ " },
+      "widthReserve": 100,
+      "separator": { "column": "  " },
       "breakpoints": [
         {
           "minWidth": 80,
           "areas": [
-            "git      git      git      dir",
+            "git       git        git       dir",
             "---",
-            "context  context  .        .",
-            "block    session  today    burn",
-            "version  activity metrics  metrics"
+            "context   context    context   context",
+            "block     .          weekly    metrics.lastResponse"
           ],
-          "columns": ["1fr", "auto", "auto", "1fr"],
-          "align": ["left", "left", "left", "right"]
+          "columns": ["1fr", "auto", "auto", "auto"],
+          "align": ["left", "left", "right", "right"]
         },
         {
           "minWidth": 55,
           "areas": [
-            "git     dir",
+            "git                  dir",
             "---",
-            "context context",
-            "block   today",
-            "session activity"
+            "context              context",
+            "block                weekly",
+            "metrics.lastResponse ."
           ],
           "columns": ["1fr", "1fr"],
           "align": ["left", "right"]
@@ -42,8 +39,8 @@
             "---",
             "context",
             "block",
-            "session",
-            "today"
+            "weekly",
+            "metrics.lastResponse"
           ],
           "columns": ["1fr"],
           "align": ["left"]
@@ -55,124 +52,59 @@
         "segments": {
           "directory": {
             "enabled": true,
-            "style": "fish"
+            "showBasename": true
+          },
+          "git": {
+            "enabled": true,
+            "showSha": false,
+            "showAheadBehind": true,
+            "showWorkingTree": false,
+            "showOperation": true,
+            "showTag": false,
+            "showTimeSinceCommit": false,
+            "showStashCount": false,
+            "showUpstream": false,
+            "showRepoName": false
           },
           "model": {
             "enabled": true
           },
-          "session": {
-            "enabled": true,
-            "type": "both",
-            "costSource": "calculated"
-          },
-          "today": {
-            "enabled": true,
-            "type": "both"
-          }
-        }
-      },
-      {
-        "segments": {
           "block": {
             "enabled": true,
-            "type": "weighted",
-            "burnType": "tokens"
+            "type": "tokens"
           },
-          "version": {
-            "enabled": true
+          "session": {
+            "enabled": false,
+            "type": "tokens",
+            "burnType": "none"
           },
-          "metrics": {
-            "enabled": true,
-            "showResponseTime": true,
-            "showLastResponseTime": true,
-            "showDuration": true,
-            "showMessageCount": true,
-            "showLinesAdded": true,
-            "showLinesRemoved": true
+          "today": {
+            "enabled": false,
+            "type": "tokens"
           },
           "context": {
             "enabled": true,
             "showPercentageOnly": false,
-            "displayStyle": "text",
-            "autocompactBuffer": 33000
+            "autocompactBuffer": 0
           },
           "tmux": {
             "enabled": false
           },
-          "sessionId": {
+          "metrics": {
             "enabled": true,
-            "showIdLabel": true
-          }
-        }
-      },
-      {
-        "segments": {
-          "git": {
-            "enabled": true,
-            "showSha": true,
-            "showWorkingTree": true,
-            "showOperation": true,
-            "showTag": true,
-            "showTimeSinceCommit": true,
-            "showStashCount": true,
-            "showUpstream": true,
-            "showRepoName": true
+            "showLastResponseTime": true,
+            "showResponseTime": false,
+            "showDuration": false,
+            "showMessageCount": false,
+            "showLinesAdded": false,
+            "showLinesRemoved": false
+          },
+          "version": {
+            "enabled": false
           }
         }
       }
     ]
-  },
-  "colors": {
-    "custom": {
-      "directory": {
-        "bg": "#2a2a2a",
-        "fg": "#e0e0e0"
-      },
-      "git": {
-        "bg": "#3a3a3a",
-        "fg": "#d0d0d0"
-      },
-      "model": {
-        "bg": "#4a4a4a",
-        "fg": "#c0c0c0"
-      },
-      "session": {
-        "bg": "#5a5a5a",
-        "fg": "#b0b0b0"
-      },
-      "block": {
-        "bg": "#404040",
-        "fg": "#cccccc"
-      },
-      "today": {
-        "bg": "#303030",
-        "fg": "#dddddd"
-      },
-      "tmux": {
-        "bg": "#8a8a8a",
-        "fg": "#2a2a2a"
-      },
-      "context": {
-        "bg": "#6a6a6a",
-        "fg": "#ffffff"
-      },
-      "contextWarning": {
-        "bg": "#92400e",
-        "fg": "#fbbf24"
-      },
-      "contextCritical": {
-        "bg": "#991b1b",
-        "fg": "#fca5a5"
-      },
-      "metrics": {
-        "bg": "#565656",
-        "fg": "#e5e5e5"
-      },
-      "version": {
-        "bg": "#7a7a7a",
-        "fg": "#f0f0f0"
-      }
-    }
   },
   "budget": {
     "session": {
@@ -187,8 +119,5 @@
       "type": "tokens",
       "warningThreshold": 80
     }
-  },
-  "modelContextLimits": {
-    "sonnet": 200000
   }
 }

@@ -8,6 +8,7 @@ import {
   selectBreakpoint,
 } from "../src/tui/grid";
 import type { GridCell, AlignValue, TuiGridConfig, BoxChars } from "../src/tui/types";
+import { isValidSegmentRef } from "../src/tui/types";
 import { BOX_CHARS } from "../src/utils/constants";
 import { visibleLength } from "../src/utils/terminal";
 
@@ -632,6 +633,111 @@ describe("renderGrid", () => {
     expect(dividerLine).toBeDefined();
     expect(dividerLine).toContain("=");
     expect(dividerLine).not.toContain("─");
+  });
+});
+
+// --- Dot-notation segment parts ---
+
+describe("isValidSegmentRef", () => {
+  it("should accept bare segment names", () => {
+    expect(isValidSegmentRef("session")).toBe(true);
+    expect(isValidSegmentRef("git")).toBe(true);
+    expect(isValidSegmentRef("context")).toBe(true);
+  });
+
+  it("should accept valid dot-notation references", () => {
+    expect(isValidSegmentRef("session.icon")).toBe(true);
+    expect(isValidSegmentRef("session.cost")).toBe(true);
+    expect(isValidSegmentRef("session.tokens")).toBe(true);
+    expect(isValidSegmentRef("session.budget")).toBe(true);
+    expect(isValidSegmentRef("git.icon")).toBe(true);
+    expect(isValidSegmentRef("git.branch")).toBe(true);
+    expect(isValidSegmentRef("git.status")).toBe(true);
+    expect(isValidSegmentRef("git.working")).toBe(true);
+    expect(isValidSegmentRef("context.bar")).toBe(true);
+    expect(isValidSegmentRef("context.pct")).toBe(true);
+    expect(isValidSegmentRef("context.tokens")).toBe(true);
+    expect(isValidSegmentRef("block.time")).toBe(true);
+    expect(isValidSegmentRef("version.value")).toBe(true);
+    expect(isValidSegmentRef("burn.rate")).toBe(true);
+  });
+
+  it("should reject invalid segment names", () => {
+    expect(isValidSegmentRef("notasegment")).toBe(false);
+    expect(isValidSegmentRef("session.notapart")).toBe(false);
+    expect(isValidSegmentRef("foo.bar")).toBe(false);
+    expect(isValidSegmentRef("")).toBe(false);
+    expect(isValidSegmentRef(".icon")).toBe(false);
+    expect(isValidSegmentRef("session.")).toBe(false);
+  });
+
+  it("should accept special grid tokens", () => {
+    expect(isValidSegmentRef(".")).toBe(true);
+    expect(isValidSegmentRef("---")).toBe(true);
+  });
+});
+
+describe("dot-notation in grid areas", () => {
+  const box = BOX_CHARS;
+
+  it("should render segment parts placed in separate cells", () => {
+    const gridConfig: TuiGridConfig = {
+      widthReserve: 0,
+      breakpoints: [{
+        minWidth: 0,
+        areas: ["session.icon session.cost session.tokens"],
+        columns: ["auto", "auto", "1fr"],
+        align: ["left", "left", "right"],
+      }],
+    };
+    const data: Record<string, string> = {
+      "session.icon": "§",
+      "session.cost": "$1.23",
+      "session.tokens": "45k",
+    };
+    const lines = renderGrid(gridConfig, data, box, 80);
+    expect(lines).toHaveLength(1);
+    const line = lines[0]!;
+    expect(line).toContain("§");
+    expect(line).toContain("$1.23");
+    expect(line).toContain("45k");
+  });
+
+  it("should mix bare segments and dot-notation parts", () => {
+    const gridConfig: TuiGridConfig = {
+      widthReserve: 0,
+      breakpoints: [{
+        minWidth: 0,
+        areas: ["git.branch git.status dir"],
+        columns: ["1fr", "auto", "1fr"],
+        align: ["left", "left", "right"],
+      }],
+    };
+    const data: Record<string, string> = {
+      "git.branch": "main",
+      "git.status": "✓",
+      dir: "~/projects",
+    };
+    const lines = renderGrid(gridConfig, data, box, 80);
+    expect(lines).toHaveLength(1);
+    const line = lines[0]!;
+    expect(line).toContain("main");
+    expect(line).toContain("✓");
+    expect(line).toContain("~/projects");
+  });
+
+  it("should cull empty dot-notation parts", () => {
+    const gridConfig: TuiGridConfig = {
+      widthReserve: 0,
+      breakpoints: [{
+        minWidth: 0,
+        areas: ["session.budget"],
+        columns: ["1fr"],
+      }],
+    };
+    const data: Record<string, string> = { "session.budget": "" };
+    const lines = renderGrid(gridConfig, data, box, 80);
+    expect(lines).toHaveLength(0);
   });
 });
 

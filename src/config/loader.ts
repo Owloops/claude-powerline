@@ -4,7 +4,7 @@ import os from "node:os";
 import { DEFAULT_CONFIG } from "./defaults";
 import type { ColorTheme } from "../themes";
 import type { TuiGridConfig } from "../tui/types";
-import { VALID_SEGMENT_NAMES } from "../tui/types";
+import { VALID_SEGMENT_NAMES, isValidSegmentRef } from "../tui/types";
 import type {
   SegmentConfig,
   DirectorySegmentConfig,
@@ -313,7 +313,7 @@ function validateGridConfig(tui: TuiGridConfig): string | null {
       let spanName = "";
       for (const cell of cells) {
         if (cell !== ".") {
-          if (!VALID_SEGMENT_NAMES.has(cell)) {
+          if (!isValidSegmentRef(cell)) {
             return `${prefix}: unknown segment name "${cell}"`;
           }
           // Check for non-contiguous spans

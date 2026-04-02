@@ -3,7 +3,7 @@ import type { TuiData, BoxChars, LayoutMode, RenderCtx, SegmentName } from "./ty
 
 import { SYMBOLS, TEXT_SYMBOLS } from "../utils/constants";
 import { contentRow, bottomBorder } from "./primitives";
-import { buildTitleBar, buildContextLine, resolveSegments } from "./sections";
+import { buildTitleBar, buildContextLine, buildContextBar, formatContextParts, resolveSegments } from "./sections";
 import {
   renderWideMetrics,
   renderWideBottom,
@@ -55,7 +55,7 @@ export async function renderTuiPanel(
   if (config.display.tui) {
     const rawWidth = (await getRawTerminalWidth()) ?? 120;
     const gridConfig = config.display.tui;
-    const widthReserve = gridConfig.widthReserve ?? 45;
+    const widthReserve = gridConfig.widthReserve ?? 100;
     const minWidth = gridConfig.minWidth ?? MIN_PANEL_WIDTH;
     const panelWidth = Math.max(minWidth, rawWidth - widthReserve);
     const innerWidth = panelWidth - 2;
@@ -70,6 +70,9 @@ export async function renderTuiPanel(
     const lateResolve = (segment: string, cellWidth: number): string | undefined => {
       if (segment === "context") {
         return buildContextLine(data, cellWidth, sym, reset, colors) ?? "";
+      }
+      if (segment === "context.bar") {
+        return buildContextBar(data, cellWidth, sym, reset, colors);
       }
       return undefined;
     };

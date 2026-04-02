@@ -41,6 +41,7 @@ export type SegmentName =
   | "block"
   | "session"
   | "today"
+  | "weekly"
   | "git"
   | "dir"
   | "version"
@@ -51,9 +52,37 @@ export type SegmentName =
   | "env";
 
 export const VALID_SEGMENT_NAMES: ReadonlySet<string> = new Set<SegmentName>([
-  "context", "block", "session", "today", "git", "dir",
+  "context", "block", "session", "today", "weekly", "git", "dir",
   "version", "tmux", "metrics", "activity", "burn", "env",
 ]);
+
+export const SEGMENT_PARTS: Record<SegmentName, readonly string[]> = {
+  session: ["icon", "cost", "tokens", "budget"],
+  block: ["icon", "value", "time", "budget"],
+  today: ["icon", "cost", "label", "budget"],
+  weekly: ["icon", "pct", "time"],
+  git: ["icon", "branch", "status", "ahead", "behind", "working"],
+  context: ["bar", "pct", "tokens"],
+  metrics: ["response", "lastResponse", "added", "removed"],
+  activity: ["duration", "messages"],
+  burn: ["icon", "rate"],
+  version: ["icon", "value"],
+  tmux: ["label", "value"],
+  dir: ["value"],
+  env: ["prefix", "value"],
+} as const;
+
+export function isValidSegmentRef(name: string): boolean {
+  if (name === "." || name === "---") return true;
+  if (VALID_SEGMENT_NAMES.has(name)) return true;
+  const dotIdx = name.indexOf(".");
+  if (dotIdx === -1) return false;
+  const seg = name.slice(0, dotIdx);
+  const part = name.slice(dotIdx + 1);
+  if (!seg || !part) return false;
+  const parts = SEGMENT_PARTS[seg as SegmentName];
+  return parts ? parts.includes(part) : false;
+}
 
 export type AlignValue = "left" | "center" | "right";
 

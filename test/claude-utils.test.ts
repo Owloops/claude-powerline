@@ -34,7 +34,7 @@ describe("findAgentTranscripts", () => {
     const result = await findAgentTranscripts(sessionId, tempDir);
 
     expect(result).toHaveLength(1);
-    expect(result[0]).toBe(agentFile);
+    expect(result[0]!.replace(/\\/g, "/")).toBe(agentFile.replace(/\\/g, "/"));
   });
 
   it("returns [] when session has no subagents directory", async () => {
