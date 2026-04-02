@@ -341,17 +341,7 @@ function validateGridConfig(tui: TuiGridConfig): string | null {
         if (cell === "." || cell === "---") continue;
         const lastIdx = seen.get(cell);
         if (lastIdx !== undefined && lastIdx !== i - 1) {
-          // Check if all intermediate cells are the same
-          let contiguous = true;
-          for (let j = lastIdx + 1; j < i; j++) {
-            if (cells[j] !== cell) {
-              contiguous = false;
-              break;
-            }
-          }
-          if (!contiguous) {
-            return `${prefix}: segment "${cell}" has non-contiguous span in row "${row}"`;
-          }
+          return `${prefix}: segment "${cell}" has non-contiguous span in row "${row}"`;
         }
         seen.set(cell, i);
       }
@@ -361,6 +351,17 @@ function validateGridConfig(tui: TuiGridConfig): string | null {
         if (cell !== "." && cell !== "---") {
           seenSegments.add(cell);
         }
+      }
+    }
+  }
+
+  if (tui.segments) {
+    for (const [segRef, tmpl] of Object.entries(tui.segments)) {
+      if (!tmpl.items || !Array.isArray(tmpl.items)) {
+        return `segments["${segRef}"]: items must be an array`;
+      }
+      if (tmpl.justify !== undefined && tmpl.justify !== "start" && tmpl.justify !== "between") {
+        return `segments["${segRef}"]: invalid justify value "${tmpl.justify}" (use "start" or "between")`;
       }
     }
   }

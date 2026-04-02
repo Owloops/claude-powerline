@@ -167,14 +167,22 @@ describe("cullMatrix", () => {
     expect(result[2]![0]!.segment).toBe("session");
   });
 
-  it("should remove all consecutive dividers (both adjacent to each other)", () => {
+  it("should collapse consecutive dividers into one", () => {
     const matrix = parseAreas(["block", "---", "---", "session"]);
     const data = { block: "B", session: "S" };
     const result = cullMatrix(matrix, data);
-    // Both dividers are adjacent to another divider, so both are removed
     const dividers = result.filter(r => r[0]!.segment === "---");
-    expect(dividers).toHaveLength(0);
-    expect(result).toHaveLength(2); // just block and session
+    expect(dividers).toHaveLength(1);
+    expect(result).toHaveLength(3); // block, ---, session
+  });
+
+  it("should keep one divider when content row between dividers collapses", () => {
+    const matrix = parseAreas(["block", "---", "middle", "---", "session"]);
+    const data = { block: "B", middle: "", session: "S" };
+    const result = cullMatrix(matrix, data);
+    const dividers = result.filter(r => r[0]!.segment === "---");
+    expect(dividers).toHaveLength(1);
+    expect(result).toHaveLength(3); // block, ---, session
   });
 
   it("should handle spans becoming empty", () => {
@@ -247,8 +255,8 @@ describe("calculateColumnWidths", () => {
     const matrix = parseAreas(["block session"]);
     const data = { block: "B", session: "S" };
     const widths = calculateColumnWidths(["2fr", "1fr"], matrix, data, 90, 2);
-    // 90 - 2 sep = 88, 2fr gets 2/3, 1fr gets 1/3
-    expect(widths[0]).toBe(58); // floor(88 * 2/3)
+    // 90 - 2 sep = 88, 2fr gets 2/3, 1fr gets 1/3, remainder distributed
+    expect(widths[0]).toBe(59); // floor(88 * 2/3) + 1 remainder
     expect(widths[1]).toBe(29); // floor(88 * 1/3)
   });
 
@@ -276,9 +284,9 @@ describe("calculateColumnWidths", () => {
     const widths = calculateColumnWidths(["1fr", "auto", "1fr"], matrix, data, 80, 2);
     // Auto col1 = 3 (SES)
     // sep total = 2 * 2 = 4
-    // remaining for fr = 80 - 3 - 4 = 73, each fr gets 36
+    // remaining for fr = 80 - 3 - 4 = 73, each fr gets 36, remainder 1 to first
     expect(widths[1]).toBe(3);
-    expect(widths[0]).toBe(36);
+    expect(widths[0]).toBe(37);
     expect(widths[2]).toBe(36);
   });
 
@@ -307,10 +315,10 @@ describe("calculateColumnWidths", () => {
     };
     const { colWidths } = solveFitContentLayout(["auto", "auto", "auto"], matrix, data, 2, 0);
     // Non-spanned: col0=3, col1=3, col2=3. Span = 3+3+3+4(seps) = 13
-    // Context = 45 chars. Deficit = 32, no fr cols, distributed evenly: ceil(32/3) = 11 each
-    expect(colWidths[0]).toBe(3 + 11);
-    expect(colWidths[1]).toBe(3 + 11);
-    expect(colWidths[2]).toBe(3 + 11);
+    // Context = 45 chars. Deficit = 32, no fr cols, distributed exactly: floor(32/3)=10, remainder 2
+    expect(colWidths[0]).toBe(3 + 11); // 10 + 1 remainder
+    expect(colWidths[1]).toBe(3 + 11); // 10 + 1 remainder
+    expect(colWidths[2]).toBe(3 + 10); // 10 + 0 remainder
   });
 
   it("should clamp widths to minimum 1", () => {

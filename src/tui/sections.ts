@@ -670,9 +670,15 @@ export function composeTemplate(
 
   if (justify === "between" && cellWidth !== undefined && items.length > 1) {
     const totalContent = items.reduce((sum, item) => sum + visibleLength(item), 0);
-    const totalGap = cellWidth - totalContent;
-    const gapSize = Math.max(gap, Math.floor(totalGap / (items.length - 1)));
-    return items.join(" ".repeat(gapSize));
+    const totalGap = Math.max(gap * (items.length - 1), cellWidth - totalContent);
+    const baseGap = Math.floor(totalGap / (items.length - 1));
+    const extraSpaces = totalGap % (items.length - 1);
+
+    let result = items[0]!;
+    for (let i = 1; i < items.length; i++) {
+      result += " ".repeat(baseGap + (i <= extraSpaces ? 1 : 0)) + items[i];
+    }
+    return result;
   }
 
   return items.join(" ".repeat(gap));

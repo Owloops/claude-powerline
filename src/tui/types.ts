@@ -99,7 +99,7 @@ export interface TuiGridBreakpoint {
   align?: AlignValue[];
 }
 
-export type JustifyValue = "start" | "end" | "center" | "between";
+export type JustifyValue = "start" | "between";
 
 export interface SegmentTemplate {
   items: string[];

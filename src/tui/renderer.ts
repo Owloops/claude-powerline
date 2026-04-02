@@ -57,7 +57,7 @@ export async function renderTuiPanel(
     const gridConfig = config.display.tui;
 
     // Estimate content width for initial segment resolution (grid will compute final widths)
-    const estPanelWidth = Math.max(gridConfig.minWidth ?? MIN_PANEL_WIDTH, rawWidth - (gridConfig.widthReserve ?? 100));
+    const estPanelWidth = Math.max(gridConfig.minWidth ?? MIN_PANEL_WIDTH, rawWidth - (gridConfig.widthReserve ?? 45));
     const estInnerWidth = estPanelWidth - 2;
     const estContentWidth = estInnerWidth - 2;
 

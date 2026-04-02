@@ -5,10 +5,23 @@ import { truncateAnsi, padRight, padLeft, padCenter } from "./primitives";
 export const DIVIDER = "---";
 export const EMPTY_CELL = ".";
 
+function isDividerRow(row: GridCell[]): boolean {
+  return row.length === 1 && row[0]!.segment === DIVIDER;
+}
+
 function parseFr(colDef: string): number {
   if (!colDef.endsWith("fr")) return 0;
   const fr = parseInt(colDef.replace("fr", ""), 10);
   return (!isNaN(fr) && fr > 0) ? fr : 0;
+}
+
+function distributeExact(total: number, targets: number[], widths: number[]): void {
+  const base = Math.floor(total / targets.length);
+  let extra = total - base * targets.length;
+  for (const idx of targets) {
+    widths[idx] = widths[idx]! + base + (extra > 0 ? 1 : 0);
+    if (extra > 0) extra--;
+  }
 }
 
 function spanCellWidth(colWidths: number[], startIdx: number, spanSize: number, sepWidth: number): number {
@@ -96,10 +109,7 @@ export function cullMatrix(
 ): GridCell[][] {
   // Phase 1: Replace cells whose segment has no data with "."
   const processed = matrix.map((row) => {
-    // Divider rows pass through
-    if (row.length === 1 && row[0]!.segment === DIVIDER) {
-      return row;
-    }
+    if (isDividerRow(row)) return row;
 
     return row.map((cell) => {
       if (cell.segment === EMPTY_CELL || cell.segment === DIVIDER) return cell;
@@ -116,7 +126,7 @@ export function cullMatrix(
   // When a span-start cell was emptied, all its continuation cells are already individual "." cells.
   // But when continuation cells were emptied, the span-start needs fixing.
   const respanned = processed.map((row) => {
-    if (row.length === 1 && row[0]!.segment === DIVIDER) return row;
+    if (isDividerRow(row)) return row;
 
     // Rebuild spans from scratch
     const cells = row.map((c) => c.segment);
@@ -144,32 +154,31 @@ export function cullMatrix(
 
   // Phase 3: Remove rows that are entirely "."
   const nonEmpty = respanned.filter((row) => {
-    if (row.length === 1 && row[0]!.segment === DIVIDER) return true;
+    if (isDividerRow(row)) return true;
     return row.some((cell) => cell.segment !== EMPTY_CELL);
   });
 
-  // Phase 4: Remove orphaned dividers (at top, bottom, or adjacent to another divider)
+  // Phase 4: Collapse adjacent dividers into one, remove leading/trailing dividers
   const cleaned: GridCell[][] = [];
   for (let i = 0; i < nonEmpty.length; i++) {
     const row = nonEmpty[i]!;
-    const isDivider = row.length === 1 && row[0]!.segment === DIVIDER;
-
-    if (!isDivider) {
+    if (!isDividerRow(row)) {
       cleaned.push(row);
       continue;
     }
 
-    // Skip dividers at top or bottom
-    if (i === 0 || i === nonEmpty.length - 1) continue;
+    // Skip dividers at top
+    if (cleaned.length === 0) continue;
 
-    // Skip dividers adjacent to another divider
-    const prev = nonEmpty[i - 1];
-    const next = nonEmpty[i + 1];
-    const prevIsDivider = prev && prev.length === 1 && prev[0]!.segment === "---";
-    const nextIsDivider = next && next.length === 1 && next[0]!.segment === "---";
-    if (prevIsDivider || nextIsDivider) continue;
+    // Collapse adjacent dividers: skip if last pushed row is already a divider
+    if (isDividerRow(cleaned[cleaned.length - 1]!)) continue;
 
     cleaned.push(row);
+  }
+
+  // Remove trailing divider
+  if (cleaned.length > 0 && isDividerRow(cleaned[cleaned.length - 1]!)) {
+    cleaned.pop();
   }
 
   return cleaned;
@@ -184,7 +193,7 @@ function measureAutoWidths(
 ): number[] {
   const widths = new Array<number>(colCount).fill(0);
   for (const row of matrix) {
-    if (row.length === 1 && row[0]!.segment === DIVIDER) continue;
+    if (isDividerRow(row)) continue;
     for (let colIdx = 0; colIdx < row.length; colIdx++) {
       const cell = row[colIdx]!;
       if (!cell.spanStart || cell.spanSize !== 1) continue;
@@ -239,9 +248,21 @@ export function calculateColumnWidths(
 
   if (totalFr > 0) {
     const perFr = remaining / totalFr;
+    const frCols: number[] = [];
+    let allocatedFr = 0;
     for (let i = 0; i < colCount; i++) {
       const fr = parseFr(columns[i]!);
-      if (fr > 0) widths[i] = Math.floor(perFr * fr);
+      if (fr > 0) {
+        const w = Math.floor(perFr * fr);
+        widths[i] = w;
+        allocatedFr += w;
+        frCols.push(i);
+      }
+    }
+    let leftover = remaining - allocatedFr;
+    for (let k = 0; leftover > 0 && k < frCols.length; k++) {
+      widths[frCols[k]!]! += 1;
+      leftover--;
     }
   }
 
@@ -279,7 +300,7 @@ export function solveFitContentLayout(
 
   // Expand columns to fit spanning cells
   for (const row of matrix) {
-    if (row.length === 1 && row[0]!.segment === DIVIDER) continue;
+    if (isDividerRow(row)) continue;
     for (let i = 0; i < row.length; i++) {
       const cell = row[i]!;
       if (!cell.spanStart || cell.spanSize <= 1 || cell.segment === EMPTY_CELL) continue;
@@ -295,16 +316,11 @@ export function solveFitContentLayout(
           if (parseFr(columns[i + j]!) > 0) frCols.push(i + j);
         }
         if (frCols.length > 0) {
-          const perCol = Math.ceil(deficit / frCols.length);
-          for (const col of frCols) {
-            widths[col] = widths[col]! + perCol;
-          }
+          distributeExact(deficit, frCols, widths);
         } else {
-          // No fr columns — distribute evenly across all spanned columns
-          const perCol = Math.ceil(deficit / cell.spanSize);
-          for (let j = 0; j < cell.spanSize; j++) {
-            widths[i + j] = widths[i + j]! + perCol;
-          }
+          const allCols: number[] = [];
+          for (let j = 0; j < cell.spanSize; j++) allCols.push(i + j);
+          distributeExact(deficit, allCols, widths);
         }
       }
     }
@@ -411,10 +427,10 @@ export function renderGrid(
   const fitContent = gridConfig.fitContent ?? false;
   const hPad = gridConfig.padding?.horizontal ?? 0;
 
-  // For fitContent, use a large initial width for breakpoint selection
+  // Select initial panel width for breakpoint selection
   let panelWidth: number;
   if (fitContent) {
-    panelWidth = rawTerminalWidth;
+    panelWidth = maxWidth !== Infinity ? Math.min(rawTerminalWidth, maxWidth) : rawTerminalWidth;
   } else {
     const widthReserve = gridConfig.widthReserve ?? 45;
     panelWidth = Math.min(maxWidth, Math.max(minWidth, rawTerminalWidth - widthReserve));
@@ -459,7 +475,7 @@ export function renderGrid(
   if (lateResolve) {
     const seen = new Set<string>();
     for (const row of matrix) {
-      if (row.length === 1 && row[0]!.segment === DIVIDER) continue;
+      if (isDividerRow(row)) continue;
       for (let i = 0; i < row.length; i++) {
         const cell = row[i]!;
         if (!cell.spanStart || cell.segment === EMPTY_CELL || cell.segment === DIVIDER) continue;
@@ -478,9 +494,7 @@ export function renderGrid(
   // Render rows
   const lines: string[] = [];
   for (const row of matrix) {
-    const isDivider = row.length === 1 && row[0]!.segment === DIVIDER;
-
-    if (isDivider) {
+    if (isDividerRow(row)) {
       lines.push(renderGridDivider(box, innerWidth, dividerChar));
     } else {
       const rowStr = renderGridRow(row, colWidths, align, resolvedData, colSep);
