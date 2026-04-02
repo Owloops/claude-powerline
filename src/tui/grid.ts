@@ -152,6 +152,29 @@ export function cullMatrix(
 
 // --- Column Width Distribution ---
 
+function measureAutoWidths(
+  colCount: number,
+  matrix: GridCell[][],
+  resolvedData: Record<string, string>,
+): number[] {
+  const widths = new Array<number>(colCount).fill(0);
+  for (const row of matrix) {
+    if (row.length === 1 && row[0]!.segment === "---") continue;
+    for (let colIdx = 0; colIdx < row.length; colIdx++) {
+      const cell = row[colIdx]!;
+      if (!cell.spanStart || cell.spanSize !== 1) continue;
+      if (cell.segment === ".") continue;
+      if (colIdx >= colCount) continue;
+      const content = resolvedData[cell.segment] || "";
+      const len = visibleLength(content);
+      if (len > widths[colIdx]!) {
+        widths[colIdx] = len;
+      }
+    }
+  }
+  return widths;
+}
+
 export function calculateColumnWidths(
   columns: string[],
   matrix: GridCell[][],
@@ -160,26 +183,13 @@ export function calculateColumnWidths(
   separatorWidth: number,
 ): number[] {
   const colCount = columns.length;
+  const autoWidths = measureAutoWidths(colCount, matrix, resolvedData);
   const widths = new Array<number>(colCount).fill(0);
 
-  // Phase 1: Calculate auto widths from non-spanned cells only
-  for (const row of matrix) {
-    if (row.length === 1 && row[0]!.segment === "---") continue;
-
-    for (let colIdx = 0; colIdx < row.length; colIdx++) {
-      const cell = row[colIdx]!;
-      if (!cell.spanStart || cell.spanSize !== 1) continue;
-      if (cell.segment === ".") continue;
-      if (colIdx >= colCount) continue;
-
-      const colDef = columns[colIdx];
-      if (colDef !== "auto") continue;
-
-      const content = resolvedData[cell.segment] || "";
-      const len = visibleLength(content);
-      if (len > widths[colIdx]!) {
-        widths[colIdx] = len;
-      }
+  // Phase 1: Apply auto widths
+  for (let i = 0; i < colCount; i++) {
+    if (columns[i] === "auto") {
+      widths[i] = autoWidths[i]!;
     }
   }
 
@@ -231,6 +241,107 @@ export function calculateColumnWidths(
   }
 
   return widths;
+}
+
+export function solveFitContentLayout(
+  columns: string[],
+  matrix: GridCell[][],
+  resolvedData: Record<string, string>,
+  separatorWidth: number,
+  horizontalPadding: number,
+): { panelWidth: number; colWidths: number[] } {
+  const colCount = columns.length;
+  const autoWidths = measureAutoWidths(colCount, matrix, resolvedData);
+
+  // Seed from intrinsic non-spanning content and fixed widths
+  const widths = new Array<number>(colCount);
+  for (let i = 0; i < colCount; i++) {
+    const colDef = columns[i]!;
+    if (colDef !== "auto" && !colDef.endsWith("fr")) {
+      const fixed = parseInt(colDef, 10);
+      widths[i] = (!isNaN(fixed) && fixed > 0) ? fixed : autoWidths[i]!;
+    } else {
+      widths[i] = autoWidths[i]!;
+    }
+  }
+
+  // Expand columns to fit spanning cells
+  for (const row of matrix) {
+    if (row.length === 1 && row[0]!.segment === "---") continue;
+    for (let i = 0; i < row.length; i++) {
+      const cell = row[i]!;
+      if (!cell.spanStart || cell.spanSize <= 1 || cell.segment === ".") continue;
+
+      const content = resolvedData[cell.segment] || "";
+      const contentLen = visibleLength(content);
+
+      let spanWidth = 0;
+      for (let j = 0; j < cell.spanSize; j++) {
+        spanWidth += widths[i + j]!;
+      }
+      spanWidth += (cell.spanSize - 1) * separatorWidth;
+
+      if (contentLen > spanWidth) {
+        const deficit = contentLen - spanWidth;
+        // Distribute deficit across all growable (1fr) tracks in the span
+        const frCols: number[] = [];
+        for (let j = 0; j < cell.spanSize; j++) {
+          if (columns[i + j]?.endsWith("fr")) frCols.push(i + j);
+        }
+        if (frCols.length > 0) {
+          const perCol = Math.ceil(deficit / frCols.length);
+          for (const col of frCols) {
+            widths[col] = widths[col]! + perCol;
+          }
+        } else {
+          // No fr columns — distribute evenly across all spanned columns
+          const perCol = Math.ceil(deficit / cell.spanSize);
+          for (let j = 0; j < cell.spanSize; j++) {
+            widths[i + j] = widths[i + j]! + perCol;
+          }
+        }
+      }
+    }
+  }
+
+  // Distribute horizontal padding proportionally to 1fr columns
+  if (horizontalPadding > 0) {
+    let totalFr = 0;
+    for (const colDef of columns) {
+      if (colDef.endsWith("fr")) {
+        const fr = parseInt(colDef.replace("fr", ""), 10);
+        if (!isNaN(fr) && fr > 0) totalFr += fr;
+      }
+    }
+    if (totalFr > 0) {
+      for (let i = 0; i < colCount; i++) {
+        const colDef = columns[i]!;
+        if (colDef.endsWith("fr")) {
+          const fr = parseInt(colDef.replace("fr", ""), 10);
+          if (!isNaN(fr) && fr > 0) {
+            widths[i] = widths[i]! + Math.floor((horizontalPadding * fr) / totalFr);
+          }
+        }
+      }
+    }
+  }
+
+  // Clamp all widths to >= 1
+  for (let i = 0; i < colCount; i++) {
+    if (widths[i]! < 1) widths[i] = 1;
+  }
+
+  let naturalWidth = 0;
+  for (let i = 0; i < colCount; i++) {
+    naturalWidth += widths[i]!;
+  }
+
+  const totalSepWidth = Math.max(0, colCount - 1) * separatorWidth;
+  const borders = 4; // 2 box chars + 2 padding chars
+  return {
+    panelWidth: naturalWidth + totalSepWidth + borders,
+    colWidths: widths,
+  };
 }
 
 // --- Cell Rendering ---
@@ -305,17 +416,24 @@ export function renderGrid(
   rawTerminalWidth: number,
   lateResolve?: (segment: string, cellWidth: number) => string | undefined,
 ): string[] {
-  const widthReserve = gridConfig.widthReserve ?? 45;
   const minWidth = gridConfig.minWidth ?? 32;
+  const maxWidth = gridConfig.maxWidth ?? Infinity;
   const colSep = gridConfig.separator?.column ?? "  ";
   const dividerChar = gridConfig.separator?.divider;
   const sepWidth = visibleLength(colSep);
+  const fitContent = gridConfig.fitContent ?? false;
+  const hPad = gridConfig.padding?.horizontal ?? 0;
 
-  const panelWidth = Math.max(minWidth, rawTerminalWidth - widthReserve);
-  const innerWidth = panelWidth - 2;
-  const contentWidth = innerWidth - 2; // 1 char padding each side
+  // For fitContent, use a large initial width for breakpoint selection
+  let panelWidth: number;
+  if (fitContent) {
+    panelWidth = rawTerminalWidth;
+  } else {
+    const widthReserve = gridConfig.widthReserve ?? 45;
+    panelWidth = Math.min(maxWidth, Math.max(minWidth, rawTerminalWidth - widthReserve));
+  }
 
-  // Select breakpoint
+  // Select breakpoint (based on available width, not final panel width)
   const bp = selectBreakpoint(gridConfig.breakpoints, panelWidth);
 
   // Parse areas
@@ -328,14 +446,24 @@ export function renderGrid(
     return [];
   }
 
-  // Column widths
-  const colWidths = calculateColumnWidths(
-    bp.columns,
-    matrix,
-    resolvedData,
-    contentWidth,
-    sepWidth,
-  );
+  let colWidths: number[];
+
+  if (fitContent) {
+    const solved = solveFitContentLayout(
+      bp.columns, matrix, resolvedData, sepWidth, hPad,
+    );
+    panelWidth = Math.min(maxWidth, Math.max(minWidth, solved.panelWidth));
+    colWidths = solved.colWidths;
+  } else {
+    const innerW = panelWidth - 2;
+    const contentW = innerW - 2;
+    colWidths = calculateColumnWidths(
+      bp.columns, matrix, resolvedData, contentW, sepWidth,
+    );
+  }
+
+  const innerWidth = panelWidth - 2;
+  const contentWidth = innerWidth - 2;
 
   // Alignment defaults
   const align: AlignValue[] = bp.align || bp.columns.map(() => "left" as AlignValue);

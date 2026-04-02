@@ -2,6 +2,7 @@ import {
   parseAreas,
   cullMatrix,
   calculateColumnWidths,
+  solveFitContentLayout,
   renderGridRow,
   renderGridDivider,
   renderGrid,
@@ -281,8 +282,8 @@ describe("calculateColumnWidths", () => {
     expect(widths[2]).toBe(36);
   });
 
-  it("should ignore spanned cells for auto width", () => {
-    // context spans all 3 columns, block/session/today are normal
+  it("should ignore spanned cells for auto width in fill mode", () => {
+    // Without fitContent, spans don't expand auto columns
     const matrix = parseAreas(["context context context", "block session today"]);
     const data = {
       context: "A very long context string that would be wide",
@@ -291,10 +292,25 @@ describe("calculateColumnWidths", () => {
       today: "TOD",
     };
     const widths = calculateColumnWidths(["auto", "auto", "auto"], matrix, data, 80, 2);
-    // Auto should use only non-spanned cells: col0=3, col1=3, col2=3
     expect(widths[0]).toBe(3);
     expect(widths[1]).toBe(3);
     expect(widths[2]).toBe(3);
+  });
+
+  it("should expand columns for spanning cells via solveFitContentLayout", () => {
+    const matrix = parseAreas(["context context context", "block session today"]);
+    const data = {
+      context: "A very long context string that would be wide",
+      block: "BLK",
+      session: "SES",
+      today: "TOD",
+    };
+    const { colWidths } = solveFitContentLayout(["auto", "auto", "auto"], matrix, data, 2, 0);
+    // Non-spanned: col0=3, col1=3, col2=3. Span = 3+3+3+4(seps) = 13
+    // Context = 45 chars. Deficit = 32, no fr cols, distributed evenly: ceil(32/3) = 11 each
+    expect(colWidths[0]).toBe(3 + 11);
+    expect(colWidths[1]).toBe(3 + 11);
+    expect(colWidths[2]).toBe(3 + 11);
   });
 
   it("should clamp widths to minimum 1", () => {

@@ -1,7 +1,8 @@
 import type { PowerlineConfig } from "../config/loader";
 import type { PowerlineColors } from "../themes";
-import type { TuiData, SymbolSet, BoxChars, SegmentName, RenderCtx } from "./types";
+import type { TuiData, SymbolSet, BoxChars, SegmentName, RenderCtx, SegmentTemplate, JustifyValue } from "./types";
 import { SEGMENT_PARTS } from "./types";
+import { visibleLength } from "../utils/terminal";
 
 import {
   formatCost,
@@ -70,7 +71,7 @@ export function formatContextParts(
       : `${data.contextInfo.maxTokens}`;
 
   return {
-    bar: "",
+    bar: " ",
     pct: `${usedPct}%`,
     tokens: `${tokenStr}/${maxStr}`,
   };
@@ -489,22 +490,35 @@ export function formatBurnSegment(blockInfo: TuiData["blockInfo"], sym: SymbolSe
 }
 
 function formatMetricsParts(data: TuiData, sym: SymbolSet): Record<string, string> {
-  if (!data.metricsInfo) return { response: "", lastResponse: "", added: "", removed: "" };
+  const empty = { response: "", responseIcon: "", responseVal: "", lastResponse: "", lastResponseIcon: "", lastResponseVal: "", added: "", addedIcon: "", addedVal: "", removed: "", removedIcon: "", removedVal: "" };
+  if (!data.metricsInfo) return empty;
 
-  const response = (data.metricsInfo.responseTime !== null && !isNaN(data.metricsInfo.responseTime) && data.metricsInfo.responseTime > 0)
-    ? `${sym.metrics_response} ${formatResponseTime(data.metricsInfo.responseTime)}`
-    : "";
-  const lastResponse = (data.metricsInfo.lastResponseTime !== null && !isNaN(data.metricsInfo.lastResponseTime) && data.metricsInfo.lastResponseTime > 0)
-    ? `${sym.metrics_last_response} ${formatResponseTime(data.metricsInfo.lastResponseTime)}`
-    : "";
-  const added = (data.metricsInfo.linesAdded !== null && data.metricsInfo.linesAdded > 0)
-    ? `${sym.metrics_lines_added}${data.metricsInfo.linesAdded}`
-    : "";
-  const removed = (data.metricsInfo.linesRemoved !== null && data.metricsInfo.linesRemoved > 0)
-    ? `${sym.metrics_lines_removed}${data.metricsInfo.linesRemoved}`
-    : "";
+  const hasResponse = data.metricsInfo.responseTime !== null && !isNaN(data.metricsInfo.responseTime) && data.metricsInfo.responseTime > 0;
+  const responseValStr = hasResponse ? formatResponseTime(data.metricsInfo.responseTime!) : "";
 
-  return { response, lastResponse, added, removed };
+  const hasLast = data.metricsInfo.lastResponseTime !== null && !isNaN(data.metricsInfo.lastResponseTime) && data.metricsInfo.lastResponseTime > 0;
+  const lastValStr = hasLast ? formatResponseTime(data.metricsInfo.lastResponseTime!) : "";
+
+  const hasAdded = data.metricsInfo.linesAdded !== null && data.metricsInfo.linesAdded > 0;
+  const addedValStr = hasAdded ? `${data.metricsInfo.linesAdded}` : "";
+
+  const hasRemoved = data.metricsInfo.linesRemoved !== null && data.metricsInfo.linesRemoved > 0;
+  const removedValStr = hasRemoved ? `${data.metricsInfo.linesRemoved}` : "";
+
+  return {
+    response: hasResponse ? `${sym.metrics_response} ${responseValStr}` : "",
+    responseIcon: hasResponse ? sym.metrics_response : "",
+    responseVal: responseValStr,
+    lastResponse: hasLast ? `${sym.metrics_last_response} ${lastValStr}` : "",
+    lastResponseIcon: hasLast ? sym.metrics_last_response : "",
+    lastResponseVal: lastValStr,
+    added: hasAdded ? `${sym.metrics_lines_added}${addedValStr}` : "",
+    addedIcon: hasAdded ? sym.metrics_lines_added : "",
+    addedVal: addedValStr,
+    removed: hasRemoved ? `${sym.metrics_lines_removed}${removedValStr}` : "",
+    removedIcon: hasRemoved ? sym.metrics_lines_removed : "",
+    removedVal: removedValStr,
+  };
 }
 
 function formatMetricsSegment(data: TuiData, sym: SymbolSet): string {
@@ -514,16 +528,23 @@ function formatMetricsSegment(data: TuiData, sym: SymbolSet): string {
 }
 
 function formatActivityParts(data: TuiData, sym: SymbolSet): Record<string, string> {
-  if (!data.metricsInfo) return { duration: "", messages: "" };
+  const empty = { duration: "", durationIcon: "", durationVal: "", messages: "", messagesIcon: "", messagesVal: "" };
+  if (!data.metricsInfo) return empty;
 
-  const duration = (data.metricsInfo.sessionDuration !== null && data.metricsInfo.sessionDuration > 0)
-    ? `${sym.metrics_duration} ${formatDuration(data.metricsInfo.sessionDuration)}`
-    : "";
-  const messages = (data.metricsInfo.messageCount !== null && data.metricsInfo.messageCount > 0)
-    ? `${sym.metrics_messages} ${data.metricsInfo.messageCount}`
-    : "";
+  const hasDuration = data.metricsInfo.sessionDuration !== null && data.metricsInfo.sessionDuration > 0;
+  const durationValStr = hasDuration ? formatDuration(data.metricsInfo.sessionDuration!) : "";
 
-  return { duration, messages };
+  const hasMessages = data.metricsInfo.messageCount !== null && data.metricsInfo.messageCount > 0;
+  const messagesValStr = hasMessages ? `${data.metricsInfo.messageCount}` : "";
+
+  return {
+    duration: hasDuration ? `${sym.metrics_duration} ${durationValStr}` : "",
+    durationIcon: hasDuration ? sym.metrics_duration : "",
+    durationVal: durationValStr,
+    messages: hasMessages ? `${sym.metrics_messages} ${messagesValStr}` : "",
+    messagesIcon: hasMessages ? sym.metrics_messages : "",
+    messagesVal: messagesValStr,
+  };
 }
 
 function formatActivitySegment(data: TuiData, sym: SymbolSet): string {
@@ -553,6 +574,10 @@ function formatGitParts(data: TuiData, sym: SymbolSet): Record<string, string> {
   if (data.gitInfo.untracked && data.gitInfo.untracked > 0) counts.push(`?${data.gitInfo.untracked}`);
   const working = counts.length > 0 ? `(${counts.join(" ")})` : "";
 
+  const headParts = [sym.branch, data.gitInfo.branch, statusIcon];
+  if (ahead) headParts.push(ahead);
+  if (behind) headParts.push(behind);
+
   return {
     icon: sym.branch,
     branch: data.gitInfo.branch,
@@ -560,6 +585,7 @@ function formatGitParts(data: TuiData, sym: SymbolSet): Record<string, string> {
     ahead,
     behind,
     working,
+    head: headParts.join(" "),
   };
 }
 
@@ -573,12 +599,26 @@ function formatGitSegment(data: TuiData, sym: SymbolSet): string {
   return text;
 }
 
-function formatDirParts(data: TuiData): Record<string, string> {
-  return { value: abbreviateFishStyle(getDirectoryDisplay(data.hookData)) };
+function formatDirParts(data: TuiData, config: PowerlineConfig): Record<string, string> {
+  return { value: formatDirValue(data, config) };
 }
 
-function formatDirSegment(data: TuiData): string {
-  return abbreviateFishStyle(getDirectoryDisplay(data.hookData));
+function formatDirValue(data: TuiData, config: PowerlineConfig): string {
+  const raw = getDirectoryDisplay(data.hookData);
+  const dirConfig = config.display.lines
+    .map((line) => line.segments.directory)
+    .find((d) => d?.enabled);
+  const style = dirConfig?.style ?? (dirConfig?.showBasename ? "basename" : "fish");
+  if (style === "basename") {
+    const sep = raw.includes("/") ? "/" : "\\";
+    return raw.split(sep).pop() || raw;
+  }
+  if (style === "full") return raw;
+  return abbreviateFishStyle(raw);
+}
+
+function formatDirSegment(data: TuiData, config: PowerlineConfig): string {
+  return formatDirValue(data, config);
 }
 
 function formatVersionParts(data: TuiData, sym: SymbolSet): Record<string, string> {
@@ -627,14 +667,68 @@ function addParts(
   parts: Record<string, string>,
   color: string,
   reset: string,
+  partFg?: Record<string, string>,
 ): void {
   for (const [key, value] of Object.entries(parts)) {
-    result[`${segment}.${key}`] = value ? colorize(value, color, reset) : "";
+    const partKey = `${segment}.${key}`;
+    const partColor = partFg?.[partKey] ?? color;
+    result[partKey] = value ? colorize(value, partColor, reset) : "";
   }
 }
 
-export function resolveSegments(data: TuiData, ctx: RenderCtx): Record<string, string> {
+// --- Template Composition ---
+
+export interface ResolvedTemplate {
+  items: string[];
+  gap: number;
+  justify: JustifyValue;
+}
+
+function resolveTemplateItems(
+  template: SegmentTemplate,
+  segmentRef: string,
+  resolvedData: Record<string, string>,
+): string[] {
+  const dotIdx = segmentRef.indexOf(".");
+  const baseSegment = dotIdx !== -1 ? segmentRef.slice(0, dotIdx) : segmentRef;
+
+  return template.items
+    .map((item) => {
+      const match = item.match(/^\{(.+)\}$/);
+      if (!match) return item ? colorize(item, "", "") : "";
+      const partName = match[1]!;
+      const key = `${baseSegment}.${partName}`;
+      return resolvedData[key] ?? "";
+    })
+    .filter(Boolean);
+}
+
+export function composeTemplate(
+  items: string[],
+  gap: number,
+  justify: JustifyValue,
+  cellWidth?: number,
+): string {
+  if (items.length === 0) return "";
+
+  if (justify === "between" && cellWidth !== undefined && items.length > 1) {
+    const totalContent = items.reduce((sum, item) => sum + visibleLength(item), 0);
+    const totalGap = cellWidth - totalContent;
+    const gapSize = Math.max(gap, Math.floor(totalGap / (items.length - 1)));
+    return items.join(" ".repeat(gapSize));
+  }
+
+  return items.join(" ".repeat(gap));
+}
+
+export interface ResolvedSegments {
+  data: Record<string, string>;
+  templates: Record<string, ResolvedTemplate>;
+}
+
+export function resolveSegments(data: TuiData, ctx: RenderCtx): ResolvedSegments {
   const { sym, config, reset, colors } = ctx;
+  const pf = colors.partFg;
 
   const colorizeOrEmpty = (text: string, color: string): string =>
     text ? colorize(text, color, reset) : "";
@@ -650,12 +744,12 @@ export function resolveSegments(data: TuiData, ctx: RenderCtx): Record<string, s
     if (data.contextInfo.usablePercentage >= 80) ctxColor = colors.contextCriticalFg;
     else if (data.contextInfo.usablePercentage >= 60) ctxColor = colors.contextWarningFg;
   }
-  addParts(result, "context", ctxParts, ctxColor, reset);
+  addParts(result, "context", ctxParts, ctxColor, reset, pf);
 
   // Block
   if (data.blockInfo) {
     result.block = colorizeOrEmpty(formatBlockSegment(data.blockInfo, sym, config), colors.blockFg);
-    addParts(result, "block", formatBlockParts(data.blockInfo, sym, config), colors.blockFg, reset);
+    addParts(result, "block", formatBlockParts(data.blockInfo, sym, config), colors.blockFg, reset, pf);
   } else {
     result.block = "";
   }
@@ -663,7 +757,7 @@ export function resolveSegments(data: TuiData, ctx: RenderCtx): Record<string, s
   // Session
   if (data.usageInfo) {
     result.session = colorizeOrEmpty(formatSessionSegment(data.usageInfo, sym, config), colors.sessionFg);
-    addParts(result, "session", formatSessionParts(data.usageInfo, sym, config), colors.sessionFg, reset);
+    addParts(result, "session", formatSessionParts(data.usageInfo, sym, config), colors.sessionFg, reset, pf);
   } else {
     result.session = "";
   }
@@ -671,7 +765,7 @@ export function resolveSegments(data: TuiData, ctx: RenderCtx): Record<string, s
   // Today
   if (data.todayInfo) {
     result.today = colorizeOrEmpty(formatTodaySegment(data.todayInfo, sym, config), colors.todayFg);
-    addParts(result, "today", formatTodayParts(data.todayInfo, sym, config), colors.todayFg, reset);
+    addParts(result, "today", formatTodayParts(data.todayInfo, sym, config), colors.todayFg, reset, pf);
   } else {
     result.today = "";
   }
@@ -680,42 +774,56 @@ export function resolveSegments(data: TuiData, ctx: RenderCtx): Record<string, s
   const sevenDay = data.hookData.rate_limits?.seven_day;
   if (sevenDay) {
     result.weekly = colorizeOrEmpty(formatWeeklySegment(sevenDay, sym), colors.weeklyFg);
-    addParts(result, "weekly", formatWeeklyParts(sevenDay, sym), colors.weeklyFg, reset);
+    addParts(result, "weekly", formatWeeklyParts(sevenDay, sym), colors.weeklyFg, reset, pf);
   } else {
     result.weekly = "";
   }
 
   // Git
   result.git = colorizeOrEmpty(formatGitSegment(data, sym), colors.gitFg);
-  addParts(result, "git", formatGitParts(data, sym), colors.gitFg, reset);
+  addParts(result, "git", formatGitParts(data, sym), colors.gitFg, reset, pf);
 
   // Dir
-  result.dir = colorizeOrEmpty(formatDirSegment(data), colors.modeFg);
-  addParts(result, "dir", formatDirParts(data), colors.modeFg, reset);
+  result.dir = colorizeOrEmpty(formatDirSegment(data, config), colors.modeFg);
+  addParts(result, "dir", formatDirParts(data, config), colors.modeFg, reset, pf);
 
   // Version
   result.version = colorizeOrEmpty(formatVersionSegment(data, sym), colors.versionFg);
-  addParts(result, "version", formatVersionParts(data, sym), colors.versionFg, reset);
+  addParts(result, "version", formatVersionParts(data, sym), colors.versionFg, reset, pf);
 
   // Tmux
   result.tmux = colorizeOrEmpty(formatTmuxSegment(data), colors.tmuxFg);
-  addParts(result, "tmux", formatTmuxParts(data), colors.tmuxFg, reset);
+  addParts(result, "tmux", formatTmuxParts(data), colors.tmuxFg, reset, pf);
 
   // Metrics
   result.metrics = colorizeOrEmpty(formatMetricsSegment(data, sym), colors.metricsFg);
-  addParts(result, "metrics", formatMetricsParts(data, sym), colors.metricsFg, reset);
+  addParts(result, "metrics", formatMetricsParts(data, sym), colors.metricsFg, reset, pf);
 
   // Activity
   result.activity = colorizeOrEmpty(formatActivitySegment(data, sym), colors.metricsFg);
-  addParts(result, "activity", formatActivityParts(data, sym), colors.metricsFg, reset);
+  addParts(result, "activity", formatActivityParts(data, sym), colors.metricsFg, reset, pf);
 
   // Burn
   result.burn = colorizeOrEmpty(formatBurnSegment(data.blockInfo, sym), colors.metricsFg);
-  addParts(result, "burn", formatBurnParts(data.blockInfo, sym), colors.metricsFg, reset);
+  addParts(result, "burn", formatBurnParts(data.blockInfo, sym), colors.metricsFg, reset, pf);
 
   // Env
   result.env = colorizeOrEmpty(formatEnvSegment(config), colors.envFg);
-  addParts(result, "env", formatEnvParts(config), colors.envFg, reset);
+  addParts(result, "env", formatEnvParts(config), colors.envFg, reset, pf);
 
-  return result;
+  // Apply segment templates: resolve items and compose default value
+  const templates: Record<string, ResolvedTemplate> = {};
+  const segmentConfigs = config.display.tui?.segments;
+  if (segmentConfigs) {
+    for (const [segRef, tmpl] of Object.entries(segmentConfigs)) {
+      const items = resolveTemplateItems(tmpl, segRef, result);
+      const gap = tmpl.gap ?? 1;
+      const justify = tmpl.justify ?? "start";
+      templates[segRef] = { items, gap, justify };
+      // Compose default (without cell width for "between")
+      result[segRef] = composeTemplate(items, gap, justify === "between" ? "start" : justify);
+    }
+  }
+
+  return { data: result, templates };
 }

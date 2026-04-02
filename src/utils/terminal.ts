@@ -84,7 +84,7 @@ function getUnixTerminalWidth(): number | null {
  * @info Reserves 45 characters for Claude Code's right-side UI messages
  * (e.g., "Current: 2.1.78 · latest: 2.1.78", "Thinking off")
  */
-const RESERVED_CHARS = 45;
+const RESERVED_CHARS = 100;
 
 export function getTerminalWidth(): number | null {
   const applyReserve = (w: number) => Math.max(1, w - RESERVED_CHARS);

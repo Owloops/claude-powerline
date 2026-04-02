@@ -807,7 +807,31 @@ export class PowerlineRenderer {
       envFg: env.fg,
       weeklyBg: weekly.bg,
       weeklyFg: weekly.fg,
+      partFg: this.resolvePartColors(colorSupport),
     };
+  }
+
+  private resolvePartColors(
+    colorSupport: "none" | "ansi" | "ansi256" | "truecolor",
+  ): Record<string, string> {
+    const custom = this.config.colors?.custom as Record<string, any> | undefined;
+    if (!custom || colorSupport === "none") return {};
+
+    const result: Record<string, string> = {};
+    for (const key of Object.keys(custom)) {
+      if (!key.includes(".")) continue;
+      const entry = custom[key];
+      if (!entry?.fg) continue;
+
+      if (colorSupport === "ansi") {
+        result[key] = hexToBasicAnsi(entry.fg, false);
+      } else if (colorSupport === "ansi256") {
+        result[key] = hexTo256Ansi(entry.fg, false);
+      } else {
+        result[key] = hexToAnsi(entry.fg, false);
+      }
+    }
+    return result;
   }
 
   private getSegmentBgColor(

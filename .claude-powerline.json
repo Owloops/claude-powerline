@@ -1,46 +1,52 @@
 {
+  "theme": "tokyo-night",
   "display": {
     "colorCompatibility": "truecolor",
     "autoWrap": false,
     "style": "tui",
     "charset": "unicode",
     "tui": {
-      "widthReserve": 100,
+      "fitContent": true,
+      "padding": { "horizontal": 4 },
       "separator": { "column": "  " },
+      "segments": {
+        "metrics.lastResponse": {
+          "items": ["{lastResponseIcon}", "{lastResponseVal}"],
+          "gap": 1
+        }
+      },
       "breakpoints": [
         {
           "minWidth": 80,
           "areas": [
-            "git       git        git       dir",
+            "git.head     git.head     git.head     .               dir",
             "---",
-            "context   context    context   context",
-            "block     .          weekly    metrics.lastResponse"
+            "context.bar  context.bar  context.bar  context.pct     context.tokens",
+            "block.icon   block.value  block.time   weekly          metrics.lastResponse"
           ],
-          "columns": ["1fr", "auto", "auto", "auto"],
-          "align": ["left", "left", "right", "right"]
+          "columns": ["auto", "1fr", "auto", "auto", "auto"],
+          "align": ["left", "left", "right", "right", "right"]
         },
         {
           "minWidth": 55,
           "areas": [
-            "git                  dir",
+            "git.head             dir",
             "---",
-            "context              context",
-            "block                weekly",
-            "metrics.lastResponse ."
+            "context.bar          context.tokens",
+            "block                weekly"
           ],
-          "columns": ["1fr", "1fr"],
+          "columns": ["1fr", "auto"],
           "align": ["left", "right"]
         },
         {
           "minWidth": 0,
           "areas": [
-            "git",
+            "git.head",
             "dir",
             "---",
             "context",
             "block",
-            "weekly",
-            "metrics.lastResponse"
+            "weekly"
           ],
           "columns": ["1fr"],
           "align": ["left"]
@@ -105,6 +111,12 @@
         }
       }
     ]
+  },
+  "colors": {
+    "custom": {
+      "metrics.lastResponseIcon": { "fg": "#bb9af7" },
+      "metrics.lastResponseVal": { "fg": "#9d7cd8" }
+    }
   },
   "budget": {
     "session": {

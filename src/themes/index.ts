@@ -65,6 +65,7 @@ export interface PowerlineColors {
   envFg: string;
   weeklyBg: string;
   weeklyFg: string;
+  partFg: Record<string, string>;
 }
 
 export const BUILT_IN_THEMES: Record<string, ColorTheme> = {

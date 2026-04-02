@@ -61,10 +61,10 @@ export const SEGMENT_PARTS: Record<SegmentName, readonly string[]> = {
   block: ["icon", "value", "time", "budget"],
   today: ["icon", "cost", "label", "budget"],
   weekly: ["icon", "pct", "time"],
-  git: ["icon", "branch", "status", "ahead", "behind", "working"],
+  git: ["icon", "branch", "status", "ahead", "behind", "working", "head"],
   context: ["bar", "pct", "tokens"],
-  metrics: ["response", "lastResponse", "added", "removed"],
-  activity: ["duration", "messages"],
+  metrics: ["response", "responseIcon", "responseVal", "lastResponse", "lastResponseIcon", "lastResponseVal", "added", "addedIcon", "addedVal", "removed", "removedIcon", "removedVal"],
+  activity: ["duration", "durationIcon", "durationVal", "messages", "messagesIcon", "messagesVal"],
   burn: ["icon", "rate"],
   version: ["icon", "value"],
   tmux: ["label", "value"],
@@ -99,9 +99,21 @@ export interface TuiGridBreakpoint {
   align?: AlignValue[];
 }
 
+export type JustifyValue = "start" | "end" | "center" | "between";
+
+export interface SegmentTemplate {
+  items: string[];
+  gap?: number;
+  justify?: JustifyValue;
+}
+
 export interface TuiGridConfig {
   widthReserve?: number;
   minWidth?: number;
+  maxWidth?: number;
+  fitContent?: boolean;
+  padding?: { horizontal?: number };
+  segments?: Record<string, SegmentTemplate>;
   separator?: {
     column?: string;
     divider?: string;

@@ -16,6 +16,7 @@ const PLAIN_COLORS: PowerlineColors = {
   metricsBg: "", metricsFg: "", versionBg: "", versionFg: "",
   envBg: "", envFg: "",
   weeklyBg: "", weeklyFg: "",
+  partFg: {},
 };
 
 const tuiConfig: PowerlineConfig = {

@@ -3,7 +3,7 @@ import type { TuiData, BoxChars, LayoutMode, RenderCtx, SegmentName } from "./ty
 
 import { SYMBOLS, TEXT_SYMBOLS } from "../utils/constants";
 import { contentRow, bottomBorder } from "./primitives";
-import { buildTitleBar, buildContextLine, buildContextBar, formatContextParts, resolveSegments } from "./sections";
+import { buildTitleBar, buildContextLine, buildContextBar, formatContextParts, resolveSegments, composeTemplate } from "./sections";
 import {
   renderWideMetrics,
   renderWideBottom,
@@ -12,8 +12,8 @@ import {
   renderNarrowMetrics,
   renderNarrowBottom,
 } from "./layouts";
-import { renderGrid } from "./grid";
-import { getRawTerminalWidth } from "../utils/terminal";
+import { renderGrid, selectBreakpoint, parseAreas, cullMatrix, solveFitContentLayout } from "./grid";
+import { getRawTerminalWidth, visibleLength } from "../utils/terminal";
 
 // Synchronized Output (DEC mode 2026): prevents tearing on multi-line renders.
 // Terminals that don't support it silently ignore these sequences.
@@ -55,17 +55,40 @@ export async function renderTuiPanel(
   if (config.display.tui) {
     const rawWidth = (await getRawTerminalWidth()) ?? 120;
     const gridConfig = config.display.tui;
-    const widthReserve = gridConfig.widthReserve ?? 100;
     const minWidth = gridConfig.minWidth ?? MIN_PANEL_WIDTH;
-    const panelWidth = Math.max(minWidth, rawWidth - widthReserve);
+    const maxWidth = gridConfig.maxWidth ?? Infinity;
+
+    // Pre-resolve segments with a generous contentWidth for initial measurement
+    const estimatedPanelWidth = gridConfig.fitContent
+      ? rawWidth
+      : Math.min(maxWidth, Math.max(minWidth, rawWidth - (gridConfig.widthReserve ?? 100)));
+    const estInnerWidth = estimatedPanelWidth - 2;
+    const estContentWidth = estInnerWidth - 2;
+
+    const ctx: RenderCtx = { lines: [], data, box, contentWidth: estContentWidth, innerWidth: estInnerWidth, sym, config, reset, colors };
+    const resolved = resolveSegments(data, ctx);
+    const resolvedData = resolved.data;
+    const templates = resolved.templates;
+
+    // For fitContent: compute actual panel width from content
+    let panelWidth: number;
+    if (gridConfig.fitContent) {
+      const sepWidth = visibleLength(gridConfig.separator?.column ?? "  ");
+      const hPad = gridConfig.padding?.horizontal ?? 0;
+      const bp = selectBreakpoint(gridConfig.breakpoints, rawWidth);
+      const rawMatrix = parseAreas(bp.areas);
+      const matrix = cullMatrix(rawMatrix, resolvedData);
+      const solved = solveFitContentLayout(bp.columns, matrix, resolvedData, sepWidth, hPad);
+      panelWidth = Math.min(maxWidth, Math.max(minWidth, solved.panelWidth));
+    } else {
+      panelWidth = estimatedPanelWidth;
+    }
+
     const innerWidth = panelWidth - 2;
     const contentWidth = innerWidth - 2;
 
     const lines: string[] = [];
     lines.push(buildTitleBar(data, box, innerWidth));
-
-    const ctx: RenderCtx = { lines, data, box, contentWidth, innerWidth, sym, config, reset, colors };
-    const resolvedData = resolveSegments(data, ctx);
 
     const lateResolve = (segment: string, cellWidth: number): string | undefined => {
       if (segment === "context") {
@@ -73,6 +96,10 @@ export async function renderTuiPanel(
       }
       if (segment === "context.bar") {
         return buildContextBar(data, cellWidth, sym, reset, colors);
+      }
+      const tmpl = templates[segment];
+      if (tmpl) {
+        return composeTemplate(tmpl.items, tmpl.gap, tmpl.justify, cellWidth);
       }
       return undefined;
     };
