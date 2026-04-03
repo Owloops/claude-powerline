@@ -5,6 +5,7 @@ import { DEFAULT_CONFIG } from "./defaults";
 import type { ColorTheme } from "../themes";
 import type { TuiGridConfig } from "../tui/types";
 import { VALID_SEGMENT_NAMES, isValidSegmentRef } from "../tui/types";
+import { BOX_PRESETS } from "../utils/constants";
 import type {
   SegmentConfig,
   DirectorySegmentConfig,
@@ -248,6 +249,11 @@ function parseCLIOverrides(args: string[]): Partial<PowerlineConfig> {
 }
 
 function validateGridConfig(tui: TuiGridConfig): string | null {
+  if (typeof tui.box === "string" && !BOX_PRESETS[tui.box]) {
+    const valid = Object.keys(BOX_PRESETS).join(", ");
+    return `unknown box preset "${tui.box}" (valid: ${valid})`;
+  }
+
   if (!tui.breakpoints || !Array.isArray(tui.breakpoints) || tui.breakpoints.length === 0) {
     return "grid config must have at least one breakpoint";
   }

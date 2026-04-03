@@ -58,6 +58,39 @@ export const BOX_CHARS_TEXT = {
   teeRight: "+",
 } as const;
 
+export const BOX_PRESETS: Record<string, { topLeft: string; topRight: string; bottomLeft: string; bottomRight: string; horizontal: string; vertical: string; teeLeft: string; teeRight: string }> = {
+  rounded: BOX_CHARS,
+  square: {
+    topLeft: "┌", topRight: "┐", bottomLeft: "└", bottomRight: "┘",
+    horizontal: "─", vertical: "│", teeLeft: "├", teeRight: "┤",
+  },
+  heavy: {
+    topLeft: "┏", topRight: "┓", bottomLeft: "┗", bottomRight: "┛",
+    horizontal: "━", vertical: "┃", teeLeft: "┣", teeRight: "┫",
+  },
+  double: {
+    topLeft: "╔", topRight: "╗", bottomLeft: "╚", bottomRight: "╝",
+    horizontal: "═", vertical: "║", teeLeft: "╠", teeRight: "╣",
+  },
+  dashed: {
+    topLeft: "╭", topRight: "╮", bottomLeft: "╰", bottomRight: "╯",
+    horizontal: "┄", vertical: "┊", teeLeft: "├", teeRight: "┤",
+  },
+  "heavy-dashed": {
+    topLeft: "┏", topRight: "┓", bottomLeft: "┗", bottomRight: "┛",
+    horizontal: "┅", vertical: "┇", teeLeft: "┣", teeRight: "┫",
+  },
+  mixed: {
+    topLeft: "┍", topRight: "┑", bottomLeft: "┕", bottomRight: "┙",
+    horizontal: "━", vertical: "│", teeLeft: "┝", teeRight: "┥",
+  },
+  ascii: BOX_CHARS_TEXT,
+  invisible: {
+    topLeft: " ", topRight: " ", bottomLeft: " ", bottomRight: " ",
+    horizontal: " ", vertical: " ", teeLeft: " ", teeRight: " ",
+  },
+};
+
 export const TEXT_SYMBOLS = {
   right: "\uE0B0",
   left_rounded: "\uE0B6",

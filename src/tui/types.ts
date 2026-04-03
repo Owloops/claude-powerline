@@ -130,7 +130,7 @@ export interface TuiGridConfig {
     column?: string;
     divider?: string;
   };
-  box?: Partial<BoxChars>;
+  box?: string | Partial<BoxChars>;
   title?: TuiTitleConfig;
   footer?: TuiFooterConfig;
   breakpoints: TuiGridBreakpoint[];
