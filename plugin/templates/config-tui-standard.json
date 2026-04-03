@@ -1,0 +1,68 @@
+{
+  "theme": "replace:THEME",
+  "display": {
+    "style": "tui",
+    "charset": "replace:CHARSET",
+    "colorCompatibility": "auto",
+    "autoWrap": true,
+    "tui": {
+      "fitContent": true,
+      "padding": { "horizontal": 2 },
+      "separator": { "column": "  " },
+      "title": {
+        "left": "{model}",
+        "right": "{dir}"
+      },
+      "segments": {
+        "git.info": {
+          "items": ["{branch}", "{status}", "{ahead}", "{behind}"],
+          "gap": 1
+        }
+      },
+      "breakpoints": [
+        {
+          "minWidth": 0,
+          "areas": [
+            "git.icon     git.info     git.info     .            git.working",
+            "---",
+            "context.icon  context.bar  context.bar  context.pct  context.tokens",
+            "block.icon    block.bar    block.bar    block.value  block.time"
+          ],
+          "columns": ["auto", "1fr", "auto", "auto", "auto"],
+          "align": ["left", "left", "right", "right", "right"]
+        }
+      ]
+    },
+    "lines": [
+      {
+        "segments": {
+          "directory": { "enabled": true, "showBasename": true },
+          "git": { "enabled": true, "showAheadBehind": true },
+          "model": { "enabled": true },
+          "context": { "enabled": true, "autocompactBuffer": 0 },
+          "block": { "enabled": true, "type": "tokens" }
+        }
+      }
+    ]
+  },
+  "colors": {
+    "custom": {
+      "dir": { "fg": "#d2e08a" },
+      "git": { "fg": "#c3e88d" },
+      "git.working": { "fg": "#90c499" },
+      "context": { "fg": "#7ecbc8" },
+      "context.pct": { "fg": "#70a4c9" },
+      "context.tokens": { "fg": "#70a4c9" },
+      "block": { "fg": "#7aa2f7" },
+      "block.value": { "fg": "#6e92de" },
+      "block.time": { "fg": "#6e92de" }
+    }
+  },
+  "budget": {
+    "session": { "warningThreshold": 80 }
+  },
+  "modelContextLimits": {
+    "sonnet": 1000000,
+    "opus": 200000
+  }
+}

@@ -1,0 +1,109 @@
+{
+  "theme": "replace:THEME",
+  "display": {
+    "style": "tui",
+    "charset": "replace:CHARSET",
+    "colorCompatibility": "auto",
+    "autoWrap": true,
+    "tui": {
+      "fitContent": true,
+      "padding": { "horizontal": 2 },
+      "separator": { "column": "  " },
+      "title": {
+        "left": "{model.icon}  {model.value}",
+        "right": "{dir}"
+      },
+      "footer": {
+        "left": "{activity.durationIcon} {activity.durationVal}  {activity.messagesIcon} {activity.messagesVal}",
+        "right": "{metrics.lastResponse}"
+      },
+      "segments": {
+        "git.info": {
+          "items": ["{branch}", "{status}", "{ahead}", "{behind}"],
+          "gap": 1
+        }
+      },
+      "breakpoints": [
+        {
+          "minWidth": 55,
+          "areas": [
+            "git.icon     git.info     git.info     .               git.working",
+            "---",
+            "context.icon  context.bar  context.bar  context.pct     context.tokens",
+            "block.icon    block.bar    block.bar    block.value     block.time",
+            "weekly.icon   weekly.bar   weekly.bar   weekly.pct      weekly.time",
+            "---",
+            "session       session       .           today           today"
+          ],
+          "columns": ["auto", "1fr", "auto", "auto", "auto"],
+          "align": ["left", "left", "right", "right", "right"]
+        },
+        {
+          "minWidth": 0,
+          "areas": [
+            "git.head",
+            "git.working",
+            "---",
+            "context",
+            "block",
+            "---",
+            "session",
+            "today"
+          ],
+          "columns": ["1fr"],
+          "align": ["left"]
+        }
+      ]
+    },
+    "lines": [
+      {
+        "segments": {
+          "directory": { "enabled": true, "style": "fish" },
+          "git": { "enabled": true, "showAheadBehind": true },
+          "model": { "enabled": true },
+          "context": { "enabled": true, "autocompactBuffer": 0 },
+          "block": { "enabled": true, "type": "tokens" },
+          "session": { "enabled": true, "type": "tokens" },
+          "today": { "enabled": true, "type": "cost" },
+          "weekly": { "enabled": true },
+          "metrics": {
+            "enabled": true,
+            "showLastResponseTime": true,
+            "showResponseTime": false,
+            "showDuration": true,
+            "showMessageCount": true
+          }
+        }
+      }
+    ]
+  },
+  "colors": {
+    "custom": {
+      "model": { "fg": "#e0d68a" },
+      "dir": { "fg": "#d2e08a" },
+      "git": { "fg": "#c3e88d" },
+      "git.working": { "fg": "#90c499" },
+      "context": { "fg": "#7ecbc8" },
+      "context.pct": { "fg": "#71b8cd" },
+      "context.tokens": { "fg": "#71b8cd" },
+      "block": { "fg": "#7dcfff" },
+      "block.value": { "fg": "#6fa6e2" },
+      "block.time": { "fg": "#6fa6e2" },
+      "weekly": { "fg": "#7aa2f7" },
+      "weekly.pct": { "fg": "#8b8ede" },
+      "weekly.time": { "fg": "#8b8ede" },
+      "session": { "fg": "#bb9af7" },
+      "today": { "fg": "#aaa0dd" },
+      "activity": { "fg": "#c0caf5" },
+      "metrics.lastResponse": { "fg": "#c0caf5" }
+    }
+  },
+  "budget": {
+    "session": { "warningThreshold": 80 },
+    "today": { "amount": "replace:TODAY_BUDGET", "warningThreshold": 80 }
+  },
+  "modelContextLimits": {
+    "sonnet": 1000000,
+    "opus": 200000
+  }
+}

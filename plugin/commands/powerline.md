@@ -152,7 +152,45 @@ Then ask:
 
 If the user chose `charset=text`, add a note that powerline and capsule use text fallback separators.
 
-**If the user chose "tui":** skip Steps 5 and 6. TUI mode is opinionated and always displays all data regardless of segment configuration. Tell the user: "TUI mode shows all available data automatically. Segment and bar style selection are not needed." Then continue to Step 7.
+**If the user chose "tui":** skip Steps 5 and 6 and continue to Step 4b for TUI layout selection.
+
+## Step 4b: TUI Layout Selection
+
+> [!NOTE]
+> This step only applies if the user chose "tui" style in Step 4. Otherwise skip to Step 5.
+
+Display the three TUI layout presets:
+
+````markdown
+**Choose a TUI layout:**
+
+1. **Compact** — Git + context window only
+   Minimal footprint. Model name in the title bar. Clean and focused.
+
+2. **Standard** — Git + context + block usage with progress bars
+   Model and directory in the title bar. Good default for most users.
+
+3. **Full** — Git, context, block, session, and daily cost
+   Title bar with model and directory. Footer with weekly usage and response time.
+   Maximum information density.
+````
+
+Then ask:
+
+- **Question**: "Which TUI layout?"
+- **Header**: "TUI Layout"
+- **Options**:
+  - "Compact" -> Set `chosen_tui_layout=compact`
+  - "Standard" -> Set `chosen_tui_layout=standard`
+  - "Full" -> Set `chosen_tui_layout=full`
+
+After selection, skip Steps 5 and 6 (always skipped for TUI). If "Compact" or "Standard", also skip Step 7 (no budget needed). If "Full", continue to Step 7.
+
+### TUI preset to template mapping
+
+- `compact` -> `config-tui-compact.json`
+- `standard` -> `config-tui-standard.json`
+- `full` -> `config-tui-full.json`
 
 ## Step 5: Segment Selection
 
@@ -190,7 +228,8 @@ Each preset has a corresponding template config file in `${CLAUDE_PLUGIN_ROOT}/t
 - `essential` -> `config-essential.json`
 - `standard` -> `config-standard.json`
 - `full` -> `config-full.json`
-- `tui` (style) -> `config-tui.json`
+
+For TUI templates, see Step 4b.
 
 ## Step 6: Bar Display Style
 
@@ -227,7 +266,7 @@ Apply `chosen_bar_style` to the `displayStyle` field of context, block, and week
 ## Step 7: Budget
 
 > [!NOTE]
-> Skip this step if the user chose "Essential" preset or "tui" style. The essential template has no budget placeholder, and TUI uses defaults.
+> Skip this step if the user chose "Essential" preset, or TUI "Compact" or "Standard" layout. Only TUI "Full" layout uses a budget placeholder.
 
 Ask the user about their daily budget for cost tracking:
 
@@ -258,7 +297,9 @@ If it exists, ask:
 
 ### Build and write the config
 
-1. **Pick the template file.** If the user chose "tui" style, use `config-tui.json`. Otherwise use the preset template: `config-essential.json`, `config-standard.json`, or `config-full.json`.
+1. **Pick the template file.** Based on the user's choices:
+   - Non-TUI styles: `config-essential.json`, `config-standard.json`, or `config-full.json` (from Step 5)
+   - TUI style: `config-tui-compact.json`, `config-tui-standard.json`, or `config-tui-full.json` (from Step 4b)
 
 2. **Read the template** using the Read tool:
 
@@ -271,12 +312,12 @@ ${CLAUDE_PLUGIN_ROOT}/templates/<template-file>
    | Placeholder | Replace with |
    |-------------|-------------|
    | `replace:THEME` | The chosen theme (e.g., `tokyo-night`) |
-   | `replace:STYLE` | The chosen style (e.g., `capsule`). Not present in tui template. |
+   | `replace:STYLE` | The chosen style (e.g., `capsule`). Not present in TUI templates. |
    | `replace:CHARSET` | `unicode` or `text` |
-   | `replace:BAR_STYLE` | The chosen bar style (e.g., `blocks`). Default `text` if Step 6 was skipped. Not present in tui template. |
-   | `replace:TODAY_BUDGET` | The budget number (e.g., `50`). Not present in essential template. **Important:** replace `"replace:TODAY_BUDGET"` (including the surrounding quotes) with the bare number so the result is `"amount": 50` not `"amount": "50"`. |
+   | `replace:BAR_STYLE` | The chosen bar style (e.g., `blocks`). Default `text` if Step 6 was skipped. Not present in TUI templates. |
+   | `replace:TODAY_BUDGET` | The budget number (e.g., `50`). Only present in non-TUI standard/full and TUI full templates. **Important:** replace `"replace:TODAY_BUDGET"` (including the surrounding quotes) with the bare number so the result is `"amount": 50` not `"amount": "50"`. |
 
-1. **Handle "No budget"**: If the user chose "No budget" in Step 7, remove the entire `"amount": "replace:TODAY_BUDGET",` line (including the trailing comma) from the budget section. If Step 7 was skipped (essential preset), do not modify the budget section.
+1. **Handle "No budget"**: If the user chose "No budget" in Step 7, remove the entire `"amount": "replace:TODAY_BUDGET",` line (including the trailing comma) from the budget section. If Step 7 was skipped (essential preset, or TUI compact/standard), do not modify the budget section.
 
 1. **Write the result** to `~/.claude/claude-powerline.json` using the Write tool. Do NOT read or merge with any existing config.
 
@@ -330,4 +371,21 @@ Setup complete.
 3. Edit `~/.claude/claude-powerline.json` by hand for advanced options.
 
 Documentation: https://github.com/Owloops/claude-powerline
+````
+
+**If the user chose TUI style**, also display:
+
+````markdown
+**Customizing your TUI grid layout:**
+
+Edit `display.tui` in `~/.claude/claude-powerline.json` to fine-tune:
+
+- **Box style** — Add `"box": "rounded"` to change borders. Presets: `rounded`, `square`, `heavy`, `double`, `dashed`, `heavy-dashed`, `mixed`, `ascii`, `invisible`
+- **Title/footer** — Edit `title.left`, `title.right`, `footer.left`, `footer.right` using `{segment.part}` tokens (e.g. `{model.icon}`, `{dir}`, `{weekly.pct}`)
+- **Grid areas** — Rearrange cells in `breakpoints[].areas`. Use `.` for empty cells, `---` for dividers. Repeat a name across adjacent cells to span columns
+- **Custom colors** — Add `colors.custom` entries with dot-notation keys (e.g. `"context.bar": { "fg": "#4a9eff" }`)
+- **Responsive breakpoints** — Add breakpoints for different terminal widths. The engine picks the largest `minWidth` that fits
+- **Column sizing** — `"auto"` (fit content), `"1fr"` (fill remaining), or a fixed number like `"20"`
+
+See the TUI Grid Layout section in the README for the full reference.
 ````

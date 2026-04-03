@@ -898,13 +898,13 @@ export function resolveSegments(
   // Model
   const rawModelName = data.hookData.model?.display_name || "Claude";
   const modelName = formatModelName(rawModelName).toLowerCase();
-  const modelColor = pf?.["model"] ?? colors.modeFg;
+  const modelColor = pf?.["model"] ?? colors.modelFg;
   result.model = colorizeOrEmpty(`${sym.model} ${modelName}`, modelColor);
   addParts(
     result,
     "model",
     { icon: sym.model, value: modelName },
-    colors.modeFg,
+    colors.modelFg,
     reset,
     pf,
   );
