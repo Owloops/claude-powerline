@@ -1,6 +1,6 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import { existsSync, createReadStream } from "node:fs";
-import { join, posix } from "node:path";
+import { join } from "node:path";
 import { homedir } from "node:os";
 import { createInterface } from "node:readline";
 import { debug } from "./logger";
@@ -98,7 +98,7 @@ export async function findProjectPaths(
 
         for (const entry of entries) {
           if (entry.isDirectory()) {
-            const projectPath = posix.join(projectsDir, entry.name);
+            const projectPath = join(projectsDir, entry.name);
             projectPaths.push(projectPath);
           }
         }
@@ -118,7 +118,7 @@ export async function findTranscriptFile(
   const projectPaths = await findProjectPaths(claudePaths);
 
   for (const projectPath of projectPaths) {
-    const transcriptPath = posix.join(projectPath, `${sessionId}.jsonl`);
+    const transcriptPath = join(projectPath, `${sessionId}.jsonl`);
     if (existsSync(transcriptPath)) {
       return transcriptPath;
     }
@@ -133,7 +133,7 @@ export async function findAgentTranscripts(
 ): Promise<string[]> {
   const agentFiles: string[] = [];
 
-  const subagentsDir = posix.join(projectPath, sessionId, "subagents");
+  const subagentsDir = join(projectPath, sessionId, "subagents");
 
   try {
     const files = await readdir(subagentsDir);
@@ -142,7 +142,7 @@ export async function findAgentTranscripts(
     );
 
     for (const fileName of agentFileNames) {
-      const filePath = posix.join(subagentsDir, fileName);
+      const filePath = join(subagentsDir, fileName);
       try {
         const content = await readFile(filePath, "utf-8");
         const firstLine = content.split("\n")[0];
@@ -394,17 +394,17 @@ async function collectProjectFiles(
 
     const sessionFiles = entries
       .filter((e) => !e.isDirectory() && e.name.endsWith(".jsonl"))
-      .map((e) => statFile(posix.join(projectPath, e.name)));
+      .map((e) => statFile(join(projectPath, e.name)));
 
     const subagentFiles = entries
       .filter((e) => e.isDirectory())
       .map(async (e) => {
-        const subagentsDir = posix.join(projectPath, e.name, "subagents");
+        const subagentsDir = join(projectPath, e.name, "subagents");
         try {
           const files = await readdir(subagentsDir);
           return files
             .filter((f) => f.startsWith("agent-") && f.endsWith(".jsonl"))
-            .map((f) => statFile(posix.join(subagentsDir, f)));
+            .map((f) => statFile(join(subagentsDir, f)));
         } catch {
           return [];
         }

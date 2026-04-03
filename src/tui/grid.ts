@@ -494,6 +494,19 @@ export function renderGrid(
     );
     panelWidth = Math.min(maxWidth, Math.max(minWidth, solved.panelWidth));
     colWidths = solved.colWidths;
+
+    // Redistribute minWidth surplus into fr columns
+    const surplus = panelWidth - solved.panelWidth;
+    if (surplus > 0) {
+      let totalFr = 0;
+      for (const colDef of bp.columns) totalFr += parseFr(colDef);
+      if (totalFr > 0) {
+        for (let i = 0; i < colWidths.length; i++) {
+          const fr = parseFr(bp.columns[i]!);
+          if (fr > 0) colWidths[i]! += Math.floor((surplus * fr) / totalFr);
+        }
+      }
+    }
   } else {
     const innerW = panelWidth - 2;
     const contentW = innerW - 2;

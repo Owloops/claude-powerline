@@ -114,6 +114,7 @@ function buildBarString(
   reset: string,
   fgColor: string,
 ): string {
+  barWidth = Math.max(5, barWidth);
   const filledCount = Math.round((pct / 100) * barWidth);
   const emptyCount = barWidth - filledCount;
   const bar =
@@ -226,7 +227,7 @@ export function buildContextLine(
   const tokenStr = formatTokenCount(data.contextInfo.totalTokens);
   const maxStr = formatTokenCount(data.contextInfo.maxTokens);
   const suffix = `  ${usedPct}%  ${tokenStr}/${maxStr}`;
-  const barLen = Math.max(4, contentWidth - suffix.length);
+  const barLen = Math.max(5, contentWidth - suffix.length);
   const filledCount = Math.round((usedPct / 100) * barLen);
   const emptyCount = barLen - filledCount;
   const bar =

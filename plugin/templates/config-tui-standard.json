@@ -7,6 +7,7 @@
     "autoWrap": true,
     "tui": {
       "fitContent": true,
+      "minWidth": 55,
       "padding": { "horizontal": 2 },
       "separator": { "column": "  " },
       "title": {
@@ -47,6 +48,7 @@
   },
   "colors": {
     "custom": {
+      "model": { "fg": "#e0d68a" },
       "dir": { "fg": "#d2e08a" },
       "git": { "fg": "#c3e88d" },
       "git.working": { "fg": "#90c499" },

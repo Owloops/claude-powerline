@@ -159,6 +159,18 @@ If the user chose `charset=text`, add a note that powerline and capsule use text
 > [!NOTE]
 > This step only applies if the user chose "tui" style in Step 4. Otherwise skip to Step 5.
 
+Show a preview of all three TUI layouts using the bundled preview script.
+
+> [!IMPORTANT]
+> You MUST run the preview command below and let the terminal display the result.
+> After running, tell the user to expand the bash output if they cannot see the previews.
+
+```bash
+${CLAUDE_PLUGIN_ROOT}/bin/preview.sh --compare-tui-layouts --theme=${chosen_theme} --charset=${charset}
+```
+
+After running the command, tell the user: "The three TUI layout previews are in the bash output above. Expand it if needed."
+
 Display the three TUI layout presets:
 
 ````markdown
