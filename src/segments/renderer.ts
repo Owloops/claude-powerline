@@ -21,6 +21,8 @@ import {
   formatTimeSince,
   formatDuration,
   formatLongTimeRemaining,
+  formatBurnRate,
+  collapseHome,
   minutesUntilReset,
 } from "../utils/formatters";
 import { getBudgetStatus } from "../utils/budget";
@@ -207,18 +209,10 @@ export class SegmentRenderer {
       };
     }
 
-    const homeDir = process.env.HOME || process.env.USERPROFILE;
-    let displayDir = currentDir;
-    let displayProjectDir = projectDir;
-
-    if (homeDir) {
-      if (currentDir.startsWith(homeDir)) {
-        displayDir = currentDir.replace(homeDir, "~");
-      }
-      if (projectDir && projectDir.startsWith(homeDir)) {
-        displayProjectDir = projectDir.replace(homeDir, "~");
-      }
-    }
+    const displayDir = collapseHome(currentDir);
+    const displayProjectDir = projectDir
+      ? collapseHome(projectDir)
+      : projectDir;
 
     let dirName = this.getDisplayDirectoryName(displayDir, displayProjectDir);
 
@@ -532,7 +526,6 @@ export class SegmentRenderer {
   renderMetrics(
     metricsInfo: MetricsInfo | null,
     colors: PowerlineColors,
-    _blockInfo: BlockInfo | null,
     config?: MetricsSegmentConfig,
   ): SegmentData | null {
     if (!metricsInfo) {
@@ -740,12 +733,7 @@ export class SegmentRenderer {
       if (burnType && burnType !== "none") {
         switch (burnType) {
           case "cost": {
-            const costBurnRate =
-              blockInfo.burnRate !== null
-                ? blockInfo.burnRate < 1
-                  ? `${(blockInfo.burnRate * 100).toFixed(0)}¢/h`
-                  : `$${blockInfo.burnRate.toFixed(2)}/h`
-                : "N/A";
+            const costBurnRate = formatBurnRate(blockInfo.burnRate) || "N/A";
             burnContent = ` | ${costBurnRate}`;
             break;
           }
@@ -758,12 +746,7 @@ export class SegmentRenderer {
             break;
           }
           case "both": {
-            const costBurn =
-              blockInfo.burnRate !== null
-                ? blockInfo.burnRate < 1
-                  ? `${(blockInfo.burnRate * 100).toFixed(0)}¢/h`
-                  : `$${blockInfo.burnRate.toFixed(2)}/h`
-                : "N/A";
+            const costBurn = formatBurnRate(blockInfo.burnRate) || "N/A";
             const tokenBurn =
               blockInfo.tokenBurnRate !== null
                 ? `${formatTokens(Math.round(blockInfo.tokenBurnRate))}/h`
@@ -794,9 +777,7 @@ export class SegmentRenderer {
     timeRemaining: number | null,
   ): string | null {
     if (timeRemaining === null) return null;
-    const hours = Math.floor(timeRemaining / 60);
-    const minutes = timeRemaining % 60;
-    return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+    return formatLongTimeRemaining(timeRemaining);
   }
 
   renderWeekly(

@@ -61,15 +61,24 @@ export function selectBreakpoint(
   breakpoints: TuiGridBreakpoint[],
   panelWidth: number,
 ): TuiGridBreakpoint {
-  // Sort by minWidth descending
-  const sorted = [...breakpoints].sort((a, b) => b.minWidth - a.minWidth);
-  for (const bp of sorted) {
+  let best: TuiGridBreakpoint | undefined;
+  for (const bp of breakpoints) {
     if (panelWidth >= bp.minWidth) {
-      return bp;
+      if (!best || bp.minWidth > best.minWidth) {
+        best = bp;
+      }
     }
   }
-  // Fallback to last (smallest minWidth)
-  return sorted[sorted.length - 1]!;
+  if (best) return best;
+
+  // Fallback to smallest minWidth
+  let smallest = breakpoints[0]!;
+  for (let i = 1; i < breakpoints.length; i++) {
+    if (breakpoints[i]!.minWidth < smallest.minWidth) {
+      smallest = breakpoints[i]!;
+    }
+  }
+  return smallest;
 }
 
 // --- Area Parsing ---
@@ -281,7 +290,7 @@ export function calculateColumnWidths(
     }
   }
 
-  // Phase 4: Clamp all widths to >= 1
+  // Phase 3: Clamp all widths to >= 1
   for (let i = 0; i < colCount; i++) {
     if (widths[i]! < 1) {
       widths[i] = 1;

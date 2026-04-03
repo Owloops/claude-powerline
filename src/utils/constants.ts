@@ -58,19 +58,9 @@ export const BOX_CHARS_TEXT = {
   teeRight: "+",
 } as const;
 
-export const BOX_PRESETS: Record<
-  string,
-  {
-    topLeft: string;
-    topRight: string;
-    bottomLeft: string;
-    bottomRight: string;
-    horizontal: string;
-    vertical: string;
-    teeLeft: string;
-    teeRight: string;
-  }
-> = {
+import type { BoxChars } from "../tui/types";
+
+export const BOX_PRESETS: Record<string, BoxChars> = {
   rounded: BOX_CHARS,
   square: {
     topLeft: "┌",

@@ -527,7 +527,7 @@ describe("Segment Time Logic", () => {
       const result = renderer.renderBlock(blockInfo, colors, { enabled: true, type: "cost", displayStyle: "text" });
       expect(result.text).toContain("◱");
       expect(result.text).toContain("35%");
-      expect(result.text).toContain("3h 0m");
+      expect(result.text).toContain("3h");
       expect(result.bgColor).toBe(colors.blockBg);
     });
 

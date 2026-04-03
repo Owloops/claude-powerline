@@ -1,7 +1,6 @@
 import type { ParsedEntry, ClaudeHookData } from "../utils/claude";
 import type { PowerlineConfig } from "../config/loader";
 
-import { readFileSync } from "node:fs";
 import { debug } from "../utils/logger";
 import { parseJsonlFile } from "../utils/claude";
 
@@ -138,17 +137,6 @@ export class ContextProvider {
   ): Promise<ContextInfo | null> {
     try {
       debug(`Calculating context tokens from transcript: ${transcriptPath}`);
-
-      try {
-        const content = readFileSync(transcriptPath, "utf-8");
-        if (!content) {
-          debug("Transcript file is empty");
-          return null;
-        }
-      } catch {
-        debug("Could not read transcript file");
-        return null;
-      }
 
       const parsedEntries = await parseJsonlFile(transcriptPath);
 

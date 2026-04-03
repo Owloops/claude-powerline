@@ -37,23 +37,7 @@ export type SymbolSet = typeof SYMBOLS | typeof TEXT_SYMBOLS;
 
 export type LayoutMode = "wide" | "medium" | "narrow";
 
-export type SegmentName =
-  | "context"
-  | "block"
-  | "session"
-  | "today"
-  | "weekly"
-  | "git"
-  | "dir"
-  | "model"
-  | "version"
-  | "tmux"
-  | "metrics"
-  | "activity"
-  | "burn"
-  | "env";
-
-export const VALID_SEGMENT_NAMES: ReadonlySet<string> = new Set<SegmentName>([
+const SEGMENT_NAME_LIST = [
   "context",
   "block",
   "session",
@@ -68,7 +52,13 @@ export const VALID_SEGMENT_NAMES: ReadonlySet<string> = new Set<SegmentName>([
   "activity",
   "burn",
   "env",
-]);
+] as const;
+
+export type SegmentName = (typeof SEGMENT_NAME_LIST)[number];
+
+export const VALID_SEGMENT_NAMES: ReadonlySet<string> = new Set<SegmentName>(
+  SEGMENT_NAME_LIST,
+);
 
 export const SEGMENT_PARTS: Record<SegmentName, readonly string[]> = {
   session: ["icon", "cost", "tokens", "budget"],

@@ -1,6 +1,6 @@
 import type { BoxChars } from "./types";
 
-import { visibleLength, stripAnsi } from "../utils/terminal";
+import { visibleLength, stripAnsi, ESC, ANSI_SPLIT } from "../utils/terminal";
 
 export function colorize(text: string, fgColor: string, reset: string): string {
   if (!fgColor) {
@@ -35,9 +35,6 @@ export function padCenter(text: string, width: number): string {
   const rightPad = totalPad - leftPad;
   return " ".repeat(leftPad) + text + " ".repeat(rightPad);
 }
-
-const ESC = String.fromCharCode(27);
-const ANSI_SPLIT = new RegExp(`(${ESC}\\[[0-9;]*m)`);
 
 export function truncateAnsi(text: string, maxWidth: number): string {
   if (stripAnsi(text).length <= maxWidth) {

@@ -621,15 +621,10 @@ export class PowerlineRenderer {
   private renderMetricsSegment(
     config: MetricsSegmentConfig,
     metricsInfo: MetricsInfo | null,
-    blockInfo: BlockInfo | null,
+    _blockInfo: BlockInfo | null,
     colors: PowerlineColors,
   ) {
-    return this.segmentRenderer.renderMetrics(
-      metricsInfo,
-      colors,
-      blockInfo,
-      config,
-    );
+    return this.segmentRenderer.renderMetrics(metricsInfo, colors, config);
   }
 
   private renderBlockSegment(

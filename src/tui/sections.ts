@@ -13,7 +13,9 @@ import { visibleLength } from "../utils/terminal";
 
 import {
   formatCost,
-  formatTokens,
+  formatTokenCount,
+  formatBurnRate,
+  collapseHome,
   formatDuration,
   formatModelName,
   formatResponseTime,
@@ -93,6 +95,32 @@ export function buildTitleBar(
   );
 }
 
+function resolveThresholdColor(
+  pct: number,
+  defaultColor: string,
+  colors: PowerlineColors,
+  warningAt = 60,
+  criticalAt = 80,
+): string {
+  if (pct >= criticalAt) return colors.contextCriticalFg;
+  if (pct >= warningAt) return colors.contextWarningFg;
+  return defaultColor;
+}
+
+function buildBarString(
+  pct: number,
+  barWidth: number,
+  sym: SymbolSet,
+  reset: string,
+  fgColor: string,
+): string {
+  const filledCount = Math.round((pct / 100) * barWidth);
+  const emptyCount = barWidth - filledCount;
+  const bar =
+    sym.bar_filled.repeat(filledCount) + sym.bar_empty.repeat(emptyCount);
+  return colorize(bar, fgColor, reset);
+}
+
 export function formatContextParts(
   data: TuiData,
   sym: SymbolSet,
@@ -100,14 +128,8 @@ export function formatContextParts(
   if (!data.contextInfo) return { icon: "", bar: "", pct: "", tokens: "" };
 
   const usedPct = data.contextInfo.usablePercentage;
-  const tokenStr = formatTokens(data.contextInfo.totalTokens).replace(
-    " tokens",
-    "",
-  );
-  const maxStr = formatTokens(data.contextInfo.maxTokens).replace(
-    " tokens",
-    "",
-  );
+  const tokenStr = formatTokenCount(data.contextInfo.totalTokens);
+  const maxStr = formatTokenCount(data.contextInfo.maxTokens);
 
   return {
     icon: sym.context_time,
@@ -127,17 +149,10 @@ export function buildContextBar(
 ): string {
   if (!data.contextInfo) return "";
   const usedPct = data.contextInfo.usablePercentage;
-  const filledCount = Math.round((usedPct / 100) * barWidth);
-  const emptyCount = barWidth - filledCount;
-  const bar =
-    sym.bar_filled.repeat(filledCount) + sym.bar_empty.repeat(emptyCount);
-
-  let fgColor =
+  const defaultFg =
     partFg?.["context.bar"] ?? partFg?.["context"] ?? colors.contextFg;
-  if (usedPct >= 80) fgColor = colors.contextCriticalFg;
-  else if (usedPct >= 60) fgColor = colors.contextWarningFg;
-
-  return colorize(bar, fgColor, reset);
+  const fgColor = resolveThresholdColor(usedPct, defaultFg, colors);
+  return buildBarString(usedPct, barWidth, sym, reset, fgColor);
 }
 
 export function buildBlockBar(
@@ -165,17 +180,17 @@ export function buildBlockBar(
   }
   if (pct === null) return "";
 
-  const filledCount = Math.round((pct / 100) * barWidth);
-  const emptyCount = barWidth - filledCount;
-  const bar =
-    sym.bar_filled.repeat(filledCount) + sym.bar_empty.repeat(emptyCount);
-
   const warningThreshold = config.budget?.block?.warningThreshold ?? 80;
-  let fgColor = partFg?.["block.bar"] ?? partFg?.["block"] ?? colors.blockFg;
-  if (pct >= warningThreshold) fgColor = colors.contextCriticalFg;
-  else if (pct >= 50) fgColor = colors.contextWarningFg;
-
-  return colorize(bar, fgColor, reset);
+  const defaultFg =
+    partFg?.["block.bar"] ?? partFg?.["block"] ?? colors.blockFg;
+  const fgColor = resolveThresholdColor(
+    pct,
+    defaultFg,
+    colors,
+    50,
+    warningThreshold,
+  );
+  return buildBarString(pct, barWidth, sym, reset, fgColor);
 }
 
 export function buildWeeklyBar(
@@ -190,16 +205,10 @@ export function buildWeeklyBar(
   if (!sevenDay) return "";
 
   const pct = sevenDay.used_percentage;
-  const filledCount = Math.round((pct / 100) * barWidth);
-  const emptyCount = barWidth - filledCount;
-  const bar =
-    sym.bar_filled.repeat(filledCount) + sym.bar_empty.repeat(emptyCount);
-
-  let fgColor = partFg?.["weekly.bar"] ?? partFg?.["weekly"] ?? colors.weeklyFg;
-  if (pct >= 80) fgColor = colors.contextCriticalFg;
-  else if (pct >= 60) fgColor = colors.contextWarningFg;
-
-  return colorize(bar, fgColor, reset);
+  const defaultFg =
+    partFg?.["weekly.bar"] ?? partFg?.["weekly"] ?? colors.weeklyFg;
+  const fgColor = resolveThresholdColor(pct, defaultFg, colors);
+  return buildBarString(pct, barWidth, sym, reset, fgColor);
 }
 
 export function buildContextLine(
@@ -214,14 +223,8 @@ export function buildContextLine(
   }
 
   const usedPct = data.contextInfo.usablePercentage;
-  const tokenStr = formatTokens(data.contextInfo.totalTokens).replace(
-    " tokens",
-    "",
-  );
-  const maxStr = formatTokens(data.contextInfo.maxTokens).replace(
-    " tokens",
-    "",
-  );
+  const tokenStr = formatTokenCount(data.contextInfo.totalTokens);
+  const maxStr = formatTokenCount(data.contextInfo.maxTokens);
   const suffix = `  ${usedPct}%  ${tokenStr}/${maxStr}`;
   const barLen = Math.max(4, contentWidth - suffix.length);
   const filledCount = Math.round((usedPct / 100) * barLen);
@@ -229,23 +232,14 @@ export function buildContextLine(
   const bar =
     sym.bar_filled.repeat(filledCount) + sym.bar_empty.repeat(emptyCount);
 
-  let fgColor = colors.contextFg;
-  if (usedPct >= 80) {
-    fgColor = colors.contextCriticalFg;
-  } else if (usedPct >= 60) {
-    fgColor = colors.contextWarningFg;
-  }
+  const fgColor = resolveThresholdColor(usedPct, colors.contextFg, colors);
 
   return colorize(`${bar}${suffix}`, fgColor, reset);
 }
 
 function getDirectoryDisplay(hookData: TuiData["hookData"]): string {
   const currentDir = hookData.workspace?.current_dir || hookData.cwd || "/";
-  const homeDir = process.env.HOME || process.env.USERPROFILE;
-  if (homeDir && currentDir.startsWith(homeDir)) {
-    return currentDir.replace(homeDir, "~");
-  }
-  return currentDir;
+  return collapseHome(currentDir);
 }
 
 export function collectMetricSegments(
@@ -386,17 +380,9 @@ export function collectFooterParts(
         `${sym.metrics_lines_removed}${data.metricsInfo.linesRemoved}`,
       );
     }
-    if (
-      data.blockInfo?.source !== "native" &&
-      data.blockInfo?.burnRate !== null &&
-      data.blockInfo?.burnRate !== undefined &&
-      data.blockInfo.burnRate > 0
-    ) {
-      const burnStr =
-        data.blockInfo.burnRate < 1
-          ? `${(data.blockInfo.burnRate * 100).toFixed(0)}c/h`
-          : `$${data.blockInfo.burnRate.toFixed(2)}/h`;
-      metricParts.push(`${sym.metrics_burn} ${burnStr}`);
+    if (data.blockInfo?.source !== "native") {
+      const burnStr = formatBurnRate(data.blockInfo?.burnRate);
+      if (burnStr) metricParts.push(`${sym.metrics_burn} ${burnStr}`);
     }
     if (metricParts.length > 0) {
       parts.push(colorize(metricParts.join(" · "), colors.metricsFg, reset));
@@ -497,7 +483,7 @@ export function formatSessionParts(
   const sessionTokens = usageInfo.session.tokens;
   const tokenStr =
     sessionTokens !== null && sessionTokens > 0
-      ? formatTokens(sessionTokens).replace(" tokens", "")
+      ? formatTokenCount(sessionTokens)
       : "";
 
   let budget = "";
@@ -568,18 +554,8 @@ export function formatBurnParts(
   blockInfo: TuiData["blockInfo"],
   sym: SymbolSet,
 ): Record<string, string> {
-  if (
-    !blockInfo ||
-    blockInfo.burnRate === null ||
-    blockInfo.burnRate === undefined ||
-    blockInfo.burnRate <= 0
-  ) {
-    return { icon: "", rate: "" };
-  }
-  const rate =
-    blockInfo.burnRate < 1
-      ? `${(blockInfo.burnRate * 100).toFixed(0)}c/h`
-      : `$${blockInfo.burnRate.toFixed(2)}/h`;
+  const rate = formatBurnRate(blockInfo?.burnRate);
+  if (!rate) return { icon: "", rate: "" };
   return { icon: sym.metrics_burn, rate };
 }
 
@@ -787,10 +763,6 @@ function formatDirValue(data: TuiData, config: PowerlineConfig): string {
   return abbreviateFishStyle(raw);
 }
 
-function formatDirSegment(data: TuiData, config: PowerlineConfig): string {
-  return formatDirValue(data, config);
-}
-
 function formatVersionParts(
   data: TuiData,
   sym: SymbolSet,
@@ -947,13 +919,13 @@ export function resolveSegments(
   );
   result.context = contextLine ?? "";
   const ctxParts = formatContextParts(data, sym);
-  let ctxColor = colors.contextFg;
-  if (data.contextInfo) {
-    if (data.contextInfo.usablePercentage >= 80)
-      ctxColor = colors.contextCriticalFg;
-    else if (data.contextInfo.usablePercentage >= 60)
-      ctxColor = colors.contextWarningFg;
-  }
+  const ctxColor = data.contextInfo
+    ? resolveThresholdColor(
+        data.contextInfo.usablePercentage,
+        colors.contextFg,
+        colors,
+      )
+    : colors.contextFg;
   addParts(result, "context", ctxParts, ctxColor, reset, pf);
 
   // Block
@@ -1040,7 +1012,7 @@ export function resolveSegments(
 
   // Dir
   const dirColor = pf?.["dir"] ?? colors.modeFg;
-  result.dir = colorizeOrEmpty(formatDirSegment(data, config), dirColor);
+  result.dir = colorizeOrEmpty(formatDirValue(data, config), dirColor);
   addParts(
     result,
     "dir",

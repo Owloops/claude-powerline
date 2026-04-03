@@ -28,16 +28,16 @@ export function formatTokenBreakdown(breakdown: TokenBreakdown | null): string {
   const parts: string[] = [];
 
   if (breakdown.input > 0) {
-    parts.push(`${formatTokens(breakdown.input).replace(" tokens", "")} in`);
+    parts.push(`${formatTokenCount(breakdown.input)} in`);
   }
 
   if (breakdown.output > 0) {
-    parts.push(`${formatTokens(breakdown.output).replace(" tokens", "")} out`);
+    parts.push(`${formatTokenCount(breakdown.output)} out`);
   }
 
   if (breakdown.cacheCreation > 0 || breakdown.cacheRead > 0) {
     const totalCached = breakdown.cacheCreation + breakdown.cacheRead;
-    parts.push(`${formatTokens(totalCached).replace(" tokens", "")} cached`);
+    parts.push(`${formatTokenCount(totalCached)} cached`);
   }
 
   return parts.length > 0 ? parts.join(" + ") : "0 tokens";
@@ -114,6 +114,23 @@ export function formatResponseTime(seconds: number): string {
     return `${seconds.toFixed(1)}s`;
   }
   return `${(seconds / 60).toFixed(1)}m`;
+}
+
+export function formatTokenCount(tokens: number | null): string {
+  return formatTokens(tokens).replace(" tokens", "");
+}
+
+export function formatBurnRate(rate: number | null | undefined): string {
+  if (rate === null || rate === undefined || rate <= 0) return "";
+  return rate < 1 ? `${(rate * 100).toFixed(0)}c/h` : `$${rate.toFixed(2)}/h`;
+}
+
+export function collapseHome(dirPath: string): string {
+  const homeDir = process.env.HOME || process.env.USERPROFILE;
+  if (homeDir && dirPath.startsWith(homeDir)) {
+    return dirPath.replace(homeDir, "~");
+  }
+  return dirPath;
 }
 
 export function formatTimeRemaining(totalMinutes: number): string {

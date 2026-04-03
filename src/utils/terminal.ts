@@ -1,7 +1,8 @@
 import { execSync } from "node:child_process";
 
-const ESC = String.fromCharCode(27);
+export const ESC = String.fromCharCode(27);
 const ANSI_REGEX = new RegExp(`${ESC}\\[[0-9;]*m`, "g");
+export const ANSI_SPLIT = new RegExp(`(${ESC}\\[[0-9;]*m)`);
 const VALID_TTY_PATTERN = /^[a-zA-Z0-9/]+$/;
 
 function findParentTty(): string | null {
@@ -80,10 +81,10 @@ function getUnixTerminalWidth(): number | null {
 }
 
 /**
- * @info Reserves 45 characters for Claude Code's right-side UI messages
+ * @info Reserves characters for Claude Code's right-side UI messages
  * (e.g., "Current: 2.1.78 · latest: 2.1.78", "Thinking off")
  */
-const RESERVED_CHARS = 100;
+const RESERVED_CHARS = 45;
 
 export function getTerminalWidth(): number | null {
   const applyReserve = (w: number) => Math.max(1, w - RESERVED_CHARS);
