@@ -86,26 +86,31 @@ export function bottomBorder(
     return box.bottomLeft + box.horizontal.repeat(innerWidth) + box.bottomRight;
   }
 
-  const left = leftText ? ` ${leftText} ` : "";
-  const right = rightText ? ` ${rightText} ` : "";
-  const leftLen = visibleLength(left);
-  const rightLen = visibleLength(right);
-  const fillCount = innerWidth - leftLen - rightLen;
+  let left = leftText ? ` ${leftText} ` : "";
+  let right = rightText ? ` ${rightText} ` : "";
+  let leftLen = visibleLength(left);
+  let rightLen = visibleLength(right);
 
-  if (fillCount < 0) {
-    const simpleFill = innerWidth - leftLen;
-    return (
-      box.bottomLeft +
-      left +
-      box.horizontal.repeat(Math.max(0, simpleFill)) +
-      box.bottomRight
-    );
+  // Truncate if combined text exceeds innerWidth
+  if (leftLen + rightLen > innerWidth) {
+    const maxLeft = Math.max(0, innerWidth - rightLen);
+    if (leftLen > maxLeft) {
+      left = truncateAnsi(left, maxLeft);
+      leftLen = visibleLength(left);
+    }
+    if (leftLen + rightLen > innerWidth) {
+      const maxRight = Math.max(0, innerWidth - leftLen);
+      right = truncateAnsi(right, maxRight);
+      rightLen = visibleLength(right);
+    }
   }
+
+  const fillCount = innerWidth - leftLen - rightLen;
 
   return (
     box.bottomLeft +
     left +
-    box.horizontal.repeat(fillCount) +
+    box.horizontal.repeat(Math.max(0, fillCount)) +
     right +
     box.bottomRight
   );

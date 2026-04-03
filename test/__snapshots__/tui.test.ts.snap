@@ -19,7 +19,7 @@ exports[`TUI Panel Rendering Edge cases should handle context at warning level 1
 `;
 
 exports[`TUI Panel Rendering Edge cases should handle minimum panel width 1`] = `
-"[?2026h[0m╭ claude 3.5 sonnet ───────────╮
+"[?2026h[0m╭ claude 3.5…[0m──────────────────╮
 [0m│ ▪▪▪▪▫▫▫▫▫  45%  90.0K/200.0K │
 [0m│ ◱ $0.12 · 60h 0m left 1%     │
 [0m│ § $0.05        ☉ $1.87 today │

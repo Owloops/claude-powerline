@@ -265,6 +265,7 @@ function validateGridConfig(tui: TuiGridConfig): string | null {
     return "grid config must have at least one breakpoint";
   }
 
+  const seenMinWidths = new Set<number>();
   for (let bpIdx = 0; bpIdx < tui.breakpoints.length; bpIdx++) {
     const bp = tui.breakpoints[bpIdx]!;
     const prefix = `breakpoint[${bpIdx}]`;
@@ -272,6 +273,11 @@ function validateGridConfig(tui: TuiGridConfig): string | null {
     if (typeof bp.minWidth !== "number" || bp.minWidth < 0) {
       return `${prefix}: minWidth must be a non-negative number`;
     }
+
+    if (seenMinWidths.has(bp.minWidth)) {
+      return `${prefix}: duplicate minWidth ${bp.minWidth} (each breakpoint must have a unique minWidth)`;
+    }
+    seenMinWidths.add(bp.minWidth);
 
     if (!bp.areas || !Array.isArray(bp.areas) || bp.areas.length === 0) {
       return `${prefix}: areas must be a non-empty array of strings`;

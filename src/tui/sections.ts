@@ -25,7 +25,7 @@ import {
   abbreviateFishStyle,
 } from "../utils/formatters";
 import { getBudgetStatus } from "../utils/budget";
-import { colorize } from "./primitives";
+import { colorize, truncateAnsi } from "./primitives";
 
 export function resolveTitleToken(
   template: string,
@@ -74,13 +74,33 @@ export function buildTitleBar(
   const rightResolved = resolveTitleToken(rightTemplate, data, resolvedData);
   const rightText = rightResolved ? ` ${rightResolved} ` : "";
   const rightLen = visibleLength(rightText);
-  const fillCount = innerWidth - leftLen - rightLen;
+
+  // Truncate if combined text exceeds innerWidth
+  let finalLeft = leftText;
+  let finalLeftLen = leftLen;
+  let finalRight = rightText;
+  let finalRightLen = rightLen;
+
+  if (finalLeftLen + finalRightLen > innerWidth) {
+    const maxLeft = Math.max(0, innerWidth - finalRightLen);
+    if (finalLeftLen > maxLeft) {
+      finalLeft = truncateAnsi(finalLeft, maxLeft);
+      finalLeftLen = visibleLength(finalLeft);
+    }
+    if (finalLeftLen + finalRightLen > innerWidth) {
+      const maxRight = Math.max(0, innerWidth - finalLeftLen);
+      finalRight = truncateAnsi(finalRight, maxRight);
+      finalRightLen = visibleLength(finalRight);
+    }
+  }
+
+  const fillCount = innerWidth - finalLeftLen - finalRightLen;
 
   if (fillCount < 2) {
-    const simpleFill = innerWidth - leftLen;
+    const simpleFill = innerWidth - finalLeftLen;
     return (
       box.topLeft +
-      leftText +
+      finalLeft +
       box.horizontal.repeat(Math.max(0, simpleFill)) +
       box.topRight
     );
@@ -88,9 +108,9 @@ export function buildTitleBar(
 
   return (
     box.topLeft +
-    leftText +
+    finalLeft +
     box.horizontal.repeat(fillCount) +
-    rightText +
+    finalRight +
     box.topRight
   );
 }
@@ -115,7 +135,10 @@ function buildBarString(
   fgColor: string,
 ): string {
   barWidth = Math.max(5, barWidth);
-  const filledCount = Math.round((pct / 100) * barWidth);
+  const filledCount = Math.max(
+    0,
+    Math.min(barWidth, Math.round((pct / 100) * barWidth)),
+  );
   const emptyCount = barWidth - filledCount;
   const bar =
     sym.bar_filled.repeat(filledCount) + sym.bar_empty.repeat(emptyCount);
@@ -228,7 +251,10 @@ export function buildContextLine(
   const maxStr = formatTokenCount(data.contextInfo.maxTokens);
   const suffix = `  ${usedPct}%  ${tokenStr}/${maxStr}`;
   const barLen = Math.max(5, contentWidth - suffix.length);
-  const filledCount = Math.round((usedPct / 100) * barLen);
+  const filledCount = Math.max(
+    0,
+    Math.min(barLen, Math.round((usedPct / 100) * barLen)),
+  );
   const emptyCount = barLen - filledCount;
   const bar =
     sym.bar_filled.repeat(filledCount) + sym.bar_empty.repeat(emptyCount);
@@ -436,12 +462,27 @@ export function formatBlockParts(
     }
   }
 
+  // Only set a bar placeholder if the bar will actually render.
+  // Native source uses nativeUtilization; transcript mode needs a budget.
+  let hasBar = false;
+  if (
+    blockInfo.source === "native" &&
+    blockInfo.nativeUtilization !== null
+  ) {
+    hasBar = true;
+  } else {
+    const blockBudget = config.budget?.block;
+    if (blockBudget?.amount && blockInfo.cost !== null) {
+      hasBar = true;
+    }
+  }
+
   return {
     icon: sym.block_cost,
     value,
     time,
     budget,
-    bar: " ",
+    bar: hasBar ? " " : "",
   };
 }
 

@@ -11,6 +11,15 @@ import { truncateAnsi, padRight, padLeft, padCenter } from "./primitives";
 export const DIVIDER = "---";
 export const EMPTY_CELL = ".";
 
+// Segments whose content is resolved after column widths are known (lateResolve).
+// Auto-width measurement must skip these to avoid locking columns to placeholder widths.
+export const LATE_RESOLVE_SEGMENTS = new Set([
+  "context",
+  "context.bar",
+  "block.bar",
+  "weekly.bar",
+]);
+
 function isDividerRow(row: GridCell[]): boolean {
   return row.length === 1 && row[0]!.segment === DIVIDER;
 }
@@ -214,6 +223,7 @@ function measureAutoWidths(
   colCount: number,
   matrix: GridCell[][],
   resolvedData: Record<string, string>,
+  lateResolveNames?: ReadonlySet<string>,
 ): number[] {
   const widths = Array.from<number>({ length: colCount }).fill(0);
   for (const row of matrix) {
@@ -223,6 +233,7 @@ function measureAutoWidths(
       if (!cell.spanStart || cell.spanSize !== 1) continue;
       if (cell.segment === EMPTY_CELL) continue;
       if (colIdx >= colCount) continue;
+      if (lateResolveNames?.has(cell.segment)) continue;
       const content = resolvedData[cell.segment] || "";
       const len = visibleLength(content);
       if (len > widths[colIdx]!) {
@@ -239,9 +250,15 @@ export function calculateColumnWidths(
   resolvedData: Record<string, string>,
   contentWidth: number,
   separatorWidth: number,
+  lateResolveNames?: ReadonlySet<string>,
 ): number[] {
   const colCount = columns.length;
-  const autoWidths = measureAutoWidths(colCount, matrix, resolvedData);
+  const autoWidths = measureAutoWidths(
+    colCount,
+    matrix,
+    resolvedData,
+    lateResolveNames,
+  );
   const widths = Array.from<number>({ length: colCount }).fill(0);
 
   // Phase 1: Apply auto widths
@@ -306,9 +323,15 @@ export function solveFitContentLayout(
   resolvedData: Record<string, string>,
   separatorWidth: number,
   horizontalPadding: number,
+  lateResolveNames?: ReadonlySet<string>,
 ): { panelWidth: number; colWidths: number[] } {
   const colCount = columns.length;
-  const autoWidths = measureAutoWidths(colCount, matrix, resolvedData);
+  const autoWidths = measureAutoWidths(
+    colCount,
+    matrix,
+    resolvedData,
+    lateResolveNames,
+  );
 
   // Seed from intrinsic non-spanning content and fixed widths
   const widths = Array.from<number>({ length: colCount });
@@ -355,11 +378,21 @@ export function solveFitContentLayout(
     let totalFr = 0;
     for (const colDef of columns) totalFr += parseFr(colDef);
     if (totalFr > 0) {
+      const padFrCols: number[] = [];
+      let padAllocated = 0;
       for (let i = 0; i < colCount; i++) {
         const fr = parseFr(columns[i]!);
-        if (fr > 0)
-          widths[i] =
-            widths[i]! + Math.floor((horizontalPadding * fr) / totalFr);
+        if (fr > 0) {
+          const add = Math.floor((horizontalPadding * fr) / totalFr);
+          widths[i] = widths[i]! + add;
+          padAllocated += add;
+          padFrCols.push(i);
+        }
+      }
+      let padLeftover = horizontalPadding - padAllocated;
+      for (let k = 0; padLeftover > 0 && k < padFrCols.length; k++) {
+        widths[padFrCols[k]!]! += 1;
+        padLeftover--;
       }
     }
   }
@@ -451,7 +484,7 @@ export function renderGrid(
   const colSep = gridConfig.separator?.column ?? "  ";
   const dividerChar = gridConfig.separator?.divider;
   const sepWidth = visibleLength(colSep);
-  const fitContent = gridConfig.fitContent ?? true;
+  const fitContent = gridConfig.fitContent ?? false;
   const hPad = gridConfig.padding?.horizontal ?? 0;
 
   // Select initial panel width for breakpoint selection
@@ -484,6 +517,14 @@ export function renderGrid(
 
   let colWidths: number[];
 
+  // Collect late-resolve segment names (including user-defined templates)
+  const lateNames = new Set(LATE_RESOLVE_SEGMENTS);
+  if (gridConfig.segments) {
+    for (const key of Object.keys(gridConfig.segments)) {
+      lateNames.add(key);
+    }
+  }
+
   if (fitContent) {
     const solved = solveFitContentLayout(
       bp.columns,
@@ -491,19 +532,32 @@ export function renderGrid(
       resolvedData,
       sepWidth,
       hPad,
+      lateNames,
     );
     panelWidth = Math.min(maxWidth, Math.max(minWidth, solved.panelWidth));
     colWidths = solved.colWidths;
 
-    // Redistribute minWidth surplus into fr columns
+    // Redistribute surplus (from minWidth or maxWidth clamping) into fr columns
     const surplus = panelWidth - solved.panelWidth;
     if (surplus > 0) {
       let totalFr = 0;
       for (const colDef of bp.columns) totalFr += parseFr(colDef);
       if (totalFr > 0) {
+        const frCols: number[] = [];
+        let allocated = 0;
         for (let i = 0; i < colWidths.length; i++) {
           const fr = parseFr(bp.columns[i]!);
-          if (fr > 0) colWidths[i]! += Math.floor((surplus * fr) / totalFr);
+          if (fr > 0) {
+            const add = Math.floor((surplus * fr) / totalFr);
+            colWidths[i]! += add;
+            allocated += add;
+            frCols.push(i);
+          }
+        }
+        let leftover = surplus - allocated;
+        for (let k = 0; leftover > 0 && k < frCols.length; k++) {
+          colWidths[frCols[k]!]! += 1;
+          leftover--;
         }
       }
     }
@@ -516,6 +570,7 @@ export function renderGrid(
       resolvedData,
       contentW,
       sepWidth,
+      lateNames,
     );
   }
 
@@ -551,9 +606,17 @@ export function renderGrid(
     }
   }
 
+  // Post-lateResolve culling: segments that resolved to empty after lateResolve
+  // can leave orphaned rows and dividers. Re-cull the matrix.
+  const finalMatrix = cullMatrix(matrix, resolvedData);
+
+  if (finalMatrix.length === 0) {
+    return { lines: [], panelWidth };
+  }
+
   // Render rows
   const lines: string[] = [];
-  for (const row of matrix) {
+  for (const row of finalMatrix) {
     if (isDividerRow(row)) {
       lines.push(renderGridDivider(box, innerWidth, dividerChar));
     } else {
