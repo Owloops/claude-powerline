@@ -58,11 +58,11 @@ export const VALID_SEGMENT_NAMES: ReadonlySet<string> = new Set<SegmentName>([
 
 export const SEGMENT_PARTS: Record<SegmentName, readonly string[]> = {
   session: ["icon", "cost", "tokens", "budget"],
-  block: ["icon", "value", "time", "budget"],
+  block: ["icon", "value", "time", "budget", "bar"],
   today: ["icon", "cost", "label", "budget"],
-  weekly: ["icon", "pct", "time"],
+  weekly: ["icon", "pct", "time", "bar"],
   git: ["icon", "branch", "status", "ahead", "behind", "working", "head"],
-  context: ["bar", "pct", "tokens"],
+  context: ["icon", "bar", "pct", "tokens"],
   metrics: ["response", "responseIcon", "responseVal", "lastResponse", "lastResponseIcon", "lastResponseVal", "added", "addedIcon", "addedVal", "removed", "removedIcon", "removedVal"],
   activity: ["duration", "durationIcon", "durationVal", "messages", "messagesIcon", "messagesVal"],
   burn: ["icon", "rate"],
@@ -107,6 +107,16 @@ export interface SegmentTemplate {
   justify?: JustifyValue;
 }
 
+export interface TuiTitleConfig {
+  left?: string;
+  right?: string | false;
+}
+
+export interface TuiFooterConfig {
+  left?: string;
+  right?: string;
+}
+
 export interface TuiGridConfig {
   widthReserve?: number;
   minWidth?: number;
@@ -118,6 +128,9 @@ export interface TuiGridConfig {
     column?: string;
     divider?: string;
   };
+  box?: Partial<BoxChars>;
+  title?: TuiTitleConfig;
+  footer?: TuiFooterConfig;
   breakpoints: TuiGridBreakpoint[];
 }
 

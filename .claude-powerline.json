@@ -9,20 +9,20 @@
       "fitContent": true,
       "padding": { "horizontal": 4 },
       "separator": { "column": "  " },
-      "segments": {
-        "metrics.lastResponse": {
-          "items": ["{lastResponseIcon}", "{lastResponseVal}"],
-          "gap": 1
-        }
+      "title": {
+        "right": "{dir}"
+      },
+      "footer": {
+        "right": "{metrics.lastResponseIcon} {metrics.lastResponseVal}"
       },
       "breakpoints": [
         {
           "minWidth": 80,
           "areas": [
-            "git.head     git.head     git.head     .               dir",
+            "git.head     git.head     git.head     .               weekly",
             "---",
-            "context.bar  context.bar  context.bar  context.pct     context.tokens",
-            "block.icon   block.value  block.time   weekly          metrics.lastResponse"
+            "context.icon  context.bar  context.bar  context.pct     context.tokens",
+            "block.icon    block.bar    block.bar    block.value     block.time"
           ],
           "columns": ["auto", "1fr", "auto", "auto", "auto"],
           "align": ["left", "left", "right", "right", "right"]
@@ -30,10 +30,10 @@
         {
           "minWidth": 55,
           "areas": [
-            "git.head             dir",
+            "git.head             weekly",
             "---",
             "context.bar          context.tokens",
-            "block                weekly"
+            "block                ."
           ],
           "columns": ["1fr", "auto"],
           "align": ["left", "right"]
@@ -42,11 +42,10 @@
           "minWidth": 0,
           "areas": [
             "git.head",
-            "dir",
+            "weekly",
             "---",
             "context",
-            "block",
-            "weekly"
+            "block"
           ],
           "columns": ["1fr"],
           "align": ["left"]

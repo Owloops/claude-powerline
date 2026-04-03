@@ -79,8 +79,41 @@ export function divider(box: BoxChars, innerWidth: number): string {
   return box.teeLeft + box.horizontal.repeat(innerWidth) + box.teeRight;
 }
 
-export function bottomBorder(box: BoxChars, innerWidth: number): string {
-  return box.bottomLeft + box.horizontal.repeat(innerWidth) + box.bottomRight;
+export function bottomBorder(
+  box: BoxChars,
+  innerWidth: number,
+  leftText?: string,
+  rightText?: string,
+): string {
+  if (!leftText && !rightText) {
+    return box.bottomLeft + box.horizontal.repeat(innerWidth) + box.bottomRight;
+  }
+
+  const left = leftText ? ` ${leftText} ` : "";
+  const right = rightText ? ` ${rightText} ` : "";
+  const leftLen = visibleLength(left);
+  const rightLen = visibleLength(right);
+  const fillCount = innerWidth - 1 - leftLen - rightLen;
+
+  if (fillCount < 0) {
+    const simpleFill = innerWidth - 1 - leftLen;
+    return (
+      box.bottomLeft +
+      box.horizontal +
+      left +
+      box.horizontal.repeat(Math.max(0, simpleFill)) +
+      box.bottomRight
+    );
+  }
+
+  return (
+    box.bottomLeft +
+    box.horizontal +
+    left +
+    box.horizontal.repeat(fillCount) +
+    right +
+    box.bottomRight
+  );
 }
 
 export function spreadEven(parts: string[], totalWidth: number): string {

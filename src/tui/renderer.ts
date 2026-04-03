@@ -3,7 +3,7 @@ import type { TuiData, BoxChars, LayoutMode, RenderCtx, SegmentName } from "./ty
 
 import { SYMBOLS, TEXT_SYMBOLS } from "../utils/constants";
 import { contentRow, bottomBorder } from "./primitives";
-import { buildTitleBar, buildContextLine, buildContextBar, formatContextParts, resolveSegments, composeTemplate } from "./sections";
+import { buildTitleBar, buildContextLine, buildContextBar, buildBlockBar, buildWeeklyBar, formatContextParts, resolveSegments, composeTemplate, resolveTitleToken } from "./sections";
 import {
   renderWideMetrics,
   renderWideBottom,
@@ -56,12 +56,15 @@ export async function renderTuiPanel(
     const rawWidth = (await getRawTerminalWidth()) ?? 120;
     const gridConfig = config.display.tui;
 
+    // Merge box character overrides with charset defaults
+    const mergedBox: BoxChars = gridConfig.box ? { ...box, ...gridConfig.box } : box;
+
     // Estimate content width for initial segment resolution (grid will compute final widths)
     const estPanelWidth = Math.max(gridConfig.minWidth ?? MIN_PANEL_WIDTH, rawWidth - (gridConfig.widthReserve ?? 45));
     const estInnerWidth = estPanelWidth - 2;
     const estContentWidth = estInnerWidth - 2;
 
-    const ctx: RenderCtx = { lines: [], data, box, contentWidth: estContentWidth, innerWidth: estInnerWidth, sym, config, reset, colors };
+    const ctx: RenderCtx = { lines: [], data, box: mergedBox, contentWidth: estContentWidth, innerWidth: estInnerWidth, sym, config, reset, colors };
     const resolved = resolveSegments(data, ctx);
     const resolvedData = resolved.data;
     const templates = resolved.templates;
@@ -73,6 +76,12 @@ export async function renderTuiPanel(
       if (segment === "context.bar") {
         return buildContextBar(data, cellWidth, sym, reset, colors);
       }
+      if (segment === "block.bar") {
+        return buildBlockBar(data, cellWidth, sym, reset, colors, config);
+      }
+      if (segment === "weekly.bar") {
+        return buildWeeklyBar(data, cellWidth, sym, reset, colors);
+      }
       const tmpl = templates[segment];
       if (tmpl) {
         return composeTemplate(tmpl.items, tmpl.gap, tmpl.justify, cellWidth);
@@ -80,13 +89,16 @@ export async function renderTuiPanel(
       return undefined;
     };
 
-    const gridResult = renderGrid(gridConfig, resolvedData, box, rawWidth, lateResolve);
+    const gridResult = renderGrid(gridConfig, resolvedData, mergedBox, rawWidth, lateResolve);
     const innerWidth = gridResult.panelWidth - 2;
 
+    const footerLeft = gridConfig.footer?.left ? resolveTitleToken(gridConfig.footer.left, data, resolvedData) : undefined;
+    const footerRight = gridConfig.footer?.right ? resolveTitleToken(gridConfig.footer.right, data, resolvedData) : undefined;
+
     const lines: string[] = [];
-    lines.push(buildTitleBar(data, box, innerWidth));
+    lines.push(buildTitleBar(data, mergedBox, innerWidth, gridConfig.title, resolvedData));
     lines.push(...gridResult.lines);
-    lines.push(bottomBorder(box, innerWidth));
+    lines.push(bottomBorder(mergedBox, innerWidth, footerLeft, footerRight));
     return SYNC_START + lines.join("\n") + SYNC_END;
   }
 

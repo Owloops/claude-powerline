@@ -1,6 +1,6 @@
 import type { PowerlineConfig } from "../config/loader";
 import type { PowerlineColors } from "../themes";
-import type { TuiData, SymbolSet, BoxChars, SegmentName, RenderCtx, SegmentTemplate, JustifyValue } from "./types";
+import type { TuiData, SymbolSet, BoxChars, SegmentName, RenderCtx, SegmentTemplate, JustifyValue, TuiTitleConfig } from "./types";
 import { SEGMENT_PARTS } from "./types";
 import { visibleLength } from "../utils/terminal";
 
@@ -18,21 +18,57 @@ import {
 import { getBudgetStatus } from "../utils/budget";
 import { colorize } from "./primitives";
 
+export function resolveTitleToken(
+  template: string,
+  data: TuiData,
+  resolvedData?: Record<string, string>,
+): string {
+  const rawName = data.hookData.model?.display_name || "Claude";
+  const modelName = formatModelName(rawName).toLowerCase();
+
+  return template.replace(/\{([^}]+)\}/g, (_match, token: string) => {
+    if (token === "model") return modelName;
+    if (resolvedData) {
+      const value = resolvedData[token];
+      if (value !== undefined) return value;
+    }
+    return "";
+  });
+}
+
 export function buildTitleBar(
   data: TuiData,
   box: BoxChars,
   innerWidth: number,
+  titleConfig?: TuiTitleConfig,
+  resolvedData?: Record<string, string>,
 ): string {
-  const rawName = data.hookData.model?.display_name || "Claude";
-  const modelName = formatModelName(rawName).toLowerCase();
-  const toolName = "claude-powerline";
+  const leftTemplate = titleConfig?.left ?? "{model}";
+  const rightTemplate = titleConfig?.right !== undefined ? titleConfig.right : "claude-powerline";
+  const hasRight = rightTemplate !== false;
 
-  const leftText = ` ${modelName} `;
-  const rightText = ` ${toolName} `;
-  const fillCount = innerWidth - 1 - leftText.length - rightText.length;
+  const leftResolved = resolveTitleToken(leftTemplate, data, resolvedData);
+  const leftText = leftResolved ? ` ${leftResolved} ` : "";
+  const leftLen = visibleLength(leftText);
+
+  if (!hasRight || !rightTemplate) {
+    const simpleFill = innerWidth - 1 - leftLen;
+    return (
+      box.topLeft +
+      box.horizontal +
+      leftText +
+      box.horizontal.repeat(Math.max(0, simpleFill)) +
+      box.topRight
+    );
+  }
+
+  const rightResolved = resolveTitleToken(rightTemplate, data, resolvedData);
+  const rightText = rightResolved ? ` ${rightResolved} ` : "";
+  const rightLen = visibleLength(rightText);
+  const fillCount = innerWidth - 1 - leftLen - rightLen;
 
   if (fillCount < 2) {
-    const simpleFill = innerWidth - 1 - leftText.length;
+    const simpleFill = innerWidth - 1 - leftLen;
     return (
       box.topLeft +
       box.horizontal +
@@ -56,13 +92,14 @@ export function formatContextParts(
   data: TuiData,
   sym: SymbolSet,
 ): Record<string, string> {
-  if (!data.contextInfo) return { bar: "", pct: "", tokens: "" };
+  if (!data.contextInfo) return { icon: "", bar: "", pct: "", tokens: "" };
 
   const usedPct = data.contextInfo.usablePercentage;
   const tokenStr = formatTokens(data.contextInfo.totalTokens).replace(" tokens", "");
   const maxStr = formatTokens(data.contextInfo.maxTokens).replace(" tokens", "");
 
   return {
+    icon: sym.context_time,
     bar: " ",
     pct: `${usedPct}%`,
     tokens: `${tokenStr}/${maxStr}`,
@@ -85,6 +122,61 @@ export function buildContextBar(
   let fgColor = colors.contextFg;
   if (usedPct >= 80) fgColor = colors.contextCriticalFg;
   else if (usedPct >= 60) fgColor = colors.contextWarningFg;
+
+  return colorize(bar, fgColor, reset);
+}
+
+export function buildBlockBar(
+  data: TuiData,
+  barWidth: number,
+  sym: SymbolSet,
+  reset: string,
+  colors: PowerlineColors,
+  config: PowerlineConfig,
+): string {
+  if (!data.blockInfo) return "";
+
+  let pct: number | null = null;
+  if (data.blockInfo.source === "native" && data.blockInfo.nativeUtilization !== null) {
+    pct = data.blockInfo.nativeUtilization;
+  } else {
+    const blockBudget = config.budget?.block;
+    if (blockBudget?.amount && data.blockInfo.cost !== null) {
+      pct = Math.min(100, (data.blockInfo.cost / blockBudget.amount) * 100);
+    }
+  }
+  if (pct === null) return "";
+
+  const filledCount = Math.round((pct / 100) * barWidth);
+  const emptyCount = barWidth - filledCount;
+  const bar = sym.bar_filled.repeat(filledCount) + sym.bar_empty.repeat(emptyCount);
+
+  const warningThreshold = config.budget?.block?.warningThreshold ?? 80;
+  let fgColor = colors.blockFg;
+  if (pct >= warningThreshold) fgColor = colors.contextCriticalFg;
+  else if (pct >= 50) fgColor = colors.contextWarningFg;
+
+  return colorize(bar, fgColor, reset);
+}
+
+export function buildWeeklyBar(
+  data: TuiData,
+  barWidth: number,
+  sym: SymbolSet,
+  reset: string,
+  colors: PowerlineColors,
+): string {
+  const sevenDay = data.hookData.rate_limits?.seven_day;
+  if (!sevenDay) return "";
+
+  const pct = sevenDay.used_percentage;
+  const filledCount = Math.round((pct / 100) * barWidth);
+  const emptyCount = barWidth - filledCount;
+  const bar = sym.bar_filled.repeat(filledCount) + sym.bar_empty.repeat(emptyCount);
+
+  let fgColor = colors.weeklyFg;
+  if (pct >= 80) fgColor = colors.contextCriticalFg;
+  else if (pct >= 60) fgColor = colors.contextWarningFg;
 
   return colorize(bar, fgColor, reset);
 }
@@ -329,6 +421,7 @@ export function formatBlockParts(
     value,
     time,
     budget,
+    bar: " ",
   };
 }
 
@@ -350,7 +443,7 @@ export function formatWeeklyParts(
 ): Record<string, string> {
   const pct = `${Math.round(sevenDay.used_percentage)}%`;
   const time = formatLongTimeRemaining(minutesUntilReset(sevenDay.resets_at));
-  return { icon: sym.weekly_cost, pct, time };
+  return { icon: sym.weekly_cost, pct, time, bar: " " };
 }
 
 export function formatWeeklySegment(
@@ -466,9 +559,9 @@ function formatMetricsParts(data: TuiData, sym: SymbolSet): Record<string, strin
     response: hasResponse ? `${sym.metrics_response} ${responseValStr}` : "",
     responseIcon: hasResponse ? sym.metrics_response : "",
     responseVal: responseValStr,
-    lastResponse: hasLast ? `${sym.metrics_last_response} ${lastValStr}` : "",
-    lastResponseIcon: hasLast ? sym.metrics_last_response : "",
-    lastResponseVal: lastValStr,
+    lastResponse: hasLast ? `${sym.metrics_last_response} ${lastValStr}` : `${sym.metrics_last_response} --`,
+    lastResponseIcon: sym.metrics_last_response,
+    lastResponseVal: hasLast ? lastValStr : "--",
     added: hasAdded ? `${sym.metrics_lines_added}${addedValStr}` : "",
     addedIcon: hasAdded ? sym.metrics_lines_added : "",
     addedVal: addedValStr,
