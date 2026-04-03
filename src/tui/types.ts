@@ -6,8 +6,9 @@ import type { MetricsInfo } from "../segments/metrics";
 import type { GitInfo } from "../segments/git";
 import type { ClaudeHookData } from "../utils/claude";
 import type { PowerlineColors } from "../themes";
+import type { PowerlineConfig } from "../config/loader";
 
-import { SYMBOLS, TEXT_SYMBOLS } from "../utils/constants";
+import type { SYMBOLS, TEXT_SYMBOLS } from "../utils/constants";
 
 export interface BoxChars {
   readonly topLeft: string;
@@ -53,8 +54,20 @@ export type SegmentName =
   | "env";
 
 export const VALID_SEGMENT_NAMES: ReadonlySet<string> = new Set<SegmentName>([
-  "context", "block", "session", "today", "weekly", "git", "dir",
-  "model", "version", "tmux", "metrics", "activity", "burn", "env",
+  "context",
+  "block",
+  "session",
+  "today",
+  "weekly",
+  "git",
+  "dir",
+  "model",
+  "version",
+  "tmux",
+  "metrics",
+  "activity",
+  "burn",
+  "env",
 ]);
 
 export const SEGMENT_PARTS: Record<SegmentName, readonly string[]> = {
@@ -64,8 +77,28 @@ export const SEGMENT_PARTS: Record<SegmentName, readonly string[]> = {
   weekly: ["icon", "pct", "time", "bar"],
   git: ["icon", "branch", "status", "ahead", "behind", "working", "head"],
   context: ["icon", "bar", "pct", "tokens"],
-  metrics: ["response", "responseIcon", "responseVal", "lastResponse", "lastResponseIcon", "lastResponseVal", "added", "addedIcon", "addedVal", "removed", "removedIcon", "removedVal"],
-  activity: ["duration", "durationIcon", "durationVal", "messages", "messagesIcon", "messagesVal"],
+  metrics: [
+    "response",
+    "responseIcon",
+    "responseVal",
+    "lastResponse",
+    "lastResponseIcon",
+    "lastResponseVal",
+    "added",
+    "addedIcon",
+    "addedVal",
+    "removed",
+    "removedIcon",
+    "removedVal",
+  ],
+  activity: [
+    "duration",
+    "durationIcon",
+    "durationVal",
+    "messages",
+    "messagesIcon",
+    "messagesVal",
+  ],
   model: ["icon", "value"],
   burn: ["icon", "rate"],
   version: ["icon", "value"],
@@ -89,9 +122,9 @@ export function isValidSegmentRef(name: string): boolean {
 export type AlignValue = "left" | "center" | "right";
 
 export interface GridCell {
-  segment: string;    // segment name, "." for empty, "---" for divider
+  segment: string; // segment name, "." for empty, "---" for divider
   spanStart: boolean; // true if this is the first cell of a span
-  spanSize: number;   // number of columns this cell spans (1 if no span)
+  spanSize: number; // number of columns this cell spans (1 if no span)
 }
 
 export interface TuiGridBreakpoint {
@@ -120,6 +153,7 @@ export interface TuiFooterConfig {
 }
 
 export interface TuiGridConfig {
+  terminalWidth?: number;
   widthReserve?: number;
   minWidth?: number;
   maxWidth?: number;
@@ -143,7 +177,7 @@ export interface RenderCtx {
   contentWidth: number;
   innerWidth: number;
   sym: SymbolSet;
-  config: import("../config/loader").PowerlineConfig;
+  config: PowerlineConfig;
   reset: string;
   colors: PowerlineColors;
 }

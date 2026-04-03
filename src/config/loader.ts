@@ -4,7 +4,7 @@ import os from "node:os";
 import { DEFAULT_CONFIG } from "./defaults";
 import type { ColorTheme } from "../themes";
 import type { TuiGridConfig } from "../tui/types";
-import { VALID_SEGMENT_NAMES, isValidSegmentRef } from "../tui/types";
+import { isValidSegmentRef } from "../tui/types";
 import { BOX_PRESETS } from "../utils/constants";
 import type {
   SegmentConfig,
@@ -119,6 +119,7 @@ function getArgValue(args: string[], argName: string): string | undefined {
   return undefined;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function deepMerge<T extends Record<string, any>>(
   target: T,
   source: Partial<T>,
@@ -135,7 +136,9 @@ function deepMerge<T extends Record<string, any>>(
       ) {
         const targetValue = result[key] || {};
         result[key] = deepMerge(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           targetValue as Record<string, any>,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           sourceValue as Record<string, any>,
         ) as T[Extract<keyof T, string>];
       } else {
@@ -254,7 +257,11 @@ function validateGridConfig(tui: TuiGridConfig): string | null {
     return `unknown box preset "${tui.box}" (valid: ${valid})`;
   }
 
-  if (!tui.breakpoints || !Array.isArray(tui.breakpoints) || tui.breakpoints.length === 0) {
+  if (
+    !tui.breakpoints ||
+    !Array.isArray(tui.breakpoints) ||
+    tui.breakpoints.length === 0
+  ) {
     return "grid config must have at least one breakpoint";
   }
 
@@ -315,7 +322,9 @@ function validateGridConfig(tui: TuiGridConfig): string | null {
       }
 
       // Check segment names and contiguity
-      const templateNames = tui.segments ? new Set(Object.keys(tui.segments)) : new Set<string>();
+      const templateNames = tui.segments
+        ? new Set(Object.keys(tui.segments))
+        : new Set<string>();
       let prevCell = "";
       let spanName = "";
       for (const cell of cells) {
@@ -367,7 +376,11 @@ function validateGridConfig(tui: TuiGridConfig): string | null {
       if (!tmpl.items || !Array.isArray(tmpl.items)) {
         return `segments["${segRef}"]: items must be an array`;
       }
-      if (tmpl.justify !== undefined && tmpl.justify !== "start" && tmpl.justify !== "between") {
+      if (
+        tmpl.justify !== undefined &&
+        tmpl.justify !== "start" &&
+        tmpl.justify !== "between"
+      ) {
         return `segments["${segRef}"]: invalid justify value "${tmpl.justify}" (use "start" or "between")`;
       }
     }
@@ -430,7 +443,9 @@ export function loadConfig(
   if (config.display?.tui) {
     const error = validateGridConfig(config.display.tui);
     if (error) {
-      process.stderr.write(`Warning: invalid grid config: ${error}. Falling back to hardcoded layout.\n`);
+      process.stderr.write(
+        `Warning: invalid grid config: ${error}. Falling back to hardcoded layout.\n`,
+      );
       delete config.display.tui;
     }
   }

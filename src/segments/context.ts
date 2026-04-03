@@ -1,11 +1,9 @@
+import type { ParsedEntry, ClaudeHookData } from "../utils/claude";
+import type { PowerlineConfig } from "../config/loader";
+
 import { readFileSync } from "node:fs";
 import { debug } from "../utils/logger";
-import {
-  parseJsonlFile,
-  type ParsedEntry,
-  type ClaudeHookData,
-} from "../utils/claude";
-import type { PowerlineConfig } from "../config/loader";
+import { parseJsonlFile } from "../utils/claude";
 
 export interface ContextInfo {
   totalTokens: number;

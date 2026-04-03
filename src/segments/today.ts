@@ -1,8 +1,10 @@
+import type { ParsedEntry } from "../utils/claude";
+import type { TokenBreakdown } from "./session";
+
 import { debug } from "../utils/logger";
 import { PricingService } from "./pricing";
 import { CacheManager } from "../utils/cache";
-import { loadEntriesFromProjects, type ParsedEntry } from "../utils/claude";
-import type { TokenBreakdown } from "./session";
+import { loadEntriesFromProjects } from "../utils/claude";
 
 export interface TodayUsageEntry {
   timestamp: Date;
@@ -63,7 +65,10 @@ export class TodayProvider {
 
     const latestMtime = await CacheManager.getLatestTranscriptMtime();
 
-    const sharedCached = await CacheManager.getUsageCache("today", latestMtime);
+    const sharedCached = (await CacheManager.getUsageCache(
+      "today",
+      latestMtime,
+    )) as TodayUsageEntry[] | null;
     if (sharedCached) {
       debug("Using shared today usage cache");
       return sharedCached;

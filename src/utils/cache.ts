@@ -10,6 +10,10 @@ import {
   getFileModificationDate,
 } from "./claude";
 
+interface ErrnoError extends Error {
+  code?: string;
+}
+
 export interface CacheEntry<T> {
   data: T;
   timestamp: number;
@@ -43,8 +47,8 @@ export class CacheManager {
       try {
         process.kill(pid, 0);
         return true;
-      } catch (error: any) {
-        if (error.code === "ESRCH") {
+      } catch (error) {
+        if ((error as ErrnoError).code === "ESRCH") {
           debug(`Removing stale lock file ${name} for dead process ${pid}`);
           fs.unlinkSync(lockFile);
           return false;
@@ -77,8 +81,8 @@ export class CacheManager {
         });
         debug(`Lock acquired for ${name}`);
         return true;
-      } catch (error: any) {
-        if (error.code === "EEXIST") {
+      } catch (error) {
+        if ((error as ErrnoError).code === "EEXIST") {
           await setTimeout(RETRY_DELAY_MS);
         } else {
           throw error;
@@ -94,8 +98,8 @@ export class CacheManager {
     try {
       await fs.promises.unlink(lockFile);
       debug(`Lock released for ${name}`);
-    } catch (error: any) {
-      if (error.code !== "ENOENT") {
+    } catch (error) {
+      if ((error as ErrnoError).code !== "ENOENT") {
         debug(`Error releasing lock for ${name}:`, error);
       }
     }
@@ -120,7 +124,7 @@ export class CacheManager {
   static async getUsageCache(
     cacheType: "today" | "block" | "pricing",
     latestMtime?: number,
-  ): Promise<any | null> {
+  ): Promise<unknown> {
     const MAX_RETRIES = 3;
     const RETRY_DELAY_MS = 75;
     const FILE_ENCODING = "utf-8";
@@ -139,7 +143,7 @@ export class CacheManager {
 
       try {
         const content = await fs.promises.readFile(cachePath, FILE_ENCODING);
-        const cached: CacheEntry<any> = JSON.parse(content);
+        const cached: CacheEntry<unknown> = JSON.parse(content);
         const cacheIsValid = !latestMtime || cached.timestamp >= latestMtime;
 
         if (cacheIsValid) {
@@ -151,14 +155,14 @@ export class CacheManager {
           );
           return null;
         }
-      } catch (error: any) {
-        if (error.code === "ENOENT") {
+      } catch (error) {
+        if ((error as ErrnoError).code === "ENOENT") {
           debug(`No shared ${cacheType} usage cache found`);
           return null;
         }
         const attemptNumber = attempt + 1;
         debug(
-          `Attempt ${attemptNumber} failed to read ${cacheType} cache: ${error.message}. Retrying...`,
+          `Attempt ${attemptNumber} failed to read ${cacheType} cache: ${(error as Error).message}. Retrying...`,
         );
         await setTimeout(RETRY_DELAY_MS);
       }
@@ -168,7 +172,7 @@ export class CacheManager {
     return null;
   }
 
-  private static deserializeDates(data: any): any {
+  private static deserializeDates(data: unknown): unknown {
     if (Array.isArray(data)) {
       return data.map((entry) => ({
         ...entry,
@@ -180,7 +184,7 @@ export class CacheManager {
 
   static async setUsageCache(
     cacheType: "today" | "block" | "pricing",
-    data: any,
+    data: unknown,
     latestMtime?: number,
   ): Promise<void> {
     const lockName = `${cacheType}.usage.lock`;
@@ -194,7 +198,7 @@ export class CacheManager {
       await this.ensureCacheDirectories();
       const cachePath = path.join(this.USAGE_CACHE_DIR, `${cacheType}.json`);
       const cacheTimestamp = latestMtime || Date.now();
-      const cacheEntry: CacheEntry<any> = {
+      const cacheEntry: CacheEntry<unknown> = {
         data,
         timestamp: cacheTimestamp,
       };

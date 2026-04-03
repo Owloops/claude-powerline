@@ -46,6 +46,18 @@ export default [
       "no-empty": ["error", { allowEmptyCatch: true }],
       "no-case-declarations": "off",
       "prettier/prettier": "error",
+      "curly": "error",
+      "eqeqeq": ["error", "always", { null: "ignore" }],
+      "@typescript-eslint/consistent-type-imports": [
+        "error",
+        { prefer: "type-imports", fixStyle: "separate-type-imports" },
+      ],
+      "@typescript-eslint/array-type": [
+        "error",
+        { default: "array-simple" },
+      ],
+      "@typescript-eslint/consistent-type-definitions": ["error", "interface"],
+      "@typescript-eslint/no-explicit-any": "warn",
     },
   },
   prettierConfig,

@@ -371,7 +371,10 @@ async function parseJsonlFileStreaming(
   });
 }
 
-type FileStat = { filePath: string; mtime: Date };
+interface FileStat {
+  filePath: string;
+  mtime: Date;
+}
 
 async function statFile(filePath: string): Promise<FileStat | null> {
   try {

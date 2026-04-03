@@ -1,5 +1,4 @@
 import { execSync } from "node:child_process";
-import { getWindowsTerminalColumns } from "./win32-terminal";
 
 const ESC = String.fromCharCode(27);
 const ANSI_REGEX = new RegExp(`${ESC}\\[[0-9;]*m`, "g");
@@ -108,15 +107,12 @@ export function getTerminalWidth(): number | null {
   return width ? applyReserve(width) : null;
 }
 
-export async function getRawTerminalWidth(): Promise<number | null> {
+export function getRawTerminalWidth(): number | null {
   // Skip COLUMNS env and process.stdout.columns — Claude Code sets those
   // to an already-reserved panel width. We need the actual terminal width
   // so the grid engine can apply its own widthReserve.
   if (process.platform === "win32") {
-    const wtCols = await getWindowsTerminalColumns();
-    if (wtCols) return wtCols;
-    const width = getWindowsTerminalWidth();
-    if (width) return width;
+    return getWindowsTerminalWidth();
   }
 
   return getUnixTerminalWidth();

@@ -1,6 +1,8 @@
+import type { ClaudeHookData } from "../utils/claude";
+
 import { readFile } from "node:fs/promises";
 import { debug } from "../utils/logger";
-import { findTranscriptFile, ClaudeHookData } from "../utils/claude";
+import { findTranscriptFile } from "../utils/claude";
 
 export interface MetricsInfo {
   responseTime: number | null;
@@ -19,7 +21,7 @@ interface TranscriptEntry {
     type?: string;
     content?: Array<{
       type?: string;
-      [key: string]: any;
+      [key: string]: unknown;
     }>;
     usage?: {
       input_tokens?: number;

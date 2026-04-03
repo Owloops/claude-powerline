@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 
+import type { ClaudeHookData } from "./utils/claude";
+
 import process from "node:process";
 import { json } from "node:stream/consumers";
 import { PowerlineRenderer } from "./powerline";
 import { loadConfigFromCLI } from "./config/loader";
 import { debug } from "./utils/logger";
-import type { ClaudeHookData } from "./utils/claude";
 
 function showHelpText(): void {
   console.log(`

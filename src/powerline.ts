@@ -1,25 +1,10 @@
 import type { ClaudeHookData } from "./utils/claude";
 import type { PowerlineColors, ColorTheme } from "./themes";
 import type { PowerlineConfig, LineConfig } from "./config/loader";
-import {
-  hexToAnsi,
-  extractBgToFg,
-  getColorSupport,
-  hexToBasicAnsi,
-  hexTo256Ansi,
-  hexColorDistance,
-} from "./utils/colors";
-import { getTheme } from "./themes";
-import {
-  UsageProvider,
+import type {
   UsageInfo,
-  ContextProvider,
   ContextInfo,
-  GitService,
-  TmuxService,
-  MetricsProvider,
   MetricsInfo,
-  SegmentRenderer,
   PowerlineSymbols,
   AnySegmentConfig,
   DirectorySegmentConfig,
@@ -34,8 +19,29 @@ import {
   EnvSegmentConfig,
   WeeklySegmentConfig,
 } from "./segments";
-import { BlockProvider, BlockInfo } from "./segments/block";
-import { TodayProvider, TodayInfo } from "./segments/today";
+import type { BlockInfo } from "./segments/block";
+import type { TodayInfo } from "./segments/today";
+import type { TuiData } from "./tui";
+
+import {
+  hexToAnsi,
+  extractBgToFg,
+  getColorSupport,
+  hexToBasicAnsi,
+  hexTo256Ansi,
+  hexColorDistance,
+} from "./utils/colors";
+import { getTheme } from "./themes";
+import {
+  UsageProvider,
+  ContextProvider,
+  GitService,
+  TmuxService,
+  MetricsProvider,
+  SegmentRenderer,
+} from "./segments";
+import { BlockProvider } from "./segments/block";
+import { TodayProvider } from "./segments/today";
 import {
   SYMBOLS,
   TEXT_SYMBOLS,
@@ -45,7 +51,6 @@ import {
 } from "./utils/constants";
 import { getTerminalWidth, visibleLength } from "./utils/terminal";
 import { renderTuiPanel } from "./tui";
-import type { TuiData } from "./tui";
 
 interface RenderedSegment {
   type: string;
@@ -804,7 +809,9 @@ export class PowerlineRenderer {
   private resolvePartColors(
     convertHex: (hex: string, isBg: boolean) => string,
   ): Record<string, string> {
-    const custom = this.config.colors?.custom as Record<string, any> | undefined;
+    const custom = this.config.colors?.custom as
+      | Record<string, { fg?: string }>
+      | undefined;
     if (!custom) return {};
 
     const result: Record<string, string> = {};

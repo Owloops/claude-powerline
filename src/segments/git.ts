@@ -109,8 +109,8 @@ export class GitService {
         result.conflicts = statusWithBranch.workingTree.conflicts;
       }
 
-      const heavyOperations: Record<string, Promise<any>> = {};
-      const lightOperations: Record<string, Promise<any>> = {};
+      const heavyOperations: Record<string, Promise<unknown>> = {};
+      const lightOperations: Record<string, Promise<unknown>> = {};
 
       if (options.showSha) {
         heavyOperations.sha = this.getShaAsync(gitDir);
@@ -137,7 +137,7 @@ export class GitService {
         lightOperations.repoName = this.getRepoNameAsync(gitDir);
       }
 
-      const resultMap = new Map<string, any>();
+      const resultMap = new Map<string, unknown>();
 
       for (const [key, promise] of Object.entries(heavyOperations)) {
         try {
@@ -162,7 +162,7 @@ export class GitService {
       }
 
       if (options.showSha) {
-        result.sha = resultMap.get("sha") || undefined;
+        result.sha = (resultMap.get("sha") as string) || undefined;
       }
 
       if (options.showOperation) {
@@ -170,23 +170,24 @@ export class GitService {
       }
 
       if (options.showTag) {
-        result.tag = resultMap.get("tag") || undefined;
+        result.tag = (resultMap.get("tag") as string) || undefined;
       }
 
       if (options.showTimeSinceCommit) {
-        result.timeSinceCommit = resultMap.get("timeSinceCommit") || undefined;
+        result.timeSinceCommit =
+          (resultMap.get("timeSinceCommit") as number) || undefined;
       }
 
       if (options.showStashCount) {
-        result.stashCount = resultMap.get("stashCount") || 0;
+        result.stashCount = (resultMap.get("stashCount") as number) || 0;
       }
 
       if (options.showUpstream) {
-        result.upstream = resultMap.get("upstream") || undefined;
+        result.upstream = (resultMap.get("upstream") as string) || undefined;
       }
 
       if (options.showRepoName) {
-        result.repoName = resultMap.get("repoName") || undefined;
+        result.repoName = (resultMap.get("repoName") as string) || undefined;
         result.isWorktree = isWorktreeDir;
       }
 

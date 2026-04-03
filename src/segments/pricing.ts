@@ -146,7 +146,10 @@ export class PricingService {
   > | null> {
     const TTL_24H = 24 * 60 * 60 * 1000;
     const minValidTime = Date.now() - TTL_24H;
-    return await CacheManager.getUsageCache("pricing", minValidTime);
+    return (await CacheManager.getUsageCache(
+      "pricing",
+      minValidTime,
+    )) as Record<string, ModelPricing> | null;
   }
 
   private static async saveDiskCache(
@@ -398,10 +401,14 @@ export class PricingService {
     );
   }
 
-  static async calculateCostForEntry(entry: any): Promise<number> {
-    const message = entry.message;
-    const usage = message?.usage;
-    if (!usage) return 0;
+  static async calculateCostForEntry(
+    entry: Record<string, unknown>,
+  ): Promise<number> {
+    const message = entry.message as Record<string, unknown> | undefined;
+    const usage = message?.usage as Record<string, number> | undefined;
+    if (!usage) {
+      return 0;
+    }
 
     const modelId = this.extractModelId(entry);
     const pricing = await this.getModelPricing(modelId);
@@ -420,18 +427,22 @@ export class PricingService {
     return inputCost + outputCost + cacheCreationCost + cacheReadCost;
   }
 
-  private static extractModelId(entry: any): string {
+  private static extractModelId(entry: Record<string, unknown>): string {
     if (entry.model && typeof entry.model === "string") {
       return entry.model;
     }
 
-    const message = entry.message;
+    const message = entry.message as Record<string, unknown> | undefined;
     if (message?.model) {
       const model = message.model;
       if (typeof model === "string") {
         return model;
       }
-      return model?.id || "claude-sonnet-4-5-20250929";
+      const modelObj = model as Record<string, unknown> | undefined;
+      return (
+        (typeof modelObj?.id === "string" ? modelObj.id : null) ||
+        "claude-sonnet-4-5-20250929"
+      );
     }
 
     if (entry.model_id && typeof entry.model_id === "string") {

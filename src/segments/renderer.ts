@@ -1,9 +1,29 @@
-import path from "node:path";
 import type { ClaudeHookData } from "../utils/claude";
 import type { PowerlineColors } from "../themes";
 import type { PowerlineConfig } from "../config/loader";
 import type { BlockInfo } from "./block";
-import { formatModelName, abbreviateFishStyle } from "../utils/formatters";
+import type {
+  UsageInfo,
+  TokenBreakdown,
+  GitInfo,
+  ContextInfo,
+  MetricsInfo,
+} from ".";
+import type { TodayInfo } from "./today";
+
+import path from "node:path";
+import {
+  formatModelName,
+  abbreviateFishStyle,
+  formatCost,
+  formatTokens,
+  formatTokenBreakdown,
+  formatTimeSince,
+  formatDuration,
+  formatLongTimeRemaining,
+  minutesUntilReset,
+} from "../utils/formatters";
+import { getBudgetStatus } from "../utils/budget";
 
 export interface SegmentConfig {
   enabled: boolean;
@@ -101,25 +121,6 @@ export type AnySegmentConfig =
   | SessionIdSegmentConfig
   | EnvSegmentConfig
   | WeeklySegmentConfig;
-
-import {
-  formatCost,
-  formatTokens,
-  formatTokenBreakdown,
-  formatTimeSince,
-  formatDuration,
-  formatLongTimeRemaining,
-  minutesUntilReset,
-} from "../utils/formatters";
-import { getBudgetStatus } from "../utils/budget";
-import type {
-  UsageInfo,
-  TokenBreakdown,
-  GitInfo,
-  ContextInfo,
-  MetricsInfo,
-} from ".";
-import type { TodayInfo } from "./today";
 
 export interface PowerlineSymbols {
   right: string;

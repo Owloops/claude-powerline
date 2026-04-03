@@ -127,7 +127,7 @@ export function spreadEven(parts: string[], totalWidth: number): string {
   const totalGap = totalWidth - totalContentWidth;
   const gapPerSlot = Math.max(2, Math.floor(totalGap / (parts.length - 1)));
 
-  const suffixWidths = new Array<number>(parts.length);
+  const suffixWidths = Array.from<number>({ length: parts.length });
   suffixWidths[parts.length - 1] = widths[parts.length - 1] ?? 0;
   for (let i = parts.length - 2; i >= 0; i--) {
     suffixWidths[i] = (suffixWidths[i + 1] ?? 0) + (widths[i] ?? 0);
