@@ -1,119 +1,74 @@
 {
-  "theme": "tokyo-night",
+  "theme": "custom",
   "display": {
-    "colorCompatibility": "truecolor",
-    "autoWrap": false,
-    "style": "tui",
+    "padding": 1,
+    "style": "capsule",
     "charset": "unicode",
-    "tui": {
-      "fitContent": true,
-      "padding": { "horizontal": 4 },
-      "separator": { "column": "  " },
-      "title": {
-        "left": "{model.icon}  {model.value}",
-        "right": "{dir}"
-      },
-      "footer": {
-        "left": "{weekly.icon}  {weekly.pct} · {weekly.time}",
-        "right": "{metrics.lastResponse}"
-      },
-      "segments": {
-        "git.info": {
-          "items": ["{branch}", "{status}", "{ahead}", "{behind}"],
-          "gap": 1
-        }
-      },
-      "breakpoints": [
-        {
-          "minWidth": 80,
-          "areas": [
-            "git.icon     git.info     git.info     .               git.working",
-            "---",
-            "context.icon  context.bar  context.bar  context.pct     context.tokens",
-            "block.icon    block.bar    block.bar    block.value     block.time"
-          ],
-          "columns": ["auto", "1fr", "auto", "auto", "auto"],
-          "align": ["left", "left", "right", "right", "right"]
-        },
-        {
-          "minWidth": 55,
-          "areas": [
-            "git.icon             git.info",
-            "---",
-            "context.bar          context.tokens",
-            "block                ."
-          ],
-          "columns": ["auto", "1fr"],
-          "align": ["left", "right"]
-        },
-        {
-          "minWidth": 0,
-          "areas": [
-            "git.head",
-            "git.working",
-            "---",
-            "context",
-            "block"
-          ],
-          "columns": ["1fr"],
-          "align": ["left"]
-        }
-      ]
-    },
+    "colorCompatibility": "auto",
+    "autoWrap": true,
     "lines": [
       {
         "segments": {
           "directory": {
             "enabled": true,
-            "showBasename": true
-          },
-          "git": {
-            "enabled": true,
-            "showSha": false,
-            "showAheadBehind": true,
-            "showWorkingTree": false,
-            "showOperation": true,
-            "showTag": false,
-            "showTimeSinceCommit": false,
-            "showStashCount": false,
-            "showUpstream": false,
-            "showRepoName": false
+            "style": "fish"
           },
           "model": {
             "enabled": true
           },
-          "block": {
-            "enabled": true,
-            "type": "tokens"
-          },
           "session": {
-            "enabled": false,
-            "type": "tokens",
-            "burnType": "none"
+            "enabled": true,
+            "type": "both",
+            "costSource": "calculated"
           },
           "today": {
-            "enabled": false,
-            "type": "tokens"
+            "enabled": true,
+            "type": "both"
+          }
+        }
+      },
+      {
+        "segments": {
+          "block": {
+            "enabled": true,
+            "type": "weighted",
+            "burnType": "tokens"
+          },
+          "version": {
+            "enabled": true
+          },
+          "metrics": {
+            "enabled": true,
+            "showResponseTime": true,
+            "showLastResponseTime": true,
+            "showDuration": true,
+            "showMessageCount": true,
+            "showLinesAdded": true,
+            "showLinesRemoved": true
           },
           "context": {
             "enabled": true,
             "showPercentageOnly": false,
-            "autocompactBuffer": 0
+            "displayStyle": "text",
+            "autocompactBuffer": 33000
           },
           "tmux": {
             "enabled": false
-          },
-          "metrics": {
+          }
+        }
+      },
+      {
+        "segments": {
+          "git": {
             "enabled": true,
-            "showLastResponseTime": true,
-            "showResponseTime": false,
-            "showDuration": false,
-            "showMessageCount": false,
-            "showLinesAdded": false,
-            "showLinesRemoved": false
-          },
-          "version": {
-            "enabled": false
+            "showSha": true,
+            "showWorkingTree": true,
+            "showOperation": true,
+            "showTag": true,
+            "showTimeSinceCommit": true,
+            "showStashCount": true,
+            "showUpstream": true,
+            "showRepoName": true
           }
         }
       }
@@ -121,11 +76,54 @@
   },
   "colors": {
     "custom": {
-      "model": { "fg": "#e0d68a" },
-      "dir": { "fg": "#e0b68a" },
-      "context": { "fg": "#7dcfff" },
-      "weekly": { "fg": "#bb9af7" },
-      "metrics.lastResponse": { "fg": "#bb9af7" }
+      "directory": {
+        "bg": "#2a2a2a",
+        "fg": "#e0e0e0"
+      },
+      "git": {
+        "bg": "#3a3a3a",
+        "fg": "#d0d0d0"
+      },
+      "model": {
+        "bg": "#4a4a4a",
+        "fg": "#c0c0c0"
+      },
+      "session": {
+        "bg": "#5a5a5a",
+        "fg": "#b0b0b0"
+      },
+      "block": {
+        "bg": "#404040",
+        "fg": "#cccccc"
+      },
+      "today": {
+        "bg": "#303030",
+        "fg": "#dddddd"
+      },
+      "tmux": {
+        "bg": "#8a8a8a",
+        "fg": "#2a2a2a"
+      },
+      "context": {
+        "bg": "#6a6a6a",
+        "fg": "#ffffff"
+      },
+      "contextWarning": {
+        "bg": "#92400e",
+        "fg": "#fbbf24"
+      },
+      "contextCritical": {
+        "bg": "#991b1b",
+        "fg": "#fca5a5"
+      },
+      "metrics": {
+        "bg": "#565656",
+        "fg": "#e5e5e5"
+      },
+      "version": {
+        "bg": "#7a7a7a",
+        "fg": "#f0f0f0"
+      }
     }
   },
   "budget": {
@@ -141,5 +139,8 @@
       "type": "tokens",
       "warningThreshold": 80
     }
+  },
+  "modelContextLimits": {
+    "sonnet": 200000
   }
 }
