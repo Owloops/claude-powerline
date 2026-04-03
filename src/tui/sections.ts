@@ -27,11 +27,11 @@ export function resolveTitleToken(
   const modelName = formatModelName(rawName).toLowerCase();
 
   return template.replace(/\{([^}]+)\}/g, (_match, token: string) => {
-    if (token === "model") return modelName;
     if (resolvedData) {
       const value = resolvedData[token];
       if (value !== undefined) return value;
     }
+    if (token === "model") return modelName;
     return "";
   });
 }
@@ -52,10 +52,9 @@ export function buildTitleBar(
   const leftLen = visibleLength(leftText);
 
   if (!hasRight || !rightTemplate) {
-    const simpleFill = innerWidth - 1 - leftLen;
+    const simpleFill = innerWidth - leftLen;
     return (
       box.topLeft +
-      box.horizontal +
       leftText +
       box.horizontal.repeat(Math.max(0, simpleFill)) +
       box.topRight
@@ -65,13 +64,12 @@ export function buildTitleBar(
   const rightResolved = resolveTitleToken(rightTemplate, data, resolvedData);
   const rightText = rightResolved ? ` ${rightResolved} ` : "";
   const rightLen = visibleLength(rightText);
-  const fillCount = innerWidth - 1 - leftLen - rightLen;
+  const fillCount = innerWidth - leftLen - rightLen;
 
   if (fillCount < 2) {
-    const simpleFill = innerWidth - 1 - leftLen;
+    const simpleFill = innerWidth - leftLen;
     return (
       box.topLeft +
-      box.horizontal +
       leftText +
       box.horizontal.repeat(Math.max(0, simpleFill)) +
       box.topRight
@@ -80,7 +78,6 @@ export function buildTitleBar(
 
   return (
     box.topLeft +
-    box.horizontal +
     leftText +
     box.horizontal.repeat(fillCount) +
     rightText +
@@ -112,6 +109,7 @@ export function buildContextBar(
   sym: SymbolSet,
   reset: string,
   colors: PowerlineColors,
+  partFg?: Record<string, string>,
 ): string {
   if (!data.contextInfo) return "";
   const usedPct = data.contextInfo.usablePercentage;
@@ -119,7 +117,7 @@ export function buildContextBar(
   const emptyCount = barWidth - filledCount;
   const bar = sym.bar_filled.repeat(filledCount) + sym.bar_empty.repeat(emptyCount);
 
-  let fgColor = colors.contextFg;
+  let fgColor = partFg?.["context.bar"] ?? partFg?.["context"] ?? colors.contextFg;
   if (usedPct >= 80) fgColor = colors.contextCriticalFg;
   else if (usedPct >= 60) fgColor = colors.contextWarningFg;
 
@@ -133,6 +131,7 @@ export function buildBlockBar(
   reset: string,
   colors: PowerlineColors,
   config: PowerlineConfig,
+  partFg?: Record<string, string>,
 ): string {
   if (!data.blockInfo) return "";
 
@@ -152,7 +151,7 @@ export function buildBlockBar(
   const bar = sym.bar_filled.repeat(filledCount) + sym.bar_empty.repeat(emptyCount);
 
   const warningThreshold = config.budget?.block?.warningThreshold ?? 80;
-  let fgColor = colors.blockFg;
+  let fgColor = partFg?.["block.bar"] ?? partFg?.["block"] ?? colors.blockFg;
   if (pct >= warningThreshold) fgColor = colors.contextCriticalFg;
   else if (pct >= 50) fgColor = colors.contextWarningFg;
 
@@ -165,6 +164,7 @@ export function buildWeeklyBar(
   sym: SymbolSet,
   reset: string,
   colors: PowerlineColors,
+  partFg?: Record<string, string>,
 ): string {
   const sevenDay = data.hookData.rate_limits?.seven_day;
   if (!sevenDay) return "";
@@ -174,7 +174,7 @@ export function buildWeeklyBar(
   const emptyCount = barWidth - filledCount;
   const bar = sym.bar_filled.repeat(filledCount) + sym.bar_empty.repeat(emptyCount);
 
-  let fgColor = colors.weeklyFg;
+  let fgColor = partFg?.["weekly.bar"] ?? partFg?.["weekly"] ?? colors.weeklyFg;
   if (pct >= 80) fgColor = colors.contextCriticalFg;
   else if (pct >= 60) fgColor = colors.contextWarningFg;
 
@@ -721,7 +721,7 @@ function addParts(
 ): void {
   for (const [key, value] of Object.entries(parts)) {
     const partKey = `${segment}.${key}`;
-    const partColor = partFg?.[partKey] ?? color;
+    const partColor = partFg?.[partKey] ?? partFg?.[segment] ?? color;
     result[partKey] = value ? colorize(value, partColor, reset) : "";
   }
 }
@@ -791,6 +791,13 @@ export function resolveSegments(data: TuiData, ctx: RenderCtx): ResolvedSegments
 
   const result: Record<string, string> = {};
 
+  // Model
+  const rawModelName = data.hookData.model?.display_name || "Claude";
+  const modelName = formatModelName(rawModelName).toLowerCase();
+  const modelColor = pf?.["model"] ?? colors.modeFg;
+  result.model = colorizeOrEmpty(`${sym.model} ${modelName}`, modelColor);
+  addParts(result, "model", { icon: sym.model, value: modelName }, colors.modeFg, reset, pf);
+
   // Context (bar is width-dependent, resolved later via lateResolve)
   const contextLine = buildContextLine(data, ctx.contentWidth, sym, reset, colors);
   result.context = contextLine ?? "";
@@ -804,7 +811,8 @@ export function resolveSegments(data: TuiData, ctx: RenderCtx): ResolvedSegments
 
   // Block
   if (data.blockInfo) {
-    result.block = colorizeOrEmpty(formatBlockSegment(data.blockInfo, sym, config), colors.blockFg);
+    const blockColor = pf?.["block"] ?? colors.blockFg;
+    result.block = colorizeOrEmpty(formatBlockSegment(data.blockInfo, sym, config), blockColor);
     addParts(result, "block", formatBlockParts(data.blockInfo, sym, config), colors.blockFg, reset, pf);
   } else {
     result.block = "";
@@ -812,7 +820,8 @@ export function resolveSegments(data: TuiData, ctx: RenderCtx): ResolvedSegments
 
   // Session
   if (data.usageInfo) {
-    result.session = colorizeOrEmpty(formatSessionSegment(data.usageInfo, sym, config), colors.sessionFg);
+    const sessionColor = pf?.["session"] ?? colors.sessionFg;
+    result.session = colorizeOrEmpty(formatSessionSegment(data.usageInfo, sym, config), sessionColor);
     addParts(result, "session", formatSessionParts(data.usageInfo, sym, config), colors.sessionFg, reset, pf);
   } else {
     result.session = "";
@@ -820,7 +829,8 @@ export function resolveSegments(data: TuiData, ctx: RenderCtx): ResolvedSegments
 
   // Today
   if (data.todayInfo) {
-    result.today = colorizeOrEmpty(formatTodaySegment(data.todayInfo, sym, config), colors.todayFg);
+    const todayColor = pf?.["today"] ?? colors.todayFg;
+    result.today = colorizeOrEmpty(formatTodaySegment(data.todayInfo, sym, config), todayColor);
     addParts(result, "today", formatTodayParts(data.todayInfo, sym, config), colors.todayFg, reset, pf);
   } else {
     result.today = "";
@@ -829,42 +839,51 @@ export function resolveSegments(data: TuiData, ctx: RenderCtx): ResolvedSegments
   // Weekly
   const sevenDay = data.hookData.rate_limits?.seven_day;
   if (sevenDay) {
-    result.weekly = colorizeOrEmpty(formatWeeklySegment(sevenDay, sym), colors.weeklyFg);
+    const weeklyColor = pf?.["weekly"] ?? colors.weeklyFg;
+    result.weekly = colorizeOrEmpty(formatWeeklySegment(sevenDay, sym), weeklyColor);
     addParts(result, "weekly", formatWeeklyParts(sevenDay, sym), colors.weeklyFg, reset, pf);
   } else {
     result.weekly = "";
   }
 
   // Git
-  result.git = colorizeOrEmpty(formatGitSegment(data, sym), colors.gitFg);
+  const gitColor = pf?.["git"] ?? colors.gitFg;
+  result.git = colorizeOrEmpty(formatGitSegment(data, sym), gitColor);
   addParts(result, "git", formatGitParts(data, sym), colors.gitFg, reset, pf);
 
   // Dir
-  result.dir = colorizeOrEmpty(formatDirSegment(data, config), colors.modeFg);
+  const dirColor = pf?.["dir"] ?? colors.modeFg;
+  result.dir = colorizeOrEmpty(formatDirSegment(data, config), dirColor);
   addParts(result, "dir", formatDirParts(data, config), colors.modeFg, reset, pf);
 
   // Version
-  result.version = colorizeOrEmpty(formatVersionSegment(data, sym), colors.versionFg);
+  const versionColor = pf?.["version"] ?? colors.versionFg;
+  result.version = colorizeOrEmpty(formatVersionSegment(data, sym), versionColor);
   addParts(result, "version", formatVersionParts(data, sym), colors.versionFg, reset, pf);
 
   // Tmux
-  result.tmux = colorizeOrEmpty(formatTmuxSegment(data), colors.tmuxFg);
+  const tmuxColor = pf?.["tmux"] ?? colors.tmuxFg;
+  result.tmux = colorizeOrEmpty(formatTmuxSegment(data), tmuxColor);
   addParts(result, "tmux", formatTmuxParts(data), colors.tmuxFg, reset, pf);
 
   // Metrics
-  result.metrics = colorizeOrEmpty(formatMetricsSegment(data, sym), colors.metricsFg);
+  const metricsColor = pf?.["metrics"] ?? colors.metricsFg;
+  result.metrics = colorizeOrEmpty(formatMetricsSegment(data, sym), metricsColor);
   addParts(result, "metrics", formatMetricsParts(data, sym), colors.metricsFg, reset, pf);
 
   // Activity
-  result.activity = colorizeOrEmpty(formatActivitySegment(data, sym), colors.metricsFg);
+  const activityColor = pf?.["activity"] ?? colors.metricsFg;
+  result.activity = colorizeOrEmpty(formatActivitySegment(data, sym), activityColor);
   addParts(result, "activity", formatActivityParts(data, sym), colors.metricsFg, reset, pf);
 
   // Burn
-  result.burn = colorizeOrEmpty(formatBurnSegment(data.blockInfo, sym), colors.metricsFg);
+  const burnColor = pf?.["burn"] ?? colors.metricsFg;
+  result.burn = colorizeOrEmpty(formatBurnSegment(data.blockInfo, sym), burnColor);
   addParts(result, "burn", formatBurnParts(data.blockInfo, sym), colors.metricsFg, reset, pf);
 
   // Env
-  result.env = colorizeOrEmpty(formatEnvSegment(config), colors.envFg);
+  const envColor = pf?.["env"] ?? colors.envFg;
+  result.env = colorizeOrEmpty(formatEnvSegment(config), envColor);
   addParts(result, "env", formatEnvParts(config), colors.envFg, reset, pf);
 
   // Apply segment templates: resolve items and compose default value

@@ -809,7 +809,6 @@ export class PowerlineRenderer {
 
     const result: Record<string, string> = {};
     for (const key of Object.keys(custom)) {
-      if (!key.includes(".")) continue;
       const entry = custom[key];
       if (!entry?.fg) continue;
       result[key] = convertHex(entry.fg, false);

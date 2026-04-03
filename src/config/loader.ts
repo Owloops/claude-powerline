@@ -309,11 +309,12 @@ function validateGridConfig(tui: TuiGridConfig): string | null {
       }
 
       // Check segment names and contiguity
+      const templateNames = tui.segments ? new Set(Object.keys(tui.segments)) : new Set<string>();
       let prevCell = "";
       let spanName = "";
       for (const cell of cells) {
         if (cell !== ".") {
-          if (!isValidSegmentRef(cell)) {
+          if (!isValidSegmentRef(cell) && !templateNames.has(cell)) {
             return `${prefix}: unknown segment name "${cell}"`;
           }
           // Check for non-contiguous spans

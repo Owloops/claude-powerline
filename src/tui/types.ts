@@ -44,6 +44,7 @@ export type SegmentName =
   | "weekly"
   | "git"
   | "dir"
+  | "model"
   | "version"
   | "tmux"
   | "metrics"
@@ -53,7 +54,7 @@ export type SegmentName =
 
 export const VALID_SEGMENT_NAMES: ReadonlySet<string> = new Set<SegmentName>([
   "context", "block", "session", "today", "weekly", "git", "dir",
-  "version", "tmux", "metrics", "activity", "burn", "env",
+  "model", "version", "tmux", "metrics", "activity", "burn", "env",
 ]);
 
 export const SEGMENT_PARTS: Record<SegmentName, readonly string[]> = {
@@ -65,6 +66,7 @@ export const SEGMENT_PARTS: Record<SegmentName, readonly string[]> = {
   context: ["icon", "bar", "pct", "tokens"],
   metrics: ["response", "responseIcon", "responseVal", "lastResponse", "lastResponseIcon", "lastResponseVal", "added", "addedIcon", "addedVal", "removed", "removedIcon", "removedVal"],
   activity: ["duration", "durationIcon", "durationVal", "messages", "messagesIcon", "messagesVal"],
+  model: ["icon", "value"],
   burn: ["icon", "rate"],
   version: ["icon", "value"],
   tmux: ["label", "value"],

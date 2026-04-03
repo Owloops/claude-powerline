@@ -10,16 +10,24 @@
       "padding": { "horizontal": 4 },
       "separator": { "column": "  " },
       "title": {
+        "left": "{model.icon}  {model.value}",
         "right": "{dir}"
       },
       "footer": {
-        "right": "{metrics.lastResponseIcon} {metrics.lastResponseVal}"
+        "left": "{weekly.icon}  {weekly.pct} · {weekly.time}",
+        "right": "{metrics.lastResponse}"
+      },
+      "segments": {
+        "git.info": {
+          "items": ["{branch}", "{status}", "{ahead}", "{behind}"],
+          "gap": 1
+        }
       },
       "breakpoints": [
         {
           "minWidth": 80,
           "areas": [
-            "git.head     git.head     git.head     .               weekly",
+            "git.icon     git.info     git.info     .               git.working",
             "---",
             "context.icon  context.bar  context.bar  context.pct     context.tokens",
             "block.icon    block.bar    block.bar    block.value     block.time"
@@ -30,19 +38,19 @@
         {
           "minWidth": 55,
           "areas": [
-            "git.head             weekly",
+            "git.icon             git.info",
             "---",
             "context.bar          context.tokens",
             "block                ."
           ],
-          "columns": ["1fr", "auto"],
+          "columns": ["auto", "1fr"],
           "align": ["left", "right"]
         },
         {
           "minWidth": 0,
           "areas": [
             "git.head",
-            "weekly",
+            "git.working",
             "---",
             "context",
             "block"
@@ -113,8 +121,11 @@
   },
   "colors": {
     "custom": {
-      "metrics.lastResponseIcon": { "fg": "#bb9af7" },
-      "metrics.lastResponseVal": { "fg": "#9d7cd8" }
+      "model": { "fg": "#e0d68a" },
+      "dir": { "fg": "#e0b68a" },
+      "context": { "fg": "#7dcfff" },
+      "weekly": { "fg": "#bb9af7" },
+      "metrics.lastResponse": { "fg": "#bb9af7" }
     }
   },
   "budget": {

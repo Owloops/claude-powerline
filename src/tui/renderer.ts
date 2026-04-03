@@ -69,18 +69,19 @@ export async function renderTuiPanel(
     const resolvedData = resolved.data;
     const templates = resolved.templates;
 
+    const pf = colors.partFg;
     const lateResolve = (segment: string, cellWidth: number): string | undefined => {
       if (segment === "context") {
         return buildContextLine(data, cellWidth, sym, reset, colors) ?? "";
       }
       if (segment === "context.bar") {
-        return buildContextBar(data, cellWidth, sym, reset, colors);
+        return buildContextBar(data, cellWidth, sym, reset, colors, pf);
       }
       if (segment === "block.bar") {
-        return buildBlockBar(data, cellWidth, sym, reset, colors, config);
+        return buildBlockBar(data, cellWidth, sym, reset, colors, config, pf);
       }
       if (segment === "weekly.bar") {
-        return buildWeeklyBar(data, cellWidth, sym, reset, colors);
+        return buildWeeklyBar(data, cellWidth, sym, reset, colors, pf);
       }
       const tmpl = templates[segment];
       if (tmpl) {

@@ -93,13 +93,12 @@ export function bottomBorder(
   const right = rightText ? ` ${rightText} ` : "";
   const leftLen = visibleLength(left);
   const rightLen = visibleLength(right);
-  const fillCount = innerWidth - 1 - leftLen - rightLen;
+  const fillCount = innerWidth - leftLen - rightLen;
 
   if (fillCount < 0) {
-    const simpleFill = innerWidth - 1 - leftLen;
+    const simpleFill = innerWidth - leftLen;
     return (
       box.bottomLeft +
-      box.horizontal +
       left +
       box.horizontal.repeat(Math.max(0, simpleFill)) +
       box.bottomRight
@@ -108,7 +107,6 @@ export function bottomBorder(
 
   return (
     box.bottomLeft +
-    box.horizontal +
     left +
     box.horizontal.repeat(fillCount) +
     right +

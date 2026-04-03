@@ -568,6 +568,18 @@ Create custom themes and configure color compatibility:
 
 **Color Options:** `bg` (hex, `transparent`, `none`) &#8226; `fg` (hex)
 
+**TUI Grid Colors:** In TUI grid mode, custom colors also support bare segment names and dot-notation parts as keys. A bare segment key (e.g. `"context"`) sets the default color for the segment and all its parts. A part key (e.g. `"context.bar"`) overrides a specific part:
+
+```json
+"colors": {
+  "custom": {
+    "model": { "fg": "#e0d68a" },
+    "context": { "fg": "#7dcfff" },
+    "metrics.lastResponse": { "fg": "#bb9af7" }
+  }
+}
+```
+
 **Compatibility Modes:** `auto` (default), `ansi`, `ansi256`, `truecolor`
 
 **Environment Variables:**
@@ -617,6 +629,9 @@ Add `display.tui` to your config file to enable the grid engine:
         "column": "  ",
         "divider": "─"
       },
+      "box": { ... },
+      "title": { ... },
+      "footer": { ... },
       "segments": { ... },
       "breakpoints": [ ... ]
     }
@@ -633,6 +648,9 @@ Add `display.tui` to your config file to enable the grid engine:
 | `padding.horizontal` | `number` | `0` | Extra horizontal padding in `fitContent` mode |
 | `separator.column` | `string` | `"  "` | String placed between columns |
 | `separator.divider` | `string` | box char | Character used for `---` divider rows |
+| `box` | `object` | — | Custom box-drawing characters (see below) |
+| `title` | `object` | — | Title bar text configuration (see below) |
+| `footer` | `object` | — | Footer text configuration (see below) |
 | `segments` | `object` | — | Custom segment templates (see below) |
 | `breakpoints` | `array` | required | Responsive layout definitions |
 
@@ -645,10 +663,10 @@ Each breakpoint defines a complete layout that activates when the panel width is
   {
     "minWidth": 80,
     "areas": [
-      "git.head     git.head     git.head     .               dir",
+      "git.head      git.head     git.head     .               git.working",
       "---",
-      "context.bar  context.bar  context.bar  context.pct     context.tokens",
-      "block.icon   block.value  block.time   weekly          metrics.lastResponse"
+      "context.icon  context.bar  context.bar  context.pct     context.tokens",
+      "block.icon    block.bar    block.bar    block.value     block.time"
     ],
     "columns": ["auto", "1fr", "auto", "auto", "auto"],
     "align": ["left", "left", "right", "right", "right"]
@@ -656,10 +674,10 @@ Each breakpoint defines a complete layout that activates when the panel width is
   {
     "minWidth": 55,
     "areas": [
-      "git.head             dir",
+      "git.head             git.working",
       "---",
       "context.bar          context.tokens",
-      "block                weekly"
+      "block                ."
     ],
     "columns": ["1fr", "auto"],
     "align": ["left", "right"]
@@ -668,11 +686,10 @@ Each breakpoint defines a complete layout that activates when the panel width is
     "minWidth": 0,
     "areas": [
       "git.head",
-      "dir",
+      "git.working",
       "---",
       "context",
-      "block",
-      "weekly"
+      "block"
     ],
     "columns": ["1fr"],
     "align": ["left"]
@@ -721,11 +738,11 @@ Use `segment.part` to place individual pieces of a segment into separate cells w
 | Segment | Parts |
 |---|---|
 | `git` | `icon`, `branch`, `status`, `ahead`, `behind`, `working`, `head` |
-| `context` | `bar`, `pct`, `tokens` |
-| `block` | `icon`, `value`, `time`, `budget` |
+| `context` | `icon`, `bar`, `pct`, `tokens` |
+| `block` | `icon`, `bar`, `value`, `time`, `budget` |
 | `session` | `icon`, `cost`, `tokens`, `budget` |
 | `today` | `icon`, `cost`, `label`, `budget` |
-| `weekly` | `icon`, `pct`, `time` |
+| `weekly` | `icon`, `bar`, `pct`, `time` |
 | `metrics` | `response`, `responseIcon`, `responseVal`, `lastResponse`, `lastResponseIcon`, `lastResponseVal`, `added`, `addedIcon`, `addedVal`, `removed`, `removedIcon`, `removedVal` |
 | `activity` | `duration`, `durationIcon`, `durationVal`, `messages`, `messagesIcon`, `messagesVal` |
 | `burn` | `icon`, `rate` |
@@ -734,16 +751,70 @@ Use `segment.part` to place individual pieces of a segment into separate cells w
 | `dir` | `value` |
 | `env` | `prefix`, `value` |
 
-Example — split block into icon, value, and countdown in separate columns:
+Example — block segment with a progress bar, mirroring the context layout:
 
 ```json
 "areas": [
-  "block.icon  block.value  block.time"
+  "context.icon  context.bar  context.bar  context.pct  context.tokens",
+  "block.icon    block.bar    block.bar    block.value  block.time"
 ]
 ```
 
 > [!NOTE]
-> `context.bar` is width-aware — its progress bar renders at exactly the resolved column width.
+> `context.bar`, `block.bar`, and `weekly.bar` are width-aware — their progress bars render at exactly the resolved column width. Block bar uses `nativeUtilization` when available, or `cost / budget` for transcript mode. Weekly bar uses the 7-day `used_percentage`.
+
+#### Custom Box Characters
+
+Override individual box-drawing characters. Partial overrides merge with the charset default (`unicode` or `text`):
+
+```json
+"box": {
+  "topLeft": "┌",
+  "topRight": "┐",
+  "bottomLeft": "└",
+  "bottomRight": "┘",
+  "horizontal": "─",
+  "vertical": "│",
+  "teeLeft": "├",
+  "teeRight": "┤"
+}
+```
+
+Only specify the characters you want to change — the rest inherit from the active charset.
+
+#### Title Bar
+
+Configure the left and right text in the top border. Supports `{model}` and any `{segment}` or `{segment.part}` token that resolves from segment data:
+
+```json
+"title": {
+  "left": "{model}",
+  "right": "{dir}"
+}
+```
+
+| Property | Type | Default | Description |
+|---|---|---|---|
+| `left` | `string` | `"{model}"` | Left-side text (supports tokens) |
+| `right` | `string \| false` | `"claude-powerline"` | Right-side text, or `false` to hide |
+
+#### Footer
+
+Same as the title bar, but on the bottom border. Defaults to no text (plain border):
+
+```json
+"footer": {
+  "left": "{weekly}",
+  "right": "{metrics.lastResponse}"
+}
+```
+
+| Property | Type | Default | Description |
+|---|---|---|---|
+| `left` | `string` | — | Left-side footer text (supports tokens) |
+| `right` | `string` | — | Right-side footer text (supports tokens) |
+
+Tokens resolve any segment or subsegment reference: `{model}`, `{dir}`, `{git.head}`, `{block.value}`, `{metrics.lastResponse}`, etc.
 
 #### Segment Templates
 
