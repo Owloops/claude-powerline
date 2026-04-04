@@ -465,10 +465,7 @@ export function formatBlockParts(
   // Only set a bar placeholder if the bar will actually render.
   // Native source uses nativeUtilization; transcript mode needs a budget.
   let hasBar = false;
-  if (
-    blockInfo.source === "native" &&
-    blockInfo.nativeUtilization !== null
-  ) {
+  if (blockInfo.source === "native" && blockInfo.nativeUtilization !== null) {
     hasBar = true;
   } else {
     const blockBudget = config.budget?.block;
