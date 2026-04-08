@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Launch Claude Powerline TUI
+# Uses NVIM_APPNAME to isolate from user's personal nvim config
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# Isolated config: ~/.config/cpline, ~/.local/share/cpline, etc.
+export NVIM_APPNAME="cpline"
+
+# Create config dir and symlink our plugin if not already done
+config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/cpline"
+if [[ ! -d "${config_dir}" ]]; then
+  mkdir -p "${config_dir}"
+fi
+
+# Write init.lua that loads cpline from the repo (update on each launch to pick up repo path changes)
+cat > "${config_dir}/init.lua" <<INIT
+vim.o.termguicolors = true
+vim.o.shortmess = vim.o.shortmess .. "I"
+vim.o.fillchars = "eob: "
+vim.o.laststatus = 0
+vim.o.showtabline = 0
+vim.o.cmdheight = 1
+vim.o.showmode = false
+vim.opt.runtimepath:prepend("${SCRIPT_DIR}")
+require("cpline").setup()
+require("cpline").open()
+INIT
+
+exec nvim
