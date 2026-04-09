@@ -30,11 +30,6 @@ function M.setup()
 
     require("nvim-treesitter").install(TS_PARSERS)
 
-    require("mini.statusline").setup({
-        use_icons = true,
-        set_vim_settings = false,
-    })
-
     require("mini.notify").setup({
         lsp_progress = { enable = false },
         window = {
@@ -45,6 +40,33 @@ function M.setup()
 
     require("mini.icons").setup()
     require("mini.cursorword").setup()
+    require("mini.pick").setup()
+    require("mini.tabline").setup({ show_icons = false })
+
+    vim.cmd([[
+        function! MiniTablineSwitchBuffer(buf_id, clicks, button, mod)
+            let l = luaeval('require("cpline.layout").layout')
+            if type(l) == type({}) && has_key(l, 'conv_win')
+                call win_execute(l.conv_win, 'buffer ' . a:buf_id)
+            endif
+        endfunction
+    ]])
+
+    require("mini.clue").setup({
+        triggers = {
+            { mode = "n", keys = "<C-p>" },
+            { mode = "i", keys = "<C-p>" },
+            { mode = "n", keys = "g" },
+        },
+        clues = {
+            { mode = "n", keys = "gt", desc = "Next Session" },
+            { mode = "n", keys = "gT", desc = "Prev Session" },
+        },
+        window = {
+            delay = 200,
+            config = { border = "rounded", width = "auto" },
+        },
+    })
 
     require("render-markdown").setup({
         file_types = { "markdown" },

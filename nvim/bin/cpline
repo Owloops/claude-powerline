@@ -20,10 +20,12 @@ cat > "${config_dir}/init.lua" <<INIT
 vim.o.termguicolors = true
 vim.o.shortmess = vim.o.shortmess .. "I"
 vim.o.fillchars = "eob: "
-vim.o.laststatus = 0
-vim.o.showtabline = 0
-vim.o.cmdheight = 1
+vim.o.laststatus = 2
+vim.o.showtabline = 2
+vim.o.cmdheight = 0
 vim.o.showmode = false
+vim.o.equalalways = false
+vim.o.mouse = "a"
 vim.opt.runtimepath:prepend("${SCRIPT_DIR}")
 require("cpline").setup()
 require("cpline").open()
