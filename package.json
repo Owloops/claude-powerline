@@ -5,6 +5,13 @@
   "type": "module",
   "main": "./dist/index.mjs",
   "module": "./dist/index.mjs",
+  "exports": {
+    ".": "./dist/index.mjs",
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "import": "./dist/browser.js"
+    }
+  },
   "bin": {
     "claude-powerline": "./bin/claude-powerline"
   },
@@ -45,6 +52,7 @@
     "dist",
     "bin",
     "plugin",
+    "src",
     "README.md",
     "LICENSE"
   ],

@@ -22,7 +22,6 @@ import {
   renderNarrowBottom,
 } from "./layouts";
 import { renderGrid } from "./grid";
-import { getRawTerminalWidth } from "../utils/terminal";
 
 // Synchronized Output (DEC mode 2026): prevents tearing on multi-line renders.
 // Terminals that don't support it silently ignore these sequences.
@@ -69,7 +68,15 @@ export async function renderTuiPanel(
   // Grid path: when display.tui grid config is present
   if (config.display.tui) {
     const gridConfig = config.display.tui;
-    const rawWidth = gridConfig.terminalWidth ?? getRawTerminalWidth() ?? 120;
+    let rawWidth = gridConfig.terminalWidth ?? 120;
+    if (gridConfig.terminalWidth == null) {
+      try {
+        const { getRawTerminalWidth } = await import(
+          "../utils/terminal-width.js"
+        );
+        rawWidth = getRawTerminalWidth() ?? 120;
+      } catch {}
+    }
 
     // Merge box character overrides with charset defaults
     // Resolve box preset name or merge partial overrides with charset defaults

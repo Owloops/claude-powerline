@@ -403,7 +403,7 @@ export function collectFooterParts(
     .find((env) => env?.enabled);
 
   if (envConfig && envConfig.variable) {
-    const envVal = process.env[envConfig.variable];
+    const envVal = globalThis.process?.env?.[envConfig.variable];
     if (envVal) {
       const prefix = envConfig.prefix ?? envConfig.variable;
       parts.push(
@@ -764,7 +764,7 @@ function formatEnvParts(config: PowerlineConfig): Record<string, string> {
     .find((env) => env?.enabled);
 
   if (!envConfig || !envConfig.variable) return { prefix: "", value: "" };
-  const envVal = process.env[envConfig.variable];
+  const envVal = globalThis.process?.env?.[envConfig.variable];
   if (!envVal) return { prefix: "", value: "" };
   const prefix = envConfig.prefix ?? envConfig.variable;
   return { prefix: prefix || "", value: envVal };

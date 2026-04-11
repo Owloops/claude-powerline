@@ -178,7 +178,7 @@ describe("TUI Panel Rendering", () => {
     };
 
     it("should render grid layout when display.tui is present", async () => {
-      jest.spyOn(require("../src/utils/terminal"), "getRawTerminalWidth").mockReturnValue(100);
+      gridConfig.display.tui!.terminalWidth = 100;
       const result = await renderTuiPanel(makeTuiData(), BOX_CHARS, "", 100, gridConfig);
       expect(result).toContain("╭"); // title bar
       expect(result).toContain("╰"); // bottom border
@@ -188,7 +188,7 @@ describe("TUI Panel Rendering", () => {
     });
 
     it("should auto-collapse rows when segment data is missing", async () => {
-      jest.spyOn(require("../src/utils/terminal"), "getRawTerminalWidth").mockReturnValue(100);
+      gridConfig.display.tui!.terminalWidth = 100;
       const data = makeTuiData({ gitInfo: null, blockInfo: null, usageInfo: null, todayInfo: null });
       const result = await renderTuiPanel(data, BOX_CHARS, "", 100, gridConfig);
       // git row should collapse since git is null

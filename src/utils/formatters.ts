@@ -125,10 +125,13 @@ export function formatBurnRate(rate: number | null | undefined): string {
   return rate < 1 ? `${(rate * 100).toFixed(0)}c/h` : `$${rate.toFixed(2)}/h`;
 }
 
-export function collapseHome(dirPath: string): string {
-  const homeDir = process.env.HOME || process.env.USERPROFILE;
-  if (homeDir && dirPath.startsWith(homeDir)) {
-    return dirPath.replace(homeDir, "~");
+export function collapseHome(dirPath: string, homeDir?: string): string {
+  const home =
+    homeDir ??
+    globalThis.process?.env?.HOME ??
+    globalThis.process?.env?.USERPROFILE;
+  if (home && dirPath.startsWith(home)) {
+    return dirPath.replace(home, "~");
   }
   return dirPath;
 }

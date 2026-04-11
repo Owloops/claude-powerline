@@ -1,10 +1,10 @@
 import {
-  getColorSupport,
   hexToBasicAnsi,
   hexToAnsi,
   hexTo256Ansi,
   extractBgToFg,
 } from "../src/utils/colors";
+import { getColorSupport } from "../src/utils/color-support";
 import { getTheme } from "../src/themes";
 
 describe("Colors", () => {
