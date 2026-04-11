@@ -62,13 +62,13 @@ export type {
   SymbolSet,
   RenderCtx,
   JustifyValue,
+  GridCell,
 } from "./tui/types";
 
 // --- Rendering ---
 
 export { SegmentRenderer } from "./segments/renderer";
 export { renderTuiPanel } from "./tui/renderer";
-export { renderGrid } from "./tui/grid";
 
 // --- Themes ---
 
@@ -169,6 +169,21 @@ export {
   renderNarrowMetrics,
   renderNarrowBottom,
 } from "./tui/layouts";
+
+// --- TUI grid helpers ---
+
+export {
+  parseAreas,
+  cullMatrix,
+  calculateColumnWidths,
+  selectBreakpoint,
+  solveFitContentLayout,
+  renderGrid,
+  DIVIDER,
+  EMPTY_CELL,
+  LATE_RESOLVE_SEGMENTS,
+} from "./tui/grid";
+export type { GridResult } from "./tui/grid";
 
 // --- Config defaults ---
 
