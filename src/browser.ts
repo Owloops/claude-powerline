@@ -69,6 +69,7 @@ export type {
 
 export { SegmentRenderer } from "./segments/renderer";
 export { renderTuiPanel } from "./tui/renderer";
+export type { TuiPanelOptions } from "./tui/renderer";
 
 // --- Themes ---
 

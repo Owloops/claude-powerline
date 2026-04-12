@@ -54,12 +54,17 @@ function calculatePanelWidth(terminalWidth: number | null): number {
   return 80;
 }
 
+export interface TuiPanelOptions {
+  rawTerminalWidth?: number | null;
+}
+
 export async function renderTuiPanel(
   data: TuiData,
   box: BoxChars,
   reset: string,
   terminalWidth: number | null,
   config: PowerlineConfig,
+  options?: TuiPanelOptions,
 ): Promise<string> {
   const sym =
     (config.display.charset || "unicode") === "text" ? TEXT_SYMBOLS : SYMBOLS;
@@ -68,15 +73,8 @@ export async function renderTuiPanel(
   // Grid path: when display.tui grid config is present
   if (config.display.tui) {
     const gridConfig = config.display.tui;
-    let rawWidth = gridConfig.terminalWidth ?? 120;
-    if (gridConfig.terminalWidth == null) {
-      try {
-        const { getRawTerminalWidth } = await import(
-          "../utils/terminal-width.js"
-        );
-        rawWidth = getRawTerminalWidth() ?? 120;
-      } catch {}
-    }
+    const rawWidth =
+      gridConfig.terminalWidth ?? options?.rawTerminalWidth ?? 120;
 
     // Merge box character overrides with charset defaults
     // Resolve box preset name or merge partial overrides with charset defaults

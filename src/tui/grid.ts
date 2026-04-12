@@ -374,29 +374,6 @@ export function solveFitContentLayout(
     }
   }
 
-  if (horizontalPadding > 0) {
-    let totalFr = 0;
-    for (const colDef of columns) totalFr += parseFr(colDef);
-    if (totalFr > 0) {
-      const padFrCols: number[] = [];
-      let padAllocated = 0;
-      for (let i = 0; i < colCount; i++) {
-        const fr = parseFr(columns[i]!);
-        if (fr > 0) {
-          const add = Math.floor((horizontalPadding * fr) / totalFr);
-          widths[i] = widths[i]! + add;
-          padAllocated += add;
-          padFrCols.push(i);
-        }
-      }
-      let padLeftover = horizontalPadding - padAllocated;
-      for (let k = 0; padLeftover > 0 && k < padFrCols.length; k++) {
-        widths[padFrCols[k]!]! += 1;
-        padLeftover--;
-      }
-    }
-  }
-
   // Clamp all widths to >= 1
   for (let i = 0; i < colCount; i++) {
     if (widths[i]! < 1) widths[i] = 1;
@@ -408,9 +385,11 @@ export function solveFitContentLayout(
   }
 
   const totalSepWidth = Math.max(0, colCount - 1) * separatorWidth;
-  const borders = 4; // 2 box chars + 2 padding chars
+  const extraWallPad = Math.max(0, 1 - horizontalPadding);
+  const borders = 2 + extraWallPad * 2; // 2 box chars + extra wall padding
+  const cellPadding = colCount * horizontalPadding * 2;
   return {
-    panelWidth: naturalWidth + totalSepWidth + borders,
+    panelWidth: naturalWidth + totalSepWidth + borders + cellPadding,
     colWidths: widths,
   };
 }
@@ -435,9 +414,12 @@ export function renderGridRow(
   align: AlignValue[],
   resolvedData: Record<string, string>,
   separator: string,
+  horizontalPadding = 0,
+  padShrink?: number[],
 ): string {
   const parts: string[] = [];
   const sepWidth = visibleLength(separator);
+  const hPad = horizontalPadding;
 
   for (let i = 0; i < row.length; i++) {
     const cell = row[i]!;
@@ -445,14 +427,34 @@ export function renderGridRow(
 
     const cellWidth = spanCellWidth(colWidths, i, cell.spanSize, sepWidth);
 
+    // Compute per-cell padding from column shrink values
+    const lastCol = i + cell.spanSize - 1;
+    const leftShrink =
+      align[i] === "right" ? (padShrink?.[i] ?? 0) : 0;
+    const rightShrink =
+      align[lastCol] === "left" ? (padShrink?.[lastCol] ?? 0) : 0;
+    const leftPad = hPad - leftShrink;
+    const rightPad = hPad - rightShrink;
+
+    // Inner padding for spanning cells (accounts for shrink of internal columns)
+    let innerPad = 0;
+    for (let j = i; j < lastCol; j++) {
+      const rShrink = align[j] === "left" ? (padShrink?.[j] ?? 0) : 0;
+      const lShrink = align[j + 1] === "right" ? (padShrink?.[j + 1] ?? 0) : 0;
+      innerPad += (hPad - rShrink) + (hPad - lShrink);
+    }
+    const contentWidth = cellWidth + innerPad;
+
     if (cell.segment === EMPTY_CELL) {
-      parts.push(" ".repeat(cellWidth));
+      parts.push(" ".repeat(contentWidth + leftPad + rightPad));
     } else {
       const content = resolvedData[cell.segment] || "";
-      const truncated = truncateAnsi(content, cellWidth);
-      // Use alignment of the span-start column
+      const truncated = truncateAnsi(content, contentWidth);
       const cellAlign = align[i] || "left";
-      parts.push(alignContent(truncated, cellWidth, cellAlign));
+      const aligned = alignContent(truncated, contentWidth, cellAlign);
+      const lp = leftPad > 0 ? " ".repeat(leftPad) : "";
+      const rp = rightPad > 0 ? " ".repeat(rightPad) : "";
+      parts.push(lp + aligned + rp);
     }
   }
 
@@ -564,7 +566,8 @@ export function renderGrid(
     }
   } else {
     const innerW = panelWidth - 2;
-    const contentW = innerW - 2;
+    const ewp = Math.max(0, 1 - hPad);
+    const contentW = innerW - ewp * 2 - bp.columns.length * hPad * 2;
     colWidths = calculateColumnWidths(
       bp.columns,
       matrix,
@@ -576,11 +579,77 @@ export function renderGrid(
   }
 
   const innerWidth = panelWidth - 2;
-  const contentWidth = innerWidth - 2;
+  // When hPad >= 1, cell padding replaces the base 1-space wall padding
+  const wallPad = Math.max(1, hPad);
+  const extraWallPad = wallPad - hPad; // 1 when hPad=0, 0 when hPad>=1
+  const wallPadStr = extraWallPad > 0 ? " ".repeat(extraWallPad) : "";
+  const contentWidth = innerWidth - extraWallPad * 2;
 
   // Alignment defaults
   const align: AlignValue[] =
     bp.align || bp.columns.map(() => "left" as AlignValue);
+
+  // Adaptive padding: absorb alignment gaps into padding, redistribute savings to fr columns.
+  // padShrink[col] = how much of hPad is absorbed by existing alignment gap on the aligned side.
+  const padShrink = new Array<number>(bp.columns.length).fill(0);
+  if (hPad > 0) {
+    const maxContent = new Array<number>(bp.columns.length).fill(0);
+    for (const row of matrix) {
+      if (isDividerRow(row)) continue;
+      for (let ci = 0; ci < row.length; ci++) {
+        const cell = row[ci]!;
+        if (!cell.spanStart || cell.spanSize !== 1) continue;
+        if (cell.segment === EMPTY_CELL) continue;
+        if (lateNames.has(cell.segment)) continue;
+        const len = visibleLength(resolvedData[cell.segment] || "");
+        if (len > maxContent[ci]!) maxContent[ci] = len;
+      }
+    }
+
+    let totalSavings = 0;
+    for (let ci = 0; ci < bp.columns.length; ci++) {
+      if (parseFr(bp.columns[ci]!) > 0) continue;
+      if (maxContent[ci]! <= 0) continue;
+      const gap = colWidths[ci]! - maxContent[ci]!;
+      if (gap <= 0) continue;
+      padShrink[ci] = Math.min(hPad, gap);
+      totalSavings += padShrink[ci]!;
+    }
+
+    if (totalSavings > 0) {
+      let totalFr = 0;
+      for (const colDef of bp.columns) totalFr += parseFr(colDef);
+      if (totalFr > 0) {
+        const frCols: number[] = [];
+        let allocated = 0;
+        for (let ci = 0; ci < colWidths.length; ci++) {
+          const fr = parseFr(bp.columns[ci]!);
+          if (fr > 0) {
+            const add = Math.floor((totalSavings * fr) / totalFr);
+            colWidths[ci]! += add;
+            allocated += add;
+            frCols.push(ci);
+          }
+        }
+        let leftover = totalSavings - allocated;
+        for (let k = 0; leftover > 0 && k < frCols.length; k++) {
+          colWidths[frCols[k]!]! += 1;
+          leftover--;
+        }
+      }
+    }
+  }
+
+  // Compute span inner padding accounting for per-column shrink
+  function spanInnerPad(colIdx: number, spanSize: number): number {
+    let pad = 0;
+    for (let j = colIdx; j < colIdx + spanSize - 1; j++) {
+      const rShrink = align[j] === "left" ? (padShrink[j] ?? 0) : 0;
+      const lShrink = align[j + 1] === "right" ? (padShrink[j + 1] ?? 0) : 0;
+      pad += (hPad - rShrink) + (hPad - lShrink);
+    }
+    return pad;
+  }
 
   // Late resolve: re-resolve width-dependent segments now that cell widths are known
   if (lateResolve) {
@@ -599,7 +668,8 @@ export function renderGrid(
         seen.add(cell.segment);
 
         const cellWidth = spanCellWidth(colWidths, i, cell.spanSize, sepWidth);
-        const content = lateResolve(cell.segment, cellWidth);
+        const innerPad = spanInnerPad(i, cell.spanSize);
+        const content = lateResolve(cell.segment, cellWidth + innerPad);
         if (content !== undefined) {
           resolvedData[cell.segment] = content;
         }
@@ -621,11 +691,10 @@ export function renderGrid(
     if (isDividerRow(row)) {
       lines.push(renderGridDivider(box, innerWidth, dividerChar));
     } else {
-      const rowStr = renderGridRow(row, colWidths, align, resolvedData, colSep);
-      // Wrap in box borders with 1-char padding
+      const rowStr = renderGridRow(row, colWidths, align, resolvedData, colSep, hPad, padShrink);
       const truncated = truncateAnsi(rowStr, contentWidth);
       const padded = padRight(truncated, contentWidth);
-      lines.push(box.vertical + " " + padded + " " + box.vertical);
+      lines.push(box.vertical + wallPadStr + padded + wallPadStr + box.vertical);
     }
   }
 
