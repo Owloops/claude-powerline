@@ -280,6 +280,14 @@ export function calculateColumnWidths(
     }
   }
 
+  // Clamp auto/fixed widths to >= 1 BEFORE computing fr remaining,
+  // so fr columns account for the clamped minimums in their budget.
+  for (let i = 0; i < colCount; i++) {
+    if (widths[i]! < 1 && !columns[i]!.endsWith("fr")) {
+      widths[i] = 1;
+    }
+  }
+
   const totalSepWidth = Math.max(0, colCount - 1) * separatorWidth;
   const usedWidth = widths.reduce((sum, w) => sum + w, 0);
   const remaining = Math.max(0, contentWidth - usedWidth - totalSepWidth);
@@ -304,13 +312,6 @@ export function calculateColumnWidths(
     for (let k = 0; leftover > 0 && k < frCols.length; k++) {
       widths[frCols[k]!]! += 1;
       leftover--;
-    }
-  }
-
-  // Phase 3: Clamp all widths to >= 1
-  for (let i = 0; i < colCount; i++) {
-    if (widths[i]! < 1) {
-      widths[i] = 1;
     }
   }
 
