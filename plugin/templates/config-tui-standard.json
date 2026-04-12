@@ -7,9 +7,9 @@
     "autoWrap": true,
     "tui": {
       "fitContent": true,
-      "minWidth": 55,
-      "padding": { "horizontal": 2 },
-      "separator": { "column": "  " },
+      "minWidth": 45,
+      "padding": { "horizontal": 1 },
+      "separator": { "column": "" },
       "title": {
         "left": "{model}",
         "right": "{dir}"
