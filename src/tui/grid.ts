@@ -487,7 +487,15 @@ export function renderGrid(
   const fitContent = gridConfig.fitContent ?? false;
   const hPad = gridConfig.padding?.horizontal ?? 0;
 
-  // Select initial panel width for breakpoint selection
+  // Breakpoint selection always uses available width (terminal - reserve)
+  const widthReserve = gridConfig.widthReserve ?? 45;
+  const availableWidth = Math.min(
+    maxWidth,
+    Math.max(minWidth, rawTerminalWidth - widthReserve),
+  );
+  const bp = selectBreakpoint(gridConfig.breakpoints, availableWidth);
+
+  // Panel width for rendering
   let panelWidth: number;
   if (fitContent) {
     panelWidth =
@@ -495,15 +503,8 @@ export function renderGrid(
         ? Math.min(rawTerminalWidth, maxWidth)
         : rawTerminalWidth;
   } else {
-    const widthReserve = gridConfig.widthReserve ?? 45;
-    panelWidth = Math.min(
-      maxWidth,
-      Math.max(minWidth, rawTerminalWidth - widthReserve),
-    );
+    panelWidth = availableWidth;
   }
-
-  // Select breakpoint (based on available width, not final panel width)
-  const bp = selectBreakpoint(gridConfig.breakpoints, panelWidth);
 
   // Parse areas
   const rawMatrix = parseAreas(bp.areas);
