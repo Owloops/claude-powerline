@@ -133,7 +133,7 @@ export interface SegmentTemplate {
 
 export interface TuiTitleConfig {
   left?: string;
-  right?: string | false;
+  right?: string;
 }
 
 export interface TuiFooterConfig {

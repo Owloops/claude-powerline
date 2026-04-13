@@ -52,15 +52,12 @@ export function buildTitleBar(
   resolvedData?: Record<string, string>,
 ): string {
   const leftTemplate = titleConfig?.left ?? "{model}";
-  const rightTemplate =
-    titleConfig?.right !== undefined ? titleConfig.right : "claude-powerline";
-  const hasRight = rightTemplate !== false;
-
+  const rightTemplate = titleConfig?.right;
   const leftResolved = resolveTitleToken(leftTemplate, data, resolvedData);
   const leftText = leftResolved ? ` ${leftResolved} ` : "";
   const leftLen = visibleLength(leftText);
 
-  if (!hasRight || !rightTemplate) {
+  if (!rightTemplate) {
     const simpleFill = innerWidth - leftLen;
     return (
       box.topLeft +
