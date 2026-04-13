@@ -148,7 +148,7 @@ export function formatContextParts(
   data: TuiData,
   sym: SymbolSet,
 ): Record<string, string> {
-  if (!data.contextInfo) return { icon: "", bar: "", pct: "", tokens: "" };
+  if (!data.contextInfo) return { icon: "", label: "context", bar: "", pct: "", tokens: "" };
 
   const usedPct = data.contextInfo.usablePercentage;
   const tokenStr = formatTokenCount(data.contextInfo.totalTokens);
@@ -156,6 +156,7 @@ export function formatContextParts(
 
   return {
     icon: sym.context_time,
+    label: "context",
     bar: " ",
     pct: `${usedPct}%`,
     tokens: `${tokenStr}/${maxStr}`,
@@ -425,6 +426,7 @@ export function formatBlockParts(
 
   return {
     icon: sym.block_cost,
+    label: "block",
     value,
     time,
     budget: "",
@@ -450,7 +452,7 @@ export function formatWeeklyParts(
 ): Record<string, string> {
   const pct = `${Math.round(sevenDay.used_percentage)}%`;
   const time = formatLongTimeRemaining(minutesUntilReset(sevenDay.resets_at));
-  return { icon: sym.weekly_cost, pct, time, bar: " " };
+  return { icon: sym.weekly_cost, label: "weekly", pct, time, bar: " " };
 }
 
 export function formatWeeklySegment(
@@ -486,6 +488,7 @@ export function formatSessionParts(
 
   return {
     icon: sym.session_cost,
+    label: "session",
     cost: formatCost(usageInfo.session.cost),
     tokens: tokenStr,
     budget,
@@ -616,6 +619,7 @@ function formatActivityParts(
   sym: SymbolSet,
 ): Record<string, string> {
   const empty = {
+    icon: "",
     duration: "",
     durationIcon: "",
     durationVal: "",
@@ -637,6 +641,7 @@ function formatActivityParts(
   const messagesValStr = hasMessages ? `${data.metricsInfo.messageCount}` : "";
 
   return {
+    icon: sym.activity,
     duration: hasDuration ? `${sym.metrics_duration} ${durationValStr}` : "",
     durationIcon: hasDuration ? sym.metrics_duration : "",
     durationVal: durationValStr,
@@ -656,11 +661,13 @@ function formatGitParts(data: TuiData, sym: SymbolSet): Record<string, string> {
   if (!data.gitInfo)
     return {
       icon: "",
+      info: "",
       branch: "",
       status: "",
       ahead: "",
       behind: "",
       working: "",
+      head: "",
     };
 
   let statusIcon: string;
@@ -690,8 +697,13 @@ function formatGitParts(data: TuiData, sym: SymbolSet): Record<string, string> {
   if (ahead) headParts.push(ahead);
   if (behind) headParts.push(behind);
 
+  const infoParts = [data.gitInfo.branch, statusIcon];
+  if (ahead) infoParts.push(ahead);
+  if (behind) infoParts.push(behind);
+
   return {
     icon: sym.branch,
+    info: infoParts.join(" "),
     branch: data.gitInfo.branch,
     status: statusIcon,
     ahead,
@@ -714,8 +726,9 @@ function formatGitSegment(data: TuiData, sym: SymbolSet): string {
 function formatDirParts(
   data: TuiData,
   config: PowerlineConfig,
+  sym: SymbolSet,
 ): Record<string, string> {
-  return { value: formatDirValue(data, config) };
+  return { icon: sym.dir, value: formatDirValue(data, config) };
 }
 
 function formatDirValue(data: TuiData, config: PowerlineConfig): string {
@@ -986,7 +999,7 @@ export function resolveSegments(
   addParts(
     result,
     "dir",
-    formatDirParts(data, config),
+    formatDirParts(data, config, sym),
     colors.modeFg,
     reset,
     pf,
