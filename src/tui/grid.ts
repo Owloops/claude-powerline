@@ -430,8 +430,7 @@ export function renderGridRow(
 
     // Compute per-cell padding from column shrink values
     const lastCol = i + cell.spanSize - 1;
-    const leftShrink =
-      align[i] === "right" ? (padShrink?.[i] ?? 0) : 0;
+    const leftShrink = align[i] === "right" ? (padShrink?.[i] ?? 0) : 0;
     const rightShrink =
       align[lastCol] === "left" ? (padShrink?.[lastCol] ?? 0) : 0;
     const leftPad = hPad - leftShrink;
@@ -442,7 +441,7 @@ export function renderGridRow(
     for (let j = i; j < lastCol; j++) {
       const rShrink = align[j] === "left" ? (padShrink?.[j] ?? 0) : 0;
       const lShrink = align[j + 1] === "right" ? (padShrink?.[j + 1] ?? 0) : 0;
-      innerPad += (hPad - rShrink) + (hPad - lShrink);
+      innerPad += hPad - rShrink + (hPad - lShrink);
     }
     const contentWidth = cellWidth + innerPad;
 
@@ -647,7 +646,7 @@ export function renderGrid(
     for (let j = colIdx; j < colIdx + spanSize - 1; j++) {
       const rShrink = align[j] === "left" ? (padShrink[j] ?? 0) : 0;
       const lShrink = align[j + 1] === "right" ? (padShrink[j + 1] ?? 0) : 0;
-      pad += (hPad - rShrink) + (hPad - lShrink);
+      pad += hPad - rShrink + (hPad - lShrink);
     }
     return pad;
   }
@@ -692,10 +691,20 @@ export function renderGrid(
     if (isDividerRow(row)) {
       lines.push(renderGridDivider(box, innerWidth, dividerChar));
     } else {
-      const rowStr = renderGridRow(row, colWidths, align, resolvedData, colSep, hPad, padShrink);
+      const rowStr = renderGridRow(
+        row,
+        colWidths,
+        align,
+        resolvedData,
+        colSep,
+        hPad,
+        padShrink,
+      );
       const truncated = truncateAnsi(rowStr, contentWidth);
       const padded = padRight(truncated, contentWidth);
-      lines.push(box.vertical + wallPadStr + padded + wallPadStr + box.vertical);
+      lines.push(
+        box.vertical + wallPadStr + padded + wallPadStr + box.vertical,
+      );
     }
   }
 

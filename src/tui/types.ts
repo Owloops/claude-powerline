@@ -64,7 +64,16 @@ export const SEGMENT_PARTS: Record<SegmentName, readonly string[]> = {
   block: ["icon", "label", "value", "time", "budget", "bar"],
   today: ["icon", "cost", "label", "budget"],
   weekly: ["icon", "label", "pct", "time", "bar"],
-  git: ["icon", "info", "branch", "status", "ahead", "behind", "working", "head"],
+  git: [
+    "icon",
+    "info",
+    "branch",
+    "status",
+    "ahead",
+    "behind",
+    "working",
+    "head",
+  ],
   context: ["icon", "label", "bar", "pct", "tokens"],
   metrics: [
     "response",

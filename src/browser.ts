@@ -23,7 +23,11 @@ export type {
 export type { ColorTheme, PowerlineColors, SegmentColor } from "./themes";
 
 export type { GitInfo } from "./segments/git";
-export type { UsageInfo, SessionInfo, TokenBreakdown } from "./segments/session";
+export type {
+  UsageInfo,
+  SessionInfo,
+  TokenBreakdown,
+} from "./segments/session";
 export type { ContextInfo } from "./segments/context";
 export type { MetricsInfo } from "./segments/metrics";
 export type { BlockInfo } from "./segments/block";

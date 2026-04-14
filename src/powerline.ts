@@ -50,10 +50,7 @@ import {
   BOX_CHARS_TEXT,
 } from "./utils/constants";
 import { visibleLength } from "./utils/terminal";
-import {
-  getTerminalWidth,
-  getRawTerminalWidth,
-} from "./utils/terminal-width";
+import { getTerminalWidth, getRawTerminalWidth } from "./utils/terminal-width";
 import { renderTuiPanel } from "./tui";
 
 interface RenderedSegment {

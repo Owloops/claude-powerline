@@ -145,7 +145,8 @@ export function formatContextParts(
   data: TuiData,
   sym: SymbolSet,
 ): Record<string, string> {
-  if (!data.contextInfo) return { icon: "", label: "context", bar: "", pct: "", tokens: "" };
+  if (!data.contextInfo)
+    return { icon: "", label: "context", bar: "", pct: "", tokens: "" };
 
   const usedPct = data.contextInfo.usablePercentage;
   const tokenStr = formatTokenCount(data.contextInfo.totalTokens);
