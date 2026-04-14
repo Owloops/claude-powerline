@@ -1,7 +1,7 @@
 // Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
 exports[`TUI Panel Rendering Edge cases should handle context at critical level 1`] = `
-"[?2026h[0m╭ claude 3.5 sonnet ───────────────────────────────────────────────────────────── claude-powerline ╮
+"[?2026h[0m╭ claude 3.5 sonnet ───────────────────────────────────────────────────────────────────────────────╮
 [0m│ ▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▫▫▫▫▫▫▫▫  90%  180.0K/200.0K │
 [0m│ ◱ 35% · 4h 18m left           § $0.05 · 42.1K           ☉ $1.87 today 4%           ⧗ 2m · ◆ 12   │
 [0m├──────────────────────────────────────────────────────────────────────────────────────────────────┤
@@ -10,7 +10,7 @@ exports[`TUI Panel Rendering Edge cases should handle context at critical level 
 `;
 
 exports[`TUI Panel Rendering Edge cases should handle context at warning level 1`] = `
-"[?2026h[0m╭ claude 3.5 sonnet ───────────────────────────────────────────────────────────── claude-powerline ╮
+"[?2026h[0m╭ claude 3.5 sonnet ───────────────────────────────────────────────────────────────────────────────╮
 [0m│ ▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫  70%  140.0K/200.0K │
 [0m│ ◱ 35% · 4h 18m left           § $0.05 · 42.1K           ☉ $1.87 today 4%           ⧗ 2m · ◆ 12   │
 [0m├──────────────────────────────────────────────────────────────────────────────────────────────────┤
@@ -19,7 +19,7 @@ exports[`TUI Panel Rendering Edge cases should handle context at warning level 1
 `;
 
 exports[`TUI Panel Rendering Edge cases should handle minimum panel width 1`] = `
-"[?2026h[0m╭ claude 3.5…[0m──────────────────╮
+"[?2026h[0m╭ claude 3.5 sonnet ───────────╮
 [0m│ ▪▪▪▪▫▫▫▫▫  45%  90.0K/200.0K │
 [0m│ ◱ 35% · 4h 18m left          │
 [0m│ § $0.05        ☉ $1.87 today │
@@ -30,7 +30,7 @@ exports[`TUI Panel Rendering Edge cases should handle minimum panel width 1`] = 
 `;
 
 exports[`TUI Panel Rendering Edge cases should handle missing context info 1`] = `
-"[?2026h[0m╭ claude 3.5 sonnet ───────────────────────────────────────────────────────────── claude-powerline ╮
+"[?2026h[0m╭ claude 3.5 sonnet ───────────────────────────────────────────────────────────────────────────────╮
 [0m│ ◱ 35% · 4h 18m left           § $0.05 · 42.1K           ☉ $1.87 today 4%           ⧗ 2m · ◆ 12   │
 [0m├──────────────────────────────────────────────────────────────────────────────────────────────────┤
 [0m│ ⎇ feat/tui-mode ● ↑2  /h/u/project                     ◈ v1.19.6 · tmux:dev · ⧖ 2.3s · +48 · -15 │
@@ -38,7 +38,7 @@ exports[`TUI Panel Rendering Edge cases should handle missing context info 1`] =
 `;
 
 exports[`TUI Panel Rendering Edge cases should handle null terminal width 1`] = `
-"[?2026h[0m╭ claude 3.5 sonnet ───────────────────────────────────────── claude-powerline ╮
+"[?2026h[0m╭ claude 3.5 sonnet ───────────────────────────────────────────────────────────╮
 [0m│ ▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫  45%  90.0K/200.0K │
 [0m│ ◱ 35% · 4h 18m left     § $0.05 · 42.1K     ☉ $1.87 today 4%     ⧗ 2m · ◆ 12 │
 [0m├──────────────────────────────────────────────────────────────────────────────┤
@@ -47,7 +47,7 @@ exports[`TUI Panel Rendering Edge cases should handle null terminal width 1`] = 
 `;
 
 exports[`TUI Panel Rendering Edge cases should show git working tree counts 1`] = `
-"[?2026h[0m╭ claude 3.5 sonnet ───────────────────────────────────────────────────────────── claude-powerline ╮
+"[?2026h[0m╭ claude 3.5 sonnet ───────────────────────────────────────────────────────────────────────────────╮
 [0m│ ▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫  45%  90.0K/200.0K │
 [0m│ ◱ 35% · 4h 18m left           § $0.05 · 42.1K           ☉ $1.87 today 4%           ⧗ 2m · ◆ 12   │
 [0m├──────────────────────────────────────────────────────────────────────────────────────────────────┤
@@ -56,7 +56,7 @@ exports[`TUI Panel Rendering Edge cases should show git working tree counts 1`] 
 `;
 
 exports[`TUI Panel Rendering Hardcoded layout unchanged without grid config should use hardcoded layouts when display.tui is absent 1`] = `
-"[?2026h[0m╭ claude 3.5 sonnet ───────────────────────────────────────────────────────────── claude-powerline ╮
+"[?2026h[0m╭ claude 3.5 sonnet ───────────────────────────────────────────────────────────────────────────────╮
 [0m│ ▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫  45%  90.0K/200.0K │
 [0m│ ◱ 35% · 4h 18m left           § $0.05 · 42.1K           ☉ $1.87 today 4%           ⧗ 2m · ◆ 12   │
 [0m├──────────────────────────────────────────────────────────────────────────────────────────────────┤
@@ -65,7 +65,7 @@ exports[`TUI Panel Rendering Hardcoded layout unchanged without grid config shou
 `;
 
 exports[`TUI Panel Rendering Medium layout (55-79 cols) should render metrics across 2 lines 1`] = `
-"[?2026h[0m╭ claude 3.5 sonnet ────────────────────────── claude-powerline ╮
+"[?2026h[0m╭ claude 3.5 sonnet ────────────────────────────────────────────╮
 [0m│ ▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫  45%  90.0K/200.0K │
 [0m│ ◱ 35% · 4h 18m left                          ☉ $1.87 today 4% │
 [0m│ § $0.05 · 42.1K                                   ⧗ 2m · ◆ 12 │
@@ -88,7 +88,7 @@ exports[`TUI Panel Rendering Narrow layout (<55 cols) should stack everything ve
 `;
 
 exports[`TUI Panel Rendering Wide layout (80+ cols) should render full panel with all data 1`] = `
-"[?2026h[0m╭ claude 3.5 sonnet ───────────────────────────────────────────────────────────── claude-powerline ╮
+"[?2026h[0m╭ claude 3.5 sonnet ───────────────────────────────────────────────────────────────────────────────╮
 [0m│ ▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫  45%  90.0K/200.0K │
 [0m│ ◱ 35% · 4h 18m left           § $0.05 · 42.1K           ☉ $1.87 today 4%           ⧗ 2m · ◆ 12   │
 [0m├──────────────────────────────────────────────────────────────────────────────────────────────────┤
@@ -97,7 +97,7 @@ exports[`TUI Panel Rendering Wide layout (80+ cols) should render full panel wit
 `;
 
 exports[`TUI Panel Rendering Wide layout (80+ cols) should render with minimal data 1`] = `
-"[?2026h[0m╭ claude 3.5 sonnet ───────────────────────────────────────────────────────────── claude-powerline ╮
+"[?2026h[0m╭ claude 3.5 sonnet ───────────────────────────────────────────────────────────────────────────────╮
 [0m│ ▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫  45%  90.0K/200.0K │
 [0m├──────────────────────────────────────────────────────────────────────────────────────────────────┤
 [0m│ /h/u/project                                                                           ◈ v1.19.6 │
