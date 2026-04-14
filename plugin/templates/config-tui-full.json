@@ -19,7 +19,7 @@
         "right": "{metrics.lastResponse}"
       },
       "segments": {
-        "git.info": {
+        "git.headVal": {
           "items": ["{branch}", "{status}", "{ahead}", "{behind}"],
           "gap": 1
         }
@@ -28,7 +28,7 @@
         {
           "minWidth": 55,
           "areas": [
-            "git.icon     git.info     git.info     git.info        git.working",
+            "git.icon     git.headVal     git.headVal     git.headVal        git.working",
             "---",
             "context.icon  context.bar  context.bar  context.pct     context.tokens",
             "block.icon    block.bar    block.bar    block.value     block.time",

@@ -66,7 +66,7 @@ export const SEGMENT_PARTS: Record<SegmentName, readonly string[]> = {
   weekly: ["icon", "label", "pct", "time", "bar"],
   git: [
     "icon",
-    "info",
+    "headVal",
     "branch",
     "status",
     "ahead",
