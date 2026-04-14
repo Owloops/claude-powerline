@@ -659,7 +659,7 @@ function formatGitParts(data: TuiData, sym: SymbolSet): Record<string, string> {
   if (!data.gitInfo)
     return {
       icon: "",
-      info: "",
+      headVal: "",
       branch: "",
       status: "",
       ahead: "",
@@ -701,7 +701,7 @@ function formatGitParts(data: TuiData, sym: SymbolSet): Record<string, string> {
 
   return {
     icon: sym.branch,
-    info: infoParts.join(" "),
+    headVal: infoParts.join(" "),
     branch: data.gitInfo.branch,
     status: statusIcon,
     ahead,
