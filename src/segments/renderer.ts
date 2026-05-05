@@ -23,6 +23,7 @@ import {
   formatDuration,
   formatLongTimeRemaining,
   formatCacheTimerElapsed,
+  formatCacheTimerRemaining,
   collapseHome,
   minutesUntilReset,
 } from "../utils/formatters";
@@ -122,7 +123,10 @@ export interface ThinkingSegmentConfig extends SegmentConfig {
   showEffort?: boolean;
 }
 
-export interface CacheTimerSegmentConfig extends SegmentConfig {}
+export interface CacheTimerSegmentConfig extends SegmentConfig {
+  displayMode?: "elapsed" | "remaining";
+  ttlSeconds?: number;
+}
 
 export type AnySegmentConfig =
   | SegmentConfig
@@ -895,11 +899,28 @@ export class SegmentRenderer {
   ): SegmentData {
     const e = info.elapsedSeconds;
     const iconPrefix = this.leadingIcon(this.symbols.cache_timer, config);
-    const text = `${iconPrefix}${formatCacheTimerElapsed(e)}`;
 
     let bgColor = colors.cacheTimerBg;
     let fgColor = colors.cacheTimerFg;
     let bold = colors.cacheTimerBold;
+
+    if (config?.displayMode === "remaining") {
+      const ttl = config.ttlSeconds ?? info.detectedTtlSeconds ?? 3600;
+      const remaining = Math.max(0, ttl - e);
+      const text = `${iconPrefix}${formatCacheTimerRemaining(remaining)}`;
+      if (remaining < 60) {
+        bgColor = colors.contextCriticalBg;
+        fgColor = colors.contextCriticalFg;
+        bold = colors.contextCriticalBold;
+      } else if (remaining < 300) {
+        bgColor = colors.contextWarningBg;
+        fgColor = colors.contextWarningFg;
+        bold = colors.contextWarningBold;
+      }
+      return { text, bgColor, fgColor, bold };
+    }
+
+    const text = `${iconPrefix}${formatCacheTimerElapsed(e)}`;
     if (e >= 300) {
       bgColor = colors.contextCriticalBg;
       fgColor = colors.contextCriticalFg;

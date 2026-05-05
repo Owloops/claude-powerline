@@ -2,7 +2,10 @@ import { BlockProvider } from "../src/segments/block";
 import { TodayProvider } from "../src/segments/today";
 import { SegmentRenderer } from "../src/segments/renderer";
 import { CacheTimerProvider } from "../src/segments/cacheTimer";
-import { formatCacheTimerElapsed } from "../src/utils/formatters";
+import {
+  formatCacheTimerElapsed,
+  formatCacheTimerRemaining,
+} from "../src/utils/formatters";
 import {
   loadEntriesFromProjects,
   type ClaudeHookData,
@@ -1110,6 +1113,203 @@ describe("Segment Time Logic", () => {
       );
       expect(critical3600.bgColor).toBe(colors.contextCriticalBg);
       expect(critical3600.text).toContain("1h+");
+    });
+
+    it("formats remaining seconds against TTL with cold fallback", () => {
+      expect(formatCacheTimerRemaining(3600)).toBe("60:00");
+      expect(formatCacheTimerRemaining(3591)).toBe("59:51");
+      expect(formatCacheTimerRemaining(125)).toBe("2:05");
+      expect(formatCacheTimerRemaining(59)).toBe("0:59");
+      expect(formatCacheTimerRemaining(0)).toBe("cold");
+      expect(formatCacheTimerRemaining(-30)).toBe("cold");
+    });
+
+    it("autodetects TTL from assistant cache_creation usage tokens", async () => {
+      const transcriptPath = join(tempDir, "transcript-ttl-1h.jsonl");
+      const now = Date.now();
+      const content = [
+        JSON.stringify({
+          type: "user",
+          message: { role: "user" },
+          timestamp: new Date(now - 60_000).toISOString(),
+        }),
+        JSON.stringify({
+          type: "assistant",
+          message: {
+            role: "assistant",
+            usage: {
+              cache_creation: {
+                ephemeral_1h_input_tokens: 48153,
+                ephemeral_5m_input_tokens: 0,
+              },
+            },
+          },
+          timestamp: new Date(now - 30_000).toISOString(),
+        }),
+      ].join("\n");
+      writeFileSync(transcriptPath, content);
+
+      const provider = new CacheTimerProvider();
+      const result = await provider.getCacheTimerInfo({
+        transcript_path: transcriptPath,
+      } as ClaudeHookData);
+
+      expect(result).not.toBeNull();
+      expect(result!.detectedTtlSeconds).toBe(3600);
+    });
+
+    it("autodetects 5-minute TTL when only ephemeral_5m_input_tokens is set", async () => {
+      const transcriptPath = join(tempDir, "transcript-ttl-5m.jsonl");
+      const now = Date.now();
+      const content = [
+        JSON.stringify({
+          type: "user",
+          message: { role: "user" },
+          timestamp: new Date(now - 60_000).toISOString(),
+        }),
+        JSON.stringify({
+          type: "assistant",
+          message: {
+            role: "assistant",
+            usage: {
+              cache_creation: {
+                ephemeral_1h_input_tokens: 0,
+                ephemeral_5m_input_tokens: 1200,
+              },
+            },
+          },
+          timestamp: new Date(now - 30_000).toISOString(),
+        }),
+      ].join("\n");
+      writeFileSync(transcriptPath, content);
+
+      const provider = new CacheTimerProvider();
+      const result = await provider.getCacheTimerInfo({
+        transcript_path: transcriptPath,
+      } as ClaudeHookData);
+
+      expect(result).not.toBeNull();
+      expect(result!.detectedTtlSeconds).toBe(300);
+    });
+
+    it("omits detectedTtlSeconds when no cache_creation usage is recorded", async () => {
+      const transcriptPath = join(tempDir, "transcript-no-usage.jsonl");
+      const now = Date.now();
+      const content = [
+        JSON.stringify({
+          type: "user",
+          message: { role: "user" },
+          timestamp: new Date(now - 60_000).toISOString(),
+        }),
+        JSON.stringify({
+          type: "assistant",
+          message: { role: "assistant" },
+          timestamp: new Date(now - 30_000).toISOString(),
+        }),
+      ].join("\n");
+      writeFileSync(transcriptPath, content);
+
+      const provider = new CacheTimerProvider();
+      const result = await provider.getCacheTimerInfo({
+        transcript_path: transcriptPath,
+      } as ClaudeHookData);
+
+      expect(result).not.toBeNull();
+      expect(result!.detectedTtlSeconds).toBeUndefined();
+    });
+
+    it("renders remaining mode using detected TTL when no explicit ttlSeconds is set", () => {
+      const config = { theme: "dark", display: { style: "minimal" } } as any;
+      const symbols = { cache_timer: "◴" } as any;
+      const colors = {
+        cacheTimerBg: "#1f3a1f",
+        cacheTimerFg: "#90ee90",
+        cacheTimerBold: false,
+        contextWarningBg: "#92400e",
+        contextWarningFg: "#fbbf24",
+        contextWarningBold: false,
+        contextCriticalBg: "#991b1b",
+        contextCriticalFg: "#fca5a5",
+        contextCriticalBold: false,
+      } as any;
+      const renderer = new SegmentRenderer(config, symbols);
+
+      const detected1h = renderer.renderCacheTimer(
+        { elapsedSeconds: 30, detectedTtlSeconds: 3600 },
+        colors,
+        { displayMode: "remaining" } as any,
+      );
+      expect(detected1h.text).toContain("59:30");
+
+      const detected5m = renderer.renderCacheTimer(
+        { elapsedSeconds: 30, detectedTtlSeconds: 300 },
+        colors,
+        { displayMode: "remaining" } as any,
+      );
+      expect(detected5m.text).toContain("4:30");
+
+      const explicitOverride = renderer.renderCacheTimer(
+        { elapsedSeconds: 120, detectedTtlSeconds: 3600 },
+        colors,
+        { displayMode: "remaining", ttlSeconds: 60 } as any,
+      );
+      expect(explicitOverride.text).toContain("cold");
+      expect(explicitOverride.bgColor).toBe(colors.contextCriticalBg);
+    });
+
+    it("renders remaining mode with critical/warn thresholds and TTL override", () => {
+      const config = { theme: "dark", display: { style: "minimal" } } as any;
+      const symbols = { cache_timer: "◴" } as any;
+      const colors = {
+        cacheTimerBg: "#1f3a1f",
+        cacheTimerFg: "#90ee90",
+        cacheTimerBold: false,
+        contextWarningBg: "#92400e",
+        contextWarningFg: "#fbbf24",
+        contextWarningBold: false,
+        contextCriticalBg: "#991b1b",
+        contextCriticalFg: "#fca5a5",
+        contextCriticalBold: false,
+      } as any;
+      const renderer = new SegmentRenderer(config, symbols);
+
+      const fresh = renderer.renderCacheTimer(
+        { elapsedSeconds: 10 },
+        colors,
+        { displayMode: "remaining" } as any,
+      );
+      expect(fresh.text).toContain("59:50");
+      expect(fresh.bgColor).toBe(colors.cacheTimerBg);
+
+      const warn = renderer.renderCacheTimer(
+        { elapsedSeconds: 3500 },
+        colors,
+        { displayMode: "remaining" } as any,
+      );
+      expect(warn.bgColor).toBe(colors.contextWarningBg);
+
+      const critical = renderer.renderCacheTimer(
+        { elapsedSeconds: 3580 },
+        colors,
+        { displayMode: "remaining" } as any,
+      );
+      expect(critical.bgColor).toBe(colors.contextCriticalBg);
+
+      const cold = renderer.renderCacheTimer(
+        { elapsedSeconds: 7200 },
+        colors,
+        { displayMode: "remaining" } as any,
+      );
+      expect(cold.text).toContain("cold");
+      expect(cold.bgColor).toBe(colors.contextCriticalBg);
+
+      const customTtl = renderer.renderCacheTimer(
+        { elapsedSeconds: 60 },
+        colors,
+        { displayMode: "remaining", ttlSeconds: 300 } as any,
+      );
+      expect(customTtl.text).toContain("4:00");
+      expect(customTtl.bgColor).toBe(colors.contextWarningBg);
     });
 
     it("anchors elapsed time to the last user entry in the transcript", async () => {

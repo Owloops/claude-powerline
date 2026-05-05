@@ -442,6 +442,23 @@ Opt-in (`enabled: false` by default).
 
 **Anchor:** elapsed time is measured from the last user message in the transcript (matches Anthropic's cache TTL anchor), falling back to the transcript file mtime if JSONL parsing fails.
 
+**Display modes:** `displayMode: "elapsed"` (default) shows time-since-last-turn as above. `displayMode: "remaining"` flips it to a countdown of the cache TTL — useful when you care about *how long until cold* rather than *how stale* (matches the Codex CLI status line):
+
+```json
+"cacheTimer": {
+  "enabled": true,
+  "displayMode": "remaining"
+}
+```
+
+In remaining mode the display reads `◴ 59:51` while warm and `◴ cold` once expired; color tiers invert (warn under 5m left, critical under 1m left or cold).
+
+**TTL detection:** the segment auto-detects which cache window Claude Code is using by reading the last assistant message's `usage.cache_creation` block. `ephemeral_1h_input_tokens > 0` ⇒ 1h TTL; `ephemeral_5m_input_tokens > 0` ⇒ 5-minute TTL. Falls back to 3600 if no usage data is available yet (e.g. the very first turn). Set `ttlSeconds` explicitly to override:
+
+```json
+"cacheTimer": { "enabled": true, "displayMode": "remaining", "ttlSeconds": 300 }
+```
+
 **TUI:** also available in grid templates via `{cacheTimer}`, `{cacheTimer.icon}`, and `{cacheTimer.value}`.
 
 **Symbols:** `◴` Cache timer (unicode) &#8226; `C!` Cache timer (text)
