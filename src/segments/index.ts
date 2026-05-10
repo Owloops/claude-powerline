@@ -9,6 +9,8 @@ export { MetricsProvider } from "./metrics";
 export type { MetricsInfo } from "./metrics";
 export { CacheTimerProvider } from "./cacheTimer";
 export type { CacheTimerInfo } from "./cacheTimer";
+export { ProxyBudgetProvider } from "./proxyBudget";
+export type { ProxyBudgetInfo, ProxyBudgetProviderConfig } from "./proxyBudget";
 export { SegmentRenderer } from "./renderer";
 export type {
   PowerlineSymbols,
