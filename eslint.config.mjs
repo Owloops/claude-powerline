@@ -21,6 +21,7 @@ export default [
         URL: "readonly",
         AbortController: "readonly",
         fetch: "readonly",
+        Response: "readonly",
         setTimeout: "readonly",
         clearTimeout: "readonly",
         jest: "readonly",

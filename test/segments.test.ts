@@ -2,6 +2,8 @@ import { BlockProvider } from "../src/segments/block";
 import { TodayProvider } from "../src/segments/today";
 import { SegmentRenderer } from "../src/segments/renderer";
 import { CacheTimerProvider } from "../src/segments/cacheTimer";
+import { ProxyBudgetProvider } from "../src/segments/proxyBudget";
+import { CacheManager } from "../src/utils/cache";
 import { formatCacheTimerElapsed } from "../src/utils/formatters";
 import {
   loadEntriesFromProjects,
@@ -362,11 +364,9 @@ describe("Segment Time Logic", () => {
 
       expect(renderer.renderAgent(base, colors, { enabled: true })).toBeNull();
       expect(
-        renderer.renderAgent(
-          { ...base, agent: { name: "   " } },
-          colors,
-          { enabled: true },
-        ),
+        renderer.renderAgent({ ...base, agent: { name: "   " } }, colors, {
+          enabled: true,
+        }),
       ).toBeNull();
     });
   });
@@ -388,12 +388,12 @@ describe("Segment Time Logic", () => {
       workspace: { current_dir: "/test", project_dir: "/test" },
     };
 
-    type Case = {
+    interface Case {
       name: string;
       hook: Partial<ClaudeHookData>;
       cfg: { showEnabled?: boolean; showEffort?: boolean };
       expected: string | null;
-    };
+    }
 
     const cases: Case[] = [
       {
@@ -1192,7 +1192,11 @@ describe("Segment Time Logic", () => {
     const cases: Array<{
       name: string;
       opts: Parameters<typeof renderTodayCase>[0];
-      expected: { isNull: boolean; textContains?: string[]; textEquals?: string };
+      expected: {
+        isNull: boolean;
+        textContains?: string[];
+        textEquals?: string;
+      };
     }> = [
       {
         name: "default flags (both true) -> value + percentage",
@@ -1325,6 +1329,268 @@ describe("Segment Time Logic", () => {
           showPercentage: false,
         }),
       ).toBeNull();
+    });
+  });
+
+  describe("Proxy Budget Segment", () => {
+    const PROXY_BASE_URL_ENV = "TEST_PROXY_BASE_URL";
+    const PROXY_TOKEN_ENV = "TEST_PROXY_TOKEN";
+    const PROXY_BASE_URL = "https://proxy.example.com";
+    const PROXY_TOKEN = "test-token";
+    const baseEnv = {
+      [PROXY_BASE_URL_ENV]: PROXY_BASE_URL,
+      [PROXY_TOKEN_ENV]: PROXY_TOKEN,
+    };
+
+    let fetchMock: jest.SpyInstance;
+    let getTtlCacheMock: jest.SpyInstance;
+    let setTtlCacheMock: jest.SpyInstance;
+    let originalEnv: typeof process.env;
+
+    beforeEach(() => {
+      originalEnv = { ...process.env };
+      Object.assign(process.env, baseEnv);
+      fetchMock = jest.spyOn(globalThis, "fetch");
+      getTtlCacheMock = jest
+        .spyOn(CacheManager, "getTtlCache")
+        .mockResolvedValue(null);
+      setTtlCacheMock = jest
+        .spyOn(CacheManager, "setTtlCache")
+        .mockResolvedValue();
+    });
+
+    afterEach(() => {
+      process.env = originalEnv;
+      fetchMock.mockRestore();
+      getTtlCacheMock.mockRestore();
+      setTtlCacheMock.mockRestore();
+    });
+
+    function mockFetchOk(body: unknown): void {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => body,
+      } as Response);
+    }
+
+    function provider() {
+      return new ProxyBudgetProvider();
+    }
+
+    function defaultProviderConfig() {
+      return {
+        baseUrlEnv: PROXY_BASE_URL_ENV,
+        tokenEnv: PROXY_TOKEN_ENV,
+      };
+    }
+
+    it("returns spend, budget, percentage, and resetAt for a healthy LiteLLM response", async () => {
+      mockFetchOk({
+        info: {
+          spend: 5,
+          max_budget: 50,
+          budget_reset_at: "2026-01-01T00:00:00Z",
+        },
+      });
+      const info = await provider().getProxyBudgetInfo(defaultProviderConfig());
+      expect(info).not.toBeNull();
+      expect(info!.spend).toBe(5);
+      expect(info!.budget).toBe(50);
+      expect(info!.percentage).toBeCloseTo(10);
+      expect(info!.resetAt).toBeInstanceOf(Date);
+      expect(setTtlCacheMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("returns null when the token env var is unset, without calling fetch", async () => {
+      delete process.env[PROXY_TOKEN_ENV];
+      const info = await provider().getProxyBudgetInfo(defaultProviderConfig());
+      expect(info).toBeNull();
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("supports custom JSON paths (OpenRouter-style shape)", async () => {
+      mockFetchOk({ data: { usage: 12, limit: 30 } });
+      const info = await provider().getProxyBudgetInfo({
+        ...defaultProviderConfig(),
+        spendPath: "data.usage",
+        budgetPath: "data.limit",
+      });
+      expect(info).not.toBeNull();
+      expect(info!.spend).toBe(12);
+      expect(info!.budget).toBe(30);
+      expect(info!.percentage).toBeCloseTo(40);
+    });
+
+    it("returns null when a configured field is missing from the response", async () => {
+      mockFetchOk({ info: { max_budget: 50 } });
+      const info = await provider().getProxyBudgetInfo(defaultProviderConfig());
+      expect(info).toBeNull();
+      expect(setTtlCacheMock).not.toHaveBeenCalled();
+    });
+
+    it("returns null on non-2xx response", async () => {
+      fetchMock.mockResolvedValue({
+        ok: false,
+        status: 503,
+        json: async () => ({}),
+      } as Response);
+      const info = await provider().getProxyBudgetInfo(defaultProviderConfig());
+      expect(info).toBeNull();
+    });
+
+    it("returns null on malformed JSON", async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => {
+          throw new Error("invalid json");
+        },
+      } as unknown as Response);
+      const info = await provider().getProxyBudgetInfo(defaultProviderConfig());
+      expect(info).toBeNull();
+    });
+
+    it("falls back to stale cache on fetch failure", async () => {
+      fetchMock.mockRejectedValue(new Error("network down"));
+      const stale = {
+        spend: 7,
+        budget: 50,
+        percentage: 14,
+        resetAt: null,
+      };
+      getTtlCacheMock.mockResolvedValueOnce(null).mockResolvedValueOnce(stale);
+      const info = await provider().getProxyBudgetInfo(defaultProviderConfig());
+      expect(info).not.toBeNull();
+      expect(info!.spend).toBe(7);
+    });
+
+    it("returns null when spend grossly exceeds budget (likely misconfigured spendPath)", async () => {
+      mockFetchOk({ info: { spend: 99999, max_budget: 50 } });
+      const info = await provider().getProxyBudgetInfo(defaultProviderConfig());
+      expect(info).toBeNull();
+    });
+
+    it("uses the disk cache when fresh and skips the network", async () => {
+      const cached = {
+        spend: 3,
+        budget: 50,
+        percentage: 6,
+        resetAt: null,
+      };
+      getTtlCacheMock.mockResolvedValueOnce(cached);
+      const info = await provider().getProxyBudgetInfo(defaultProviderConfig());
+      expect(info).not.toBeNull();
+      expect(info!.spend).toBe(3);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("returns null when neither the network nor the stale cache yield data", async () => {
+      fetchMock.mockRejectedValue(new Error("network down"));
+      getTtlCacheMock.mockResolvedValue(null);
+      const info = await provider().getProxyBudgetInfo(defaultProviderConfig());
+      expect(info).toBeNull();
+    });
+
+    it("uses the bearer auth header by default and x-api-key when configured", async () => {
+      mockFetchOk({ info: { spend: 1, max_budget: 10 } });
+      await provider().getProxyBudgetInfo(defaultProviderConfig());
+      expect(fetchMock.mock.calls[0]?.[1]?.headers?.["Authorization"]).toBe(
+        `Bearer ${PROXY_TOKEN}`,
+      );
+      fetchMock.mockClear();
+
+      await provider().getProxyBudgetInfo({
+        ...defaultProviderConfig(),
+        authScheme: "x-api-key",
+      });
+      expect(fetchMock.mock.calls[0]?.[1]?.headers?.["x-api-key"]).toBe(
+        PROXY_TOKEN,
+      );
+      expect(
+        fetchMock.mock.calls[0]?.[1]?.headers?.["Authorization"],
+      ).toBeUndefined();
+    });
+
+    it("renders spent+percentage by default and applies traffic-light colors", () => {
+      const symbols = { proxy_budget: "⛁" } as any;
+      const colors = {
+        proxyBudgetBg: "#PB",
+        proxyBudgetFg: "#PF",
+        proxyBudgetBold: false,
+        contextWarningBg: "#WB",
+        contextWarningFg: "#WF",
+        contextWarningBold: false,
+        contextCriticalBg: "#CB",
+        contextCriticalFg: "#CF",
+        contextCriticalBold: false,
+      } as any;
+      const config = {
+        theme: "dark",
+        display: { style: "minimal", showIcons: false, lines: [] },
+      } as any;
+      const renderer = new SegmentRenderer(config, symbols);
+
+      const healthy = renderer.renderProxyBudget(
+        { spend: 5, budget: 100, percentage: 5, resetAt: null },
+        colors,
+        { enabled: true },
+      );
+      expect(healthy.text).toBe("$5.00 (5%)");
+      expect(healthy.bgColor).toBe(colors.proxyBudgetBg);
+
+      const warn = renderer.renderProxyBudget(
+        { spend: 80, budget: 100, percentage: 80, resetAt: null },
+        colors,
+        { enabled: true },
+      );
+      expect(warn.bgColor).toBe(colors.contextWarningBg);
+
+      const critical = renderer.renderProxyBudget(
+        { spend: 95, budget: 100, percentage: 95, resetAt: null },
+        colors,
+        { enabled: true },
+      );
+      expect(critical.bgColor).toBe(colors.contextCriticalBg);
+    });
+
+    it("renders alternative type values", () => {
+      const symbols = { proxy_budget: "⛁" } as any;
+      const colors = {
+        proxyBudgetBg: "",
+        proxyBudgetFg: "",
+        proxyBudgetBold: false,
+      } as any;
+      const config = {
+        theme: "dark",
+        display: { style: "minimal", showIcons: false, lines: [] },
+      } as any;
+      const renderer = new SegmentRenderer(config, symbols);
+      const info = {
+        spend: 25,
+        budget: 100,
+        percentage: 25,
+        resetAt: null,
+      };
+
+      expect(
+        renderer.renderProxyBudget(info, colors, {
+          enabled: true,
+          type: "spent",
+        }).text,
+      ).toBe("$25.00");
+      expect(
+        renderer.renderProxyBudget(info, colors, {
+          enabled: true,
+          type: "remaining",
+        }).text,
+      ).toBe("$75.00");
+      expect(
+        renderer.renderProxyBudget(info, colors, {
+          enabled: true,
+          type: "percentage",
+        }).text,
+      ).toBe("25%");
     });
   });
 });
