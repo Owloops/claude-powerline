@@ -80,6 +80,7 @@ echo '{"session_id":"test-session","workspace":{"project_dir":"/path/to/project"
     const statusline = await renderer.generateStatusline(hookData);
 
     console.log(statusline);
+    process.exit(0);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error("Error generating statusline:", errorMessage);
