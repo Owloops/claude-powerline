@@ -18,6 +18,7 @@ export const nordTheme: ColorTheme = {
   agent: { bg: "#4c566a", fg: "#b48ead" },
   thinking: { bg: "#3b4252", fg: "#b48ead" },
   cacheTimer: { bg: "#3b4252", fg: "#a3be8c" },
+  proxyBudget: { bg: "#3b4252", fg: "#88c0d0" },
 };
 
 export const nordAnsi256Theme: ColorTheme = {
@@ -38,6 +39,7 @@ export const nordAnsi256Theme: ColorTheme = {
   agent: { bg: "#6c6c6c", fg: "#d787af" },
   thinking: { bg: "#4e4e4e", fg: "#d787af" },
   cacheTimer: { bg: "#4e4e4e", fg: "#87af87" },
+  proxyBudget: { bg: "#4e4e4e", fg: "#5fafaf" },
 };
 
 export const nordAnsiTheme: ColorTheme = {
@@ -58,4 +60,5 @@ export const nordAnsiTheme: ColorTheme = {
   agent: { bg: "#808080", fg: "#ff87af" },
   thinking: { bg: "#585858", fg: "#ff87d7" },
   cacheTimer: { bg: "#585858", fg: "#87d787" },
+  proxyBudget: { bg: "#585858", fg: "#00d7d7" },
 };

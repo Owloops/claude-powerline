@@ -23,6 +23,7 @@ import type {
   AgentSegmentConfig,
   ThinkingSegmentConfig,
   CacheTimerSegmentConfig,
+  ProxyBudgetSegmentConfig,
 } from "../segments/renderer";
 
 export interface LineConfig {
@@ -43,6 +44,7 @@ export interface LineConfig {
     agent?: AgentSegmentConfig;
     thinking?: ThinkingSegmentConfig;
     cacheTimer?: CacheTimerSegmentConfig;
+    proxyBudget?: ProxyBudgetSegmentConfig;
   };
 }
 

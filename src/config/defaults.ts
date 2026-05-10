@@ -57,6 +57,7 @@ export const DEFAULT_CONFIG: PowerlineConfig = {
           agent: { enabled: true, showLabel: false },
           thinking: { enabled: false, showEnabled: true, showEffort: true },
           cacheTimer: { enabled: false },
+          proxyBudget: { enabled: false },
         },
       },
     ],

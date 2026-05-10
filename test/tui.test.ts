@@ -64,6 +64,9 @@ const PLAIN_COLORS: PowerlineColors = {
   cacheTimerBg: "",
   cacheTimerFg: "",
   cacheTimerBold: false,
+  proxyBudgetBg: "",
+  proxyBudgetFg: "",
+  proxyBudgetBold: false,
   partFg: {},
 };
 

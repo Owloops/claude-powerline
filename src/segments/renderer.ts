@@ -4,6 +4,7 @@ import type { PowerlineColors } from "../themes";
 import type { PowerlineConfig } from "../config/loader";
 import type { BlockInfo } from "./block";
 import type { CacheTimerInfo } from "./cacheTimer";
+import type { ProxyBudgetInfo, ProxyBudgetProviderConfig } from "./proxyBudget";
 import type {
   UsageInfo,
   TokenBreakdown,
@@ -124,6 +125,15 @@ export interface ThinkingSegmentConfig extends SegmentConfig {
 
 export interface CacheTimerSegmentConfig extends SegmentConfig {}
 
+export interface ProxyBudgetSegmentConfig
+  extends SegmentConfig,
+    ProxyBudgetProviderConfig {
+  type?: "spent" | "remaining" | "percentage" | "spent+percentage";
+  showResetTime?: boolean;
+  warningThreshold?: number;
+  criticalThreshold?: number;
+}
+
 export type AnySegmentConfig =
   | SegmentConfig
   | DirectorySegmentConfig
@@ -140,7 +150,8 @@ export type AnySegmentConfig =
   | WeeklySegmentConfig
   | AgentSegmentConfig
   | ThinkingSegmentConfig
-  | CacheTimerSegmentConfig;
+  | CacheTimerSegmentConfig
+  | ProxyBudgetSegmentConfig;
 
 export interface PowerlineSymbols {
   right: string;
@@ -178,6 +189,7 @@ export interface PowerlineSymbols {
   agent: string;
   thinking: string;
   cache_timer: string;
+  proxy_budget: string;
 }
 
 export interface SegmentData {
@@ -905,6 +917,62 @@ export class SegmentRenderer {
       fgColor = colors.contextCriticalFg;
       bold = colors.contextCriticalBold;
     } else if (e >= 180) {
+      bgColor = colors.contextWarningBg;
+      fgColor = colors.contextWarningFg;
+      bold = colors.contextWarningBold;
+    }
+
+    return { text, bgColor, fgColor, bold };
+  }
+
+  renderProxyBudget(
+    info: ProxyBudgetInfo,
+    colors: PowerlineColors,
+    config?: ProxyBudgetSegmentConfig,
+  ): SegmentData {
+    const type = config?.type ?? "spent+percentage";
+    const warningThreshold = config?.warningThreshold ?? 80;
+    const criticalThreshold = config?.criticalThreshold ?? 95;
+    const pct = info.percentage;
+
+    const remaining = Math.max(0, info.budget - info.spend);
+    let value: string;
+    switch (type) {
+      case "spent":
+        value = formatCost(info.spend);
+        break;
+      case "remaining":
+        value = formatCost(remaining);
+        break;
+      case "percentage":
+        value = `${pct.toFixed(0)}%`;
+        break;
+      case "spent+percentage":
+      default:
+        value = `${formatCost(info.spend)} (${pct.toFixed(0)}%)`;
+        break;
+    }
+
+    let textBody = value;
+    if (config?.showResetTime && info.resetAt) {
+      const epochSeconds = Math.floor(info.resetAt.getTime() / 1000);
+      const minutes = minutesUntilReset(epochSeconds);
+      if (minutes > 0) {
+        textBody += ` ${formatLongTimeRemaining(minutes)}`;
+      }
+    }
+
+    const iconPrefix = this.leadingIcon(this.symbols.proxy_budget, config);
+    const text = `${iconPrefix}${textBody}`;
+
+    let bgColor = colors.proxyBudgetBg;
+    let fgColor = colors.proxyBudgetFg;
+    let bold = colors.proxyBudgetBold;
+    if (pct >= criticalThreshold) {
+      bgColor = colors.contextCriticalBg;
+      fgColor = colors.contextCriticalFg;
+      bold = colors.contextCriticalBold;
+    } else if (pct >= warningThreshold) {
       bgColor = colors.contextWarningBg;
       fgColor = colors.contextWarningFg;
       bold = colors.contextWarningBold;

@@ -29,4 +29,5 @@ export type {
   AgentSegmentConfig,
   ThinkingSegmentConfig,
   CacheTimerSegmentConfig,
+  ProxyBudgetSegmentConfig,
 } from "./renderer";

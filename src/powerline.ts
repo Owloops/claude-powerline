@@ -21,10 +21,12 @@ import type {
   AgentSegmentConfig,
   ThinkingSegmentConfig,
   CacheTimerSegmentConfig,
+  ProxyBudgetSegmentConfig,
 } from "./segments";
 import type { BlockInfo } from "./segments/block";
 import type { TodayInfo } from "./segments/today";
 import type { CacheTimerInfo } from "./segments/cacheTimer";
+import type { ProxyBudgetInfo } from "./segments/proxyBudget";
 import type { TuiData } from "./tui";
 
 import {
@@ -47,6 +49,7 @@ import {
 import { BlockProvider } from "./segments/block";
 import { TodayProvider } from "./segments/today";
 import { CacheTimerProvider } from "./segments/cacheTimer";
+import { ProxyBudgetProvider } from "./segments/proxyBudget";
 import {
   SYMBOLS,
   TEXT_SYMBOLS,
@@ -76,6 +79,7 @@ export class PowerlineRenderer {
   private _tmuxService?: TmuxService;
   private _metricsProvider?: MetricsProvider;
   private _cacheTimerProvider?: CacheTimerProvider;
+  private _proxyBudgetProvider?: ProxyBudgetProvider;
   private _segmentRenderer?: SegmentRenderer;
 
   constructor(private readonly config: PowerlineConfig) {
@@ -138,6 +142,13 @@ export class PowerlineRenderer {
     return this._cacheTimerProvider;
   }
 
+  private get proxyBudgetProvider(): ProxyBudgetProvider {
+    if (!this._proxyBudgetProvider) {
+      this._proxyBudgetProvider = new ProxyBudgetProvider();
+    }
+    return this._proxyBudgetProvider;
+  }
+
   private get segmentRenderer(): SegmentRenderer {
     if (!this._segmentRenderer) {
       this._segmentRenderer = new SegmentRenderer(this.config, this.symbols);
@@ -184,6 +195,15 @@ export class PowerlineRenderer {
       ? await this.cacheTimerProvider.getCacheTimerInfo(hookData)
       : null;
 
+    const proxyBudgetSegmentConfig = this.config.display.lines
+      .map((line) => line.segments.proxyBudget)
+      .find((c) => c?.enabled) as ProxyBudgetSegmentConfig | undefined;
+    const proxyBudgetInfo = this.needsSegmentInfo("proxyBudget")
+      ? await this.proxyBudgetProvider.getProxyBudgetInfo(
+          proxyBudgetSegmentConfig,
+        )
+      : null;
+
     if (this.config.display.autoWrap) {
       return this.generateAutoWrapStatusline(
         hookData,
@@ -193,6 +213,7 @@ export class PowerlineRenderer {
         contextInfo,
         metricsInfo,
         cacheTimerInfo,
+        proxyBudgetInfo,
       );
     }
 
@@ -207,6 +228,7 @@ export class PowerlineRenderer {
           contextInfo,
           metricsInfo,
           cacheTimerInfo,
+          proxyBudgetInfo,
         ),
       ),
     );
@@ -222,6 +244,7 @@ export class PowerlineRenderer {
     contextInfo: ContextInfo | null,
     metricsInfo: MetricsInfo | null,
     cacheTimerInfo: CacheTimerInfo | null,
+    proxyBudgetInfo: ProxyBudgetInfo | null,
   ): Promise<string> {
     const colors = this.getThemeColors();
     const currentDir = hookData.workspace?.current_dir || hookData.cwd || "/";
@@ -251,6 +274,7 @@ export class PowerlineRenderer {
           contextInfo,
           metricsInfo,
           cacheTimerInfo,
+          proxyBudgetInfo,
           colors,
           currentDir,
         );
@@ -450,6 +474,7 @@ export class PowerlineRenderer {
     contextInfo: ContextInfo | null,
     metricsInfo: MetricsInfo | null,
     cacheTimerInfo: CacheTimerInfo | null,
+    proxyBudgetInfo: ProxyBudgetInfo | null,
   ): Promise<string> {
     const colors = this.getThemeColors();
     const currentDir = hookData.workspace?.current_dir || hookData.cwd || "/";
@@ -472,6 +497,7 @@ export class PowerlineRenderer {
         contextInfo,
         metricsInfo,
         cacheTimerInfo,
+        proxyBudgetInfo,
         colors,
         currentDir,
       );
@@ -499,6 +525,7 @@ export class PowerlineRenderer {
     contextInfo: ContextInfo | null,
     metricsInfo: MetricsInfo | null,
     cacheTimerInfo: CacheTimerInfo | null,
+    proxyBudgetInfo: ProxyBudgetInfo | null,
     colors: PowerlineColors,
     currentDir: string,
   ) {
@@ -622,6 +649,15 @@ export class PowerlineRenderer {
         cacheTimerInfo,
         colors,
         segment.config as CacheTimerSegmentConfig,
+      );
+    }
+
+    if (segment.type === "proxyBudget") {
+      if (!proxyBudgetInfo) return null;
+      return this.segmentRenderer.renderProxyBudget(
+        proxyBudgetInfo,
+        colors,
+        segment.config as ProxyBudgetSegmentConfig,
       );
     }
 
@@ -762,6 +798,7 @@ export class PowerlineRenderer {
       agent: symbolSet.agent,
       thinking: symbolSet.thinking,
       cache_timer: symbolSet.cache_timer,
+      proxy_budget: symbolSet.proxy_budget,
     };
   }
 
@@ -842,6 +879,7 @@ export class PowerlineRenderer {
     const agent = getSegmentColors("agent");
     const thinking = getSegmentColors("thinking");
     const cacheTimer = getSegmentColors("cacheTimer");
+    const proxyBudget = getSegmentColors("proxyBudget");
 
     return {
       reset: colorSupport === "none" ? "" : RESET_CODE,
@@ -896,6 +934,9 @@ export class PowerlineRenderer {
       cacheTimerBg: cacheTimer.bg,
       cacheTimerFg: cacheTimer.fg,
       cacheTimerBold: cacheTimer.bold,
+      proxyBudgetBg: proxyBudget.bg,
+      proxyBudgetFg: proxyBudget.fg,
+      proxyBudgetBold: proxyBudget.bold,
       partFg: theme === "custom" ? this.resolvePartColors(convertHex) : {},
     };
   }
@@ -953,6 +994,8 @@ export class PowerlineRenderer {
         return colors.thinkingBg;
       case "cacheTimer":
         return colors.cacheTimerBg;
+      case "proxyBudget":
+        return colors.proxyBudgetBg;
       default:
         return colors.modeBg;
     }
@@ -994,6 +1037,8 @@ export class PowerlineRenderer {
         return colors.thinkingBold;
       case "cacheTimer":
         return colors.cacheTimerBold;
+      case "proxyBudget":
+        return colors.proxyBudgetBold;
       default:
         return colors.modeBold;
     }

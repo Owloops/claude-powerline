@@ -36,6 +36,7 @@ function makeCustomTheme(overrides: Partial<ColorTheme> = {}): ColorTheme {
     agent: { ...base },
     thinking: { ...base },
     cacheTimer: { ...base },
+    proxyBudget: { ...base },
     ...overrides,
   };
 }
