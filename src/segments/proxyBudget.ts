@@ -1,5 +1,6 @@
 import { debug } from "../utils/logger";
 import { CacheManager } from "../utils/cache";
+import { calculateBudgetPercentage } from "../utils/budget";
 
 export interface ProxyBudgetInfo {
   spend: number;
@@ -175,10 +176,14 @@ export class ProxyBudgetProvider {
         return null;
       }
 
+      const percentage = calculateBudgetPercentage(spend, budget);
+      if (percentage === null) {
+        return null;
+      }
       return {
         spend,
         budget,
-        percentage: (spend / budget) * 100,
+        percentage,
         resetAt,
       };
     } catch (error) {
