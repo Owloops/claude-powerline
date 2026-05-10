@@ -213,6 +213,81 @@ export class CacheManager {
     }
   }
 
+  static async getTtlCache(name: string, ttlSec: number): Promise<unknown> {
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY_MS = 75;
+    const FILE_ENCODING = "utf-8";
+
+    await this.ensureCacheDirectories();
+    const cachePath = path.join(this.USAGE_CACHE_DIR, `ttl-${name}.json`);
+    const lockName = `ttl-${name}.lock`;
+
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      if (this.isLocked(lockName)) {
+        debug(`TTL cache for ${name} is locked, waiting...`);
+        await setTimeout(RETRY_DELAY_MS);
+        continue;
+      }
+
+      try {
+        const content = await fs.promises.readFile(cachePath, FILE_ENCODING);
+        const cached: CacheEntry<unknown> = JSON.parse(content);
+        const ageSec = (Date.now() - cached.timestamp) / 1000;
+        if (ageSec < ttlSec) {
+          debug(
+            `[CACHE-HIT] ttl-${name} disk cache: fresh (${Math.round(ageSec)}s)`,
+          );
+          return cached.data;
+        }
+        debug(
+          `ttl-${name} cache stale: age=${Math.round(ageSec)}s, ttl=${ttlSec}s`,
+        );
+        return null;
+      } catch (error) {
+        if ((error as ErrnoError).code === "ENOENT") {
+          debug(`No ttl-${name} cache found`);
+          return null;
+        }
+        const attemptNumber = attempt + 1;
+        debug(
+          `Attempt ${attemptNumber} failed to read ttl-${name} cache: ${(error as Error).message}. Retrying...`,
+        );
+        await setTimeout(RETRY_DELAY_MS);
+      }
+    }
+
+    debug(`Failed to read ttl-${name} cache after ${MAX_RETRIES} attempts.`);
+    return null;
+  }
+
+  static async setTtlCache(name: string, data: unknown): Promise<void> {
+    const lockName = `ttl-${name}.lock`;
+    const lockAcquired = await this.acquireLock(lockName);
+    if (!lockAcquired) {
+      debug(`Could not acquire lock to set ttl cache for ${name}`);
+      return;
+    }
+
+    try {
+      await this.ensureCacheDirectories();
+      const cachePath = path.join(this.USAGE_CACHE_DIR, `ttl-${name}.json`);
+      const cacheEntry: CacheEntry<unknown> = {
+        data,
+        timestamp: Date.now(),
+      };
+      await fs.promises.writeFile(
+        cachePath,
+        JSON.stringify(cacheEntry),
+        "utf-8",
+      );
+      debug(`[CACHE-SET] ttl-${name} disk cache stored`);
+    } catch (error) {
+      debug(`Failed to save ttl-${name} cache:`, error);
+    } finally {
+      await this.releaseLock(lockName);
+    }
+  }
+
   static async getLatestTranscriptMtime(): Promise<number> {
     try {
       const claudePaths = getClaudePaths();
