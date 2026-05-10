@@ -474,11 +474,11 @@ Opt-in (`enabled: false` by default).
 }
 ```
 
-Set credentials in the environment Claude Code launches from:
+By default, the segment reads `ANTHROPIC_BASE_URL` and `ANTHROPIC_AUTH_TOKEN` — the same env vars Claude Code already uses to route through a proxy, so for the typical Claude Code + LiteLLM setup nothing else needs to be configured. To use a different env-var pair (for example a separate read-only key, or a non-Claude-Code-routed setup), override `baseUrlEnv` and `tokenEnv`:
 
 ```sh
-export LITELLM_PROXY_BASE_URL="https://litellm.example.com"
-export LITELLM_API_KEY="sk-..."
+export ANTHROPIC_BASE_URL="https://litellm.example.com"
+export ANTHROPIC_AUTH_TOKEN="sk-..."
 ```
 
 **Options:**
@@ -487,8 +487,8 @@ export LITELLM_API_KEY="sk-..."
 |---|---|---|
 | `type` | `spent+percentage` | Display format: `spent`, `remaining`, `percentage`, or `spent+percentage`. |
 | `endpoint` | `${baseUrl}/key/info` | Path or full URL. `${baseUrl}` is substituted from `baseUrlEnv`. |
-| `baseUrlEnv` | `LITELLM_PROXY_BASE_URL` | Env var holding the proxy base URL. |
-| `tokenEnv` | `LITELLM_API_KEY` | Env var holding the bearer token (the value never enters the config file). |
+| `baseUrlEnv` | `ANTHROPIC_BASE_URL` | Env var holding the proxy base URL. |
+| `tokenEnv` | `ANTHROPIC_AUTH_TOKEN` | Env var holding the bearer token (the value never enters the config file). |
 | `authScheme` | `bearer` | `bearer` (Authorization header) or `x-api-key`. |
 | `spendPath` | `info.spend` | Dotted JSON path to the current spend in the response body. |
 | `budgetPath` | `info.max_budget` | Dotted JSON path to the budget cap. |

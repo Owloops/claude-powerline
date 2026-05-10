@@ -20,8 +20,8 @@ export interface ProxyBudgetProviderConfig {
   timeoutMs?: number;
 }
 
-const DEFAULT_BASE_URL_ENV = "LITELLM_PROXY_BASE_URL";
-const DEFAULT_TOKEN_ENV = "LITELLM_API_KEY";
+const DEFAULT_BASE_URL_ENV = "ANTHROPIC_BASE_URL";
+const DEFAULT_TOKEN_ENV = "ANTHROPIC_AUTH_TOKEN";
 const DEFAULT_ENDPOINT_TEMPLATE = "${baseUrl}/key/info";
 const DEFAULT_SPEND_PATH = "info.spend";
 const DEFAULT_BUDGET_PATH = "info.max_budget";
