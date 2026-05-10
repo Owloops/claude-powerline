@@ -461,6 +461,57 @@ Opt-in (`enabled: false` by default).
 </details>
 
 <details>
+<summary><strong>Proxy Budget</strong> - Shows spend vs. budget reported by a Claude proxy (LiteLLM, OpenRouter, etc.)</summary>
+
+When you route Claude Code through a proxy that exposes a key/budget endpoint, this segment displays your spend against the proxy-side budget — useful when the proxy enforces the cap rather than the upstream provider.
+
+Opt-in (`enabled: false` by default).
+
+```json
+"proxyBudget": {
+  "enabled": true,
+  "type": "spent+percentage"
+}
+```
+
+Set credentials in the environment Claude Code launches from:
+
+```sh
+export LITELLM_PROXY_BASE_URL="https://litellm.example.com"
+export LITELLM_API_KEY="sk-..."
+```
+
+**Options:**
+
+| Option | Default | Description |
+|---|---|---|
+| `type` | `spent+percentage` | Display format: `spent`, `remaining`, `percentage`, or `spent+percentage`. |
+| `endpoint` | `${baseUrl}/key/info` | Path or full URL. `${baseUrl}` is substituted from `baseUrlEnv`. |
+| `baseUrlEnv` | `LITELLM_PROXY_BASE_URL` | Env var holding the proxy base URL. |
+| `tokenEnv` | `LITELLM_API_KEY` | Env var holding the bearer token (the value never enters the config file). |
+| `authScheme` | `bearer` | `bearer` (Authorization header) or `x-api-key`. |
+| `spendPath` | `info.spend` | Dotted JSON path to the current spend in the response body. |
+| `budgetPath` | `info.max_budget` | Dotted JSON path to the budget cap. |
+| `resetAtPath` | `info.budget_reset_at` | Dotted JSON path to the ISO-8601 reset timestamp (used when `showResetTime: true`). |
+| `showResetTime` | `false` | Append a relative time like `· 5d` derived from `resetAtPath`. |
+| `warningThreshold` | `80` | Percentage at which the segment switches to the warning color tier. |
+| `criticalThreshold` | `95` | Percentage at which the segment switches to the critical color tier. |
+| `cacheTtlSec` | `60` | Disk-cache TTL in seconds. The same response is reused across renders within the window. |
+| `timeoutMs` | `3000` | HTTP timeout. On timeout/non-2xx/parse-error the segment falls back to a stale cache (up to `10× cacheTtlSec` old) and otherwise renders nothing — the status bar never blocks on a flaky proxy. |
+
+**Display:** `⛁ $14.35/$1000.00 (1%)` &#8226; `⛁ 84%` (warning) &#8226; `⛁ 96%` (critical)
+
+**Color tiers:** healthy (segment color) → yellow warn (`warningThreshold`+) → red critical (`criticalThreshold`+), reusing `contextWarning`/`contextCritical` so the visual contract matches `today`/`block`.
+
+**Other proxies:** OpenRouter — set `endpoint` to `${baseUrl}/api/v1/auth/key`, `spendPath` to `data.usage`, `budgetPath` to `data.limit`. Anything that returns `{ spend, budget, ... }` JSON for a bearer or `x-api-key` auth header works the same way.
+
+**Symbols:** `⛁` Proxy budget (unicode) &#8226; `P$` Proxy budget (text)
+
+**Out of scope (v1):** cloud-native cost APIs that don't fit the bearer-token-JSON pattern (AWS Bedrock SigV4 + Cost Explorer, Vertex AI service-account JWT + Cloud Billing, Azure RBAC + Cost Management) need different auth and a multi-call shape. Use this segment for proxies; cloud-native cost reporting is a separate concern.
+
+</details>
+
+<details>
 <summary><strong>Tmux</strong> - Shows tmux session name and window info when in tmux</summary>
 
 ```json
