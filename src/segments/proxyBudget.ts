@@ -9,7 +9,41 @@ export interface ProxyBudgetInfo {
   resetAt: Date | null;
 }
 
+interface ProxyBudgetPresetDef {
+  endpoint: string;
+  spendPath: string;
+  budgetPath: string;
+  resetAtPath: string;
+  authScheme: "bearer" | "x-api-key";
+}
+
+// To add a new preset: add a single entry to this object. The type, the
+// runtime validator, and the test matrix all derive from the keys here.
+export const PROXY_BUDGET_PRESETS = {
+  litellm: {
+    endpoint: "${baseUrl}/key/info",
+    spendPath: "info.spend",
+    budgetPath: "info.max_budget",
+    resetAtPath: "info.budget_reset_at",
+    authScheme: "bearer",
+  },
+  openrouter: {
+    endpoint: "${baseUrl}/api/v1/key",
+    spendPath: "data.usage",
+    budgetPath: "data.limit",
+    resetAtPath: "data.limit_reset",
+    authScheme: "bearer",
+  },
+} as const satisfies Record<string, ProxyBudgetPresetDef>;
+
+export type ProxyBudgetPreset = keyof typeof PROXY_BUDGET_PRESETS;
+
+export function isProxyBudgetPreset(value: string): value is ProxyBudgetPreset {
+  return Object.prototype.hasOwnProperty.call(PROXY_BUDGET_PRESETS, value);
+}
+
 export interface ProxyBudgetProviderConfig {
+  preset?: ProxyBudgetPreset;
   endpoint?: string;
   baseUrlEnv?: string;
   tokenEnv?: string;
@@ -23,11 +57,6 @@ export interface ProxyBudgetProviderConfig {
 
 const DEFAULT_BASE_URL_ENV = "ANTHROPIC_BASE_URL";
 const DEFAULT_TOKEN_ENV = "ANTHROPIC_AUTH_TOKEN";
-const DEFAULT_ENDPOINT_TEMPLATE = "${baseUrl}/key/info";
-const DEFAULT_SPEND_PATH = "info.spend";
-const DEFAULT_BUDGET_PATH = "info.max_budget";
-const DEFAULT_RESET_AT_PATH = "info.budget_reset_at";
-const DEFAULT_AUTH_SCHEME: "bearer" | "x-api-key" = "bearer";
 const DEFAULT_CACHE_TTL_SEC = 60;
 const DEFAULT_TIMEOUT_MS = 3000;
 const STALE_FALLBACK_MULTIPLIER = 10;
@@ -72,7 +101,10 @@ export class ProxyBudgetProvider {
       return null;
     }
 
-    const endpointTemplate = config.endpoint ?? DEFAULT_ENDPOINT_TEMPLATE;
+    const preset = config.preset
+      ? PROXY_BUDGET_PRESETS[config.preset]
+      : PROXY_BUDGET_PRESETS.litellm;
+    const endpointTemplate = config.endpoint ?? preset.endpoint;
     const endpoint = this.resolveEndpoint(endpointTemplate, baseUrl);
     if (!endpoint) {
       debug(
@@ -125,11 +157,14 @@ export class ProxyBudgetProvider {
     token: string,
     config: ProxyBudgetProviderConfig,
   ): Promise<ProxyBudgetInfo | null> {
+    const preset = config.preset
+      ? PROXY_BUDGET_PRESETS[config.preset]
+      : PROXY_BUDGET_PRESETS.litellm;
     const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-    const authScheme = config.authScheme ?? DEFAULT_AUTH_SCHEME;
-    const spendPath = config.spendPath ?? DEFAULT_SPEND_PATH;
-    const budgetPath = config.budgetPath ?? DEFAULT_BUDGET_PATH;
-    const resetAtPath = config.resetAtPath ?? DEFAULT_RESET_AT_PATH;
+    const authScheme = config.authScheme ?? preset.authScheme;
+    const spendPath = config.spendPath ?? preset.spendPath;
+    const budgetPath = config.budgetPath ?? preset.budgetPath;
+    const resetAtPath = config.resetAtPath ?? preset.resetAtPath;
 
     const headers: Record<string, string> = {
       Accept: "application/json",

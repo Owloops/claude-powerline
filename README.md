@@ -474,25 +474,48 @@ Opt-in (`enabled: false` by default).
 }
 ```
 
+For OpenRouter, set the preset:
+
+```json
+"proxyBudget": {
+  "enabled": true,
+  "preset": "openrouter"
+}
+```
+
 By default, the segment reads `ANTHROPIC_BASE_URL` and `ANTHROPIC_AUTH_TOKEN` — the same env vars Claude Code already uses to route through a proxy, so for the typical Claude Code + LiteLLM setup nothing else needs to be configured. To use a different env-var pair (for example a separate read-only key, or a non-Claude-Code-routed setup), override `baseUrlEnv` and `tokenEnv`:
 
 ```sh
-export ANTHROPIC_BASE_URL="https://litellm.example.com"
-export ANTHROPIC_AUTH_TOKEN="sk-..."
+export ANTHROPIC_BASE_URL="https://openrouter.ai"
+export ANTHROPIC_AUTH_TOKEN="sk-or-v1-..."
 ```
+
+**Presets:**
+
+Two presets ship out of the box. Each bundles the endpoint suffix, JSON paths, and auth scheme:
+
+| Preset | Endpoint | Spend path | Cap path | Reset path |
+|---|---|---|---|---|
+| `litellm` (default) | `${baseUrl}/key/info` | `info.spend` | `info.max_budget` | `info.budget_reset_at` |
+| `openrouter` | `${baseUrl}/api/v1/key` | `data.usage` | `data.limit` | `data.limit_reset` |
+
+User-supplied per-field metadata (`endpoint`, `spendPath`, etc.) always overrides the preset. So any other proxy that returns JSON with spend and budget numbers behind a bearer or `x-api-key` header can be configured by setting just those three or four fields without picking a preset.
+
+The presets live in `PROXY_BUDGET_PRESETS` in `src/segments/proxyBudget.ts`. Adding a new one is a single object entry — the exported `ProxyBudgetPreset` type, the `isProxyBudgetPreset` runtime guard, and the test matrix all derive from the registry keys.
 
 **Options:**
 
 | Option | Default | Description |
 |---|---|---|
 | `type` | `spent+percentage` | Display format: `spent`, `remaining`, `percentage`, or `spent+percentage`. |
-| `endpoint` | `${baseUrl}/key/info` | Path or full URL. `${baseUrl}` is substituted from `baseUrlEnv`. |
+| `preset` | `litellm` | `litellm` or `openrouter`. Sets endpoint suffix + JSON paths + auth scheme. User-supplied per-field overrides win. |
+| `endpoint` | preset default | Path or full URL. `${baseUrl}` is substituted from `baseUrlEnv`. |
 | `baseUrlEnv` | `ANTHROPIC_BASE_URL` | Env var holding the proxy base URL. |
 | `tokenEnv` | `ANTHROPIC_AUTH_TOKEN` | Env var holding the bearer token (the value never enters the config file). |
-| `authScheme` | `bearer` | `bearer` (Authorization header) or `x-api-key`. |
-| `spendPath` | `info.spend` | Dotted JSON path to the current spend in the response body. |
-| `budgetPath` | `info.max_budget` | Dotted JSON path to the budget cap. |
-| `resetAtPath` | `info.budget_reset_at` | Dotted JSON path to the ISO-8601 reset timestamp (used when `showResetTime: true`). |
+| `authScheme` | preset default (`bearer`) | `bearer` (Authorization header) or `x-api-key`. |
+| `spendPath` | preset default | Dotted JSON path to the current spend in the response body. |
+| `budgetPath` | preset default | Dotted JSON path to the budget cap. |
+| `resetAtPath` | preset default | Dotted JSON path to the ISO-8601 reset timestamp (used when `showResetTime: true`). |
 | `showResetTime` | `false` | Append a relative time like `· 5d` derived from `resetAtPath`. |
 | `warningThreshold` | `80` | Percentage at which the segment switches to the warning color tier. |
 | `criticalThreshold` | `95` | Percentage at which the segment switches to the critical color tier. |
@@ -503,7 +526,7 @@ export ANTHROPIC_AUTH_TOKEN="sk-..."
 
 **Color tiers:** healthy (segment color) → yellow warn (`warningThreshold`+) → red critical (`criticalThreshold`+), reusing `contextWarning`/`contextCritical` so the visual contract matches `today`/`block`.
 
-**Other proxies:** OpenRouter — set `endpoint` to `${baseUrl}/api/v1/auth/key`, `spendPath` to `data.usage`, `budgetPath` to `data.limit`. Anything that returns `{ spend, budget, ... }` JSON for a bearer or `x-api-key` auth header works the same way.
+**Other proxies:** anything that returns `{ spend, budget, ... }` JSON for a bearer or `x-api-key` auth header works by setting `spendPath`/`budgetPath` to the right dotted paths (or by adding a preset entry — see above).
 
 **Symbols:** `⛁` Proxy budget (unicode) &#8226; `P$` Proxy budget (text)
 

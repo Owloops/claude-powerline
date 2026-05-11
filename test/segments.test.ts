@@ -2,7 +2,11 @@ import { BlockProvider } from "../src/segments/block";
 import { TodayProvider } from "../src/segments/today";
 import { SegmentRenderer } from "../src/segments/renderer";
 import { CacheTimerProvider } from "../src/segments/cacheTimer";
-import { ProxyBudgetProvider } from "../src/segments/proxyBudget";
+import {
+  ProxyBudgetProvider,
+  PROXY_BUDGET_PRESETS,
+  isProxyBudgetPreset,
+} from "../src/segments/proxyBudget";
 import { CacheManager } from "../src/utils/cache";
 import { formatCacheTimerElapsed } from "../src/utils/formatters";
 import {
@@ -1591,6 +1595,70 @@ describe("Segment Time Logic", () => {
           type: "percentage",
         }).text,
       ).toBe("25%");
+    });
+
+    it("preset=litellm uses /key/info with info.spend/info.max_budget paths", async () => {
+      mockFetchOk({
+        info: {
+          spend: 4,
+          max_budget: 40,
+          budget_reset_at: "2026-02-01T00:00:00Z",
+        },
+      });
+      const info = await provider().getProxyBudgetInfo({
+        ...defaultProviderConfig(),
+        preset: "litellm",
+      });
+      expect(info).not.toBeNull();
+      expect(info!.spend).toBe(4);
+      expect(info!.budget).toBe(40);
+      expect(info!.percentage).toBeCloseTo(10);
+      expect(info!.resetAt).toBeInstanceOf(Date);
+    });
+
+    it("preset=openrouter resolves /api/v1/key with data.usage/data.limit/data.limit_reset", async () => {
+      mockFetchOk({
+        data: { usage: 8, limit: 20, limit_reset: "2026-03-01T00:00:00Z" },
+      });
+      const info = await provider().getProxyBudgetInfo({
+        ...defaultProviderConfig(),
+        preset: "openrouter",
+      });
+      expect(info).not.toBeNull();
+      expect(info!.spend).toBe(8);
+      expect(info!.budget).toBe(20);
+      expect(info!.percentage).toBeCloseTo(40);
+      expect(info!.resetAt).toBeInstanceOf(Date);
+    });
+
+    it("user-supplied paths override preset defaults", async () => {
+      mockFetchOk({ custom: { my_spend: 6, my_cap: 60 } });
+      const info = await provider().getProxyBudgetInfo({
+        ...defaultProviderConfig(),
+        preset: "openrouter",
+        spendPath: "custom.my_spend",
+        budgetPath: "custom.my_cap",
+      });
+      expect(info!.spend).toBe(6);
+      expect(info!.budget).toBe(60);
+    });
+
+    it("isProxyBudgetPreset accepts every registered preset and rejects unknown ones", () => {
+      for (const key of Object.keys(PROXY_BUDGET_PRESETS)) {
+        expect(isProxyBudgetPreset(key)).toBe(true);
+      }
+      expect(isProxyBudgetPreset("bogus-proxy")).toBe(false);
+      expect(isProxyBudgetPreset("")).toBe(false);
+    });
+
+    it("every registered preset has a fully-specified shape", () => {
+      for (const def of Object.values(PROXY_BUDGET_PRESETS)) {
+        expect(def.endpoint).toMatch(/\$\{baseUrl\}/);
+        expect(def.spendPath).toBeTruthy();
+        expect(def.budgetPath).toBeTruthy();
+        expect(def.resetAtPath).toBeTruthy();
+        expect(["bearer", "x-api-key"]).toContain(def.authScheme);
+      }
     });
   });
 });
