@@ -207,6 +207,7 @@ In `--worktree` sessions, the directory segment automatically shows the original
 
 - `type`: Display format - `cost` | `tokens` | `both` | `breakdown`
 - `costSource`: Cost calculation method - `calculated` (ccusage-style) | `official` (hook data)
+- `showUnits`: Show the trailing `tokens` unit when `type` is `tokens` or `both` (default: `true`). Set to `false` to render `§ 4.4M` instead of `§ 4.4M tokens`. Only applies to the powerline/capsule/minimal styles; the `tui` style already renders tokens without a suffix
 
 **Symbols:** `§` Session (unicode) &#8226; `S` Session (text)
 
@@ -218,13 +219,14 @@ In `--worktree` sessions, the directory segment automatically shows the original
 ```json
 "today": {
   "enabled": true,
-  "type": "cost"
+  "type": "both"
 }
 ```
 
 **Options:**
 
 - `type`: Display format - `cost` | `tokens` | `both` | `breakdown`
+- `showUnits`: Show the trailing `tokens` unit when `type` is `tokens` or `both` (default: `true`). Set to `false` to render `☉ $12.34 (4.4M)` instead of `☉ $12.34 (4.4M tokens)`. Only applies to the powerline/capsule/minimal styles; the `tui` style already renders tokens without a suffix
 
 **Symbols:** `☉` Today (unicode) &#8226; `D` Today (text)
 
