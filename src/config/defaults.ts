@@ -27,8 +27,13 @@ export const DEFAULT_CONFIG: PowerlineConfig = {
             showRepoName: false,
           },
           model: { enabled: true },
-          session: { enabled: true, type: "tokens", costSource: "calculated" },
-          today: { enabled: true, type: "cost" },
+          session: {
+            enabled: true,
+            type: "tokens",
+            costSource: "calculated",
+            showUnits: true,
+          },
+          today: { enabled: true, type: "cost", showUnits: true },
           block: {
             enabled: false,
             type: "cost",

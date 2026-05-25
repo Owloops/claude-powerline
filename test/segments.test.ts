@@ -1327,4 +1327,155 @@ describe("Segment Time Logic", () => {
       ).toBeNull();
     });
   });
+
+  describe("Token unit toggle (session / today showUnits)", () => {
+    const sessionSymbols = { session_cost: "§" } as any;
+    const todaySymbols = { today_cost: "☉" } as any;
+    const sessionColors = {
+      sessionBg: "",
+      sessionFg: "",
+      sessionBold: false,
+    } as any;
+    const todayColors = {
+      todayBg: "",
+      todayFg: "",
+      todayBold: false,
+    } as any;
+    const baseConfig = {
+      theme: "dark",
+      display: { style: "minimal", showIcons: false, lines: [] },
+    } as any;
+
+    function renderSessionWith(type: string, showUnits?: boolean) {
+      const renderer = new SegmentRenderer(baseConfig, sessionSymbols);
+      const usageInfo = {
+        session: {
+          cost: 12.34,
+          tokens: 4_400_000,
+          calculatedCost: 12.34,
+          officialCost: null,
+          tokenBreakdown: null,
+        },
+      } as any;
+      return renderer.renderSession(usageInfo, sessionColors, {
+        enabled: true,
+        type,
+        showUnits,
+      } as any);
+    }
+
+    function renderTodayWith(type: string, showUnits?: boolean) {
+      const renderer = new SegmentRenderer(baseConfig, todaySymbols);
+      const todayInfo = {
+        cost: 12.34,
+        tokens: 4_400_000,
+        tokenBreakdown: {
+          input: 1_000,
+          output: 2_000,
+          cacheCreation: 0,
+          cacheRead: 500,
+        },
+        date: "2026-04-24",
+      } as any;
+      return renderer.renderToday(todayInfo, todayColors, {
+        enabled: true,
+        type,
+        showUnits,
+      } as any);
+    }
+
+    it("session type:tokens keeps the ' tokens' suffix by default", () => {
+      expect(renderSessionWith("tokens", undefined)!.text).toBe("4.4M tokens");
+      expect(renderSessionWith("tokens", true)!.text).toBe("4.4M tokens");
+    });
+
+    it("session type:tokens drops the ' tokens' suffix when showUnits is false", () => {
+      expect(renderSessionWith("tokens", false)!.text).toBe("4.4M");
+    });
+
+    it("session type:both drops the suffix inside the parentheses when showUnits is false", () => {
+      expect(renderSessionWith("both", false)!.text).toBe("$12.34 (4.4M)");
+      expect(renderSessionWith("both", true)!.text).toBe(
+        "$12.34 (4.4M tokens)",
+      );
+    });
+
+    it("today type:tokens drops the ' tokens' suffix when showUnits is false", () => {
+      expect(renderTodayWith("tokens", false)!.text).toBe("4.4M");
+      expect(renderTodayWith("tokens", true)!.text).toBe("4.4M tokens");
+    });
+
+    it("today type:both drops the suffix inside the parentheses when showUnits is false", () => {
+      expect(renderTodayWith("both", false)!.text).toBe("$12.34 (4.4M)");
+      expect(renderTodayWith("both", true)!.text).toBe("$12.34 (4.4M tokens)");
+    });
+
+    it("today type:breakdown ignores showUnits (no 'tokens' suffix to drop)", () => {
+      const expected = "1.0K in + 2.0K out + 500 cached";
+      expect(renderTodayWith("breakdown", true)!.text).toBe(expected);
+      expect(renderTodayWith("breakdown", false)!.text).toBe(expected);
+    });
+
+    it("today type:cost is unaffected by showUnits", () => {
+      expect(renderTodayWith("cost", false)!.text).toBe("$12.34");
+      expect(renderTodayWith("cost", true)!.text).toBe("$12.34");
+    });
+
+    it("session type:tokens with zero tokens drops 'tokens' when showUnits is false", () => {
+      const renderer = new SegmentRenderer(baseConfig, sessionSymbols);
+      const usageInfo = {
+        session: {
+          cost: 0,
+          tokens: 0,
+          calculatedCost: 0,
+          officialCost: null,
+          tokenBreakdown: null,
+        },
+      } as any;
+      const cfg = (showUnits: boolean) => ({
+        enabled: true,
+        type: "tokens",
+        showUnits,
+      });
+      expect(
+        renderer.renderSession(usageInfo, sessionColors, cfg(false) as any)!
+          .text,
+      ).toBe("0");
+      expect(
+        renderer.renderSession(usageInfo, sessionColors, cfg(true) as any)!
+          .text,
+      ).toBe("0 tokens");
+    });
+
+    it("session type:tokens with a budget threads showUnits through to the formatted base", () => {
+      const configWithBudget = {
+        theme: "dark",
+        display: { style: "minimal", showIcons: false, lines: [] },
+        budget: { session: { amount: 50, warningThreshold: 80 } },
+      } as any;
+      const renderer = new SegmentRenderer(configWithBudget, sessionSymbols);
+      const usageInfo = {
+        session: {
+          cost: 10,
+          tokens: 4_400_000,
+          calculatedCost: 10,
+          officialCost: null,
+          tokenBreakdown: null,
+        },
+      } as any;
+      const cfg = (showUnits: boolean) => ({
+        enabled: true,
+        type: "tokens",
+        showUnits,
+      });
+      expect(
+        renderer.renderSession(usageInfo, sessionColors, cfg(false) as any)!
+          .text,
+      ).toBe("4.4M 20%");
+      expect(
+        renderer.renderSession(usageInfo, sessionColors, cfg(true) as any)!
+          .text,
+      ).toBe("4.4M tokens 20%");
+    });
+  });
 });
