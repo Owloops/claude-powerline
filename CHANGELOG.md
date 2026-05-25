@@ -1,3 +1,11 @@
+# [1.27.0](https://github.com/Owloops/claude-powerline/compare/v1.26.0...v1.27.0) (2026-05-25)
+
+
+### Features
+
+* **cache-timer:** add remaining displayMode + TTL autodetect ([#85](https://github.com/Owloops/claude-powerline/issues/85)) ([45b2119](https://github.com/Owloops/claude-powerline/commit/45b2119d839f9db1ec4f23d33f3fdbf4f63899b1))
+* **segments:** add showUnits option to session/today tokens display ([#88](https://github.com/Owloops/claude-powerline/issues/88)) ([3375292](https://github.com/Owloops/claude-powerline/commit/3375292161d7c0f3a4945d6ef5227409efd5d3cb)), closes [#87](https://github.com/Owloops/claude-powerline/issues/87)
+
 # [1.26.0](https://github.com/Owloops/claude-powerline/compare/v1.25.2...v1.26.0) (2026-04-28)
 
 
