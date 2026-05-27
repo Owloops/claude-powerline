@@ -526,6 +526,30 @@ describe("TUI Panel Rendering", () => {
       expect(resultAbsent["cacheTimer.icon"]).toBe("");
       expect(resultAbsent["cacheTimer.value"]).toBe("");
     });
+    it("resolveSegments honors cacheTimer remaining mode and detected TTL", () => {
+      const config: PowerlineConfig = {
+        ...DEFAULT_CONFIG,
+        display: {
+          ...DEFAULT_CONFIG.display,
+          style: "tui",
+          lines: [
+            {
+              segments: {
+                ...DEFAULT_CONFIG.display.lines[0]!.segments,
+                cacheTimer: { enabled: true, displayMode: "remaining" },
+              },
+            },
+          ],
+        },
+      };
+      const data = makeTuiData({
+        cacheTimerInfo: { elapsedSeconds: 10, detectedTtlSeconds: 3600 },
+      });
+      const { data: result } = resolveSegments(data, mkCtx(config, data));
+      expect(result["cacheTimer.icon"]).toBe(SYMBOLS.cache_timer);
+      expect(result["cacheTimer.value"]).toBe("59:50");
+      expect(result["cacheTimer"]).toContain("59:50");
+    });
   });
 
   describe("Budget display toggles (TUI formatTodayParts / formatSessionParts)", () => {
