@@ -48,6 +48,12 @@ export class ContextProvider {
     if (id.includes("opus")) {
       return "opus";
     }
+    if (id.includes("fable")) {
+      return "fable";
+    }
+    if (id.includes("mythos")) {
+      return "mythos";
+    }
 
     return "default";
   }

@@ -132,6 +132,22 @@ const OFFLINE_PRICING_DATA: Record<string, ModelPricing> = {
     cache_write_1h: 6.0,
     cache_read: 0.3,
   },
+  "claude-fable-5": {
+    name: "Claude Fable 5",
+    input: 10.0,
+    output: 50.0,
+    cache_write_5m: 12.5,
+    cache_write_1h: 20.0,
+    cache_read: 1.0,
+  },
+  "claude-mythos-5": {
+    name: "Claude Mythos 5",
+    input: 10.0,
+    output: 50.0,
+    cache_write_5m: 12.5,
+    cache_write_1h: 20.0,
+    cache_read: 1.0,
+  },
 };
 
 export class PricingService {
@@ -376,6 +392,8 @@ export class PricingService {
         pattern: ["haiku-4.5", "4-5-haiku", "haiku-4-5"],
         fallback: "claude-haiku-4-5-20251001",
       },
+      { pattern: ["fable"], fallback: "claude-fable-5" },
+      { pattern: ["mythos"], fallback: "claude-mythos-5" },
       { pattern: ["haiku"], fallback: "claude-haiku-4-5-20251001" },
       { pattern: ["opus"], fallback: "claude-opus-4-20250514" },
       { pattern: ["sonnet"], fallback: "claude-sonnet-4-5-20250929" },
@@ -383,8 +401,10 @@ export class PricingService {
 
     for (const { pattern, fallback } of patterns) {
       if (pattern.some((p) => lowerModelId.includes(p))) {
-        if (allPricing[fallback]) {
-          return allPricing[fallback];
+        const fallbackPricing =
+          allPricing[fallback] || OFFLINE_PRICING_DATA[fallback];
+        if (fallbackPricing) {
+          return fallbackPricing;
         }
       }
     }
