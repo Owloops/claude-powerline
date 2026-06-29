@@ -83,5 +83,7 @@ export const DEFAULT_CONFIG: PowerlineConfig = {
     default: 200000,
     sonnet: 200000,
     opus: 200000,
+    fable: 1000000,
+    mythos: 1000000,
   },
 };

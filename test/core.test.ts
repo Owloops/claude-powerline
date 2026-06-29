@@ -235,5 +235,30 @@ describe("Core Functionality", () => {
       );
       expect(opusResult?.maxTokens).toBe(400000);
     });
+
+    it("should use 1M context limit for fable and mythos models by default", async () => {
+      const transcript = [
+        '{"timestamp":"2024-01-01T10:00:00Z","message":{"usage":{"input_tokens":100000}},"isSidechain":false}',
+      ].join("\n");
+
+      const transcriptPath = join(tempDir, "test-fable.jsonl");
+      writeFileSync(transcriptPath, transcript);
+
+      const { ContextProvider } = require("../src/segments/context");
+      const contextProvider = new ContextProvider(DEFAULT_CONFIG);
+
+      const fableResult = await contextProvider.calculateContextTokensFromTranscript(
+        transcriptPath,
+        "claude-fable-5"
+      );
+      expect(fableResult?.maxTokens).toBe(1000000);
+      expect(fableResult?.percentage).toBe(10);
+
+      const mythosResult = await contextProvider.calculateContextTokensFromTranscript(
+        transcriptPath,
+        "claude-mythos-5"
+      );
+      expect(mythosResult?.maxTokens).toBe(1000000);
+    });
   });
 });
