@@ -23,8 +23,10 @@ import {
   minutesUntilReset,
   abbreviateFishStyle,
   formatCacheTimerElapsed,
+  formatCacheTimerRemaining,
 } from "../utils/formatters";
 import { resolveBudgetDisplay } from "../utils/budget";
+import type { CacheTimerSegmentConfig } from "../segments/renderer";
 import { colorize, truncateAnsi } from "./primitives";
 import { getEffortLevel, getThinkingEnabled } from "../utils/claude";
 import { resolveIconVisibility } from "../utils/icon-visibility";
@@ -440,16 +442,19 @@ export function collectFooterParts(
   const cacheTimerEnabled = config.display.lines.some(
     (line) => line.segments.cacheTimer?.enabled,
   );
+  const cacheTimerConfig = getCacheTimerConfig(config);
   if (cacheTimerEnabled && data.cacheTimerInfo) {
     const cacheTimerText = formatCacheTimerSegment(
       data,
       sym,
+      cacheTimerConfig,
       resolveIconVisibility(config, "cacheTimer"),
     );
     if (cacheTimerText) {
       const { fg, bold } = cacheTimerStyle(
-        data.cacheTimerInfo.elapsedSeconds,
+        data.cacheTimerInfo,
         colors,
+        cacheTimerConfig,
       );
       parts.push(colorize(cacheTimerText, fg, reset, bold));
     }
@@ -1017,32 +1022,70 @@ function formatThinkingSegment(
   return iconVisible ? `${sym.thinking} ${body}` : body;
 }
 
+function getCacheTimerConfig(
+  config: PowerlineConfig,
+): CacheTimerSegmentConfig | undefined {
+  return config.display.lines
+    .map((line) => line.segments.cacheTimer)
+    .find((segment): segment is CacheTimerSegmentConfig =>
+      Boolean(segment?.enabled),
+    );
+}
+function cacheTimerRemaining(
+  info: NonNullable<TuiData["cacheTimerInfo"]>,
+  config?: CacheTimerSegmentConfig,
+): number {
+  const ttl = config?.ttlSeconds ?? info.detectedTtlSeconds ?? 3600;
+  return Math.max(0, ttl - info.elapsedSeconds);
+}
+function formatCacheTimerValue(
+  info: NonNullable<TuiData["cacheTimerInfo"]>,
+  config?: CacheTimerSegmentConfig,
+): string {
+  if (config?.displayMode === "remaining") {
+    return formatCacheTimerRemaining(cacheTimerRemaining(info, config));
+  }
+  return formatCacheTimerElapsed(info.elapsedSeconds);
+}
 function formatCacheTimerParts(
   data: TuiData,
   sym: SymbolSet,
+  config?: CacheTimerSegmentConfig,
   iconVisible = true,
 ): Record<string, string> {
   if (!data.cacheTimerInfo) return { icon: "", value: "" };
   return {
     icon: iconVisible ? sym.cache_timer : "",
-    value: formatCacheTimerElapsed(data.cacheTimerInfo.elapsedSeconds),
+    value: formatCacheTimerValue(data.cacheTimerInfo, config),
   };
 }
-
 function formatCacheTimerSegment(
   data: TuiData,
   sym: SymbolSet,
+  config?: CacheTimerSegmentConfig,
   iconVisible = true,
 ): string {
-  const parts = formatCacheTimerParts(data, sym, iconVisible);
+  const parts = formatCacheTimerParts(data, sym, config, iconVisible);
   if (!parts.value) return "";
   return parts.icon ? `${parts.icon} ${parts.value}` : parts.value;
 }
-
 function cacheTimerStyle(
-  elapsed: number,
+  info: NonNullable<TuiData["cacheTimerInfo"]>,
   colors: PowerlineColors,
+  config?: CacheTimerSegmentConfig,
 ): { fg: string; bold: boolean } {
+  if (config?.displayMode === "remaining") {
+    const remaining = cacheTimerRemaining(info, config);
+    if (remaining < 60) {
+      return { fg: colors.contextCriticalFg, bold: colors.contextCriticalBold };
+    }
+    if (remaining < 300) {
+      return { fg: colors.contextWarningFg, bold: colors.contextWarningBold };
+    }
+    return { fg: colors.cacheTimerFg, bold: colors.cacheTimerBold };
+  }
+
+  const elapsed = info.elapsedSeconds;
   if (elapsed >= 300) {
     return { fg: colors.contextCriticalFg, bold: colors.contextCriticalBold };
   }
@@ -1051,7 +1094,6 @@ function cacheTimerStyle(
   }
   return { fg: colors.cacheTimerFg, bold: colors.cacheTimerBold };
 }
-
 function formatTmuxParts(data: TuiData): Record<string, string> {
   if (!data.tmuxSessionId) return { label: "", value: "" };
   return { label: "tmux", value: data.tmuxSessionId };
@@ -1471,18 +1513,25 @@ export function resolveSegments(
   );
 
   // CacheTimer
-  const cacheTimerElapsed = data.cacheTimerInfo?.elapsedSeconds ?? 0;
-  const cacheTimerStyleResolved = cacheTimerStyle(cacheTimerElapsed, colors);
+  const cacheTimerConfig = getCacheTimerConfig(config);
+  const cacheTimerStyleResolved = data.cacheTimerInfo
+    ? cacheTimerStyle(data.cacheTimerInfo, colors, cacheTimerConfig)
+    : { fg: colors.cacheTimerFg, bold: colors.cacheTimerBold };
   const cacheTimerColor = pf?.["cacheTimer"] ?? cacheTimerStyleResolved.fg;
   result.cacheTimer = colorizeOrEmpty(
-    formatCacheTimerSegment(data, sym, iconVisible.cacheTimer),
+    formatCacheTimerSegment(
+      data,
+      sym,
+      cacheTimerConfig,
+      iconVisible.cacheTimer,
+    ),
     cacheTimerColor,
     cacheTimerStyleResolved.bold,
   );
   addParts(
     result,
     "cacheTimer",
-    formatCacheTimerParts(data, sym, iconVisible.cacheTimer),
+    formatCacheTimerParts(data, sym, cacheTimerConfig, iconVisible.cacheTimer),
     cacheTimerStyleResolved.fg,
     reset,
     pf,
