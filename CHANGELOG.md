@@ -1,3 +1,15 @@
+# [1.29.0](https://github.com/Owloops/claude-powerline/compare/v1.28.0...v1.29.0) (2026-07-28)
+
+
+### Bug Fixes
+
+* **cache:** include agent transcripts in the invalidation mtime check ([2029576](https://github.com/Owloops/claude-powerline/commit/2029576402de73227a8bd316008c9b7f65a7c0c4)), closes [#98](https://github.com/Owloops/claude-powerline/issues/98)
+
+
+### Features
+
+* **git:** add showWorktree to surface the indicator without showRepoName ([8cf7981](https://github.com/Owloops/claude-powerline/commit/8cf7981a6d36bc196fc67a9df2fdea311f52f984)), closes [#94](https://github.com/Owloops/claude-powerline/issues/94)
+
 # [1.28.0](https://github.com/Owloops/claude-powerline/compare/v1.27.1...v1.28.0) (2026-07-14)
 
 
