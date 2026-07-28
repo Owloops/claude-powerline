@@ -44,12 +44,14 @@ export interface DirectorySegmentConfig extends SegmentConfig {
 
 export interface GitSegmentConfig extends SegmentConfig {
   showSha?: boolean;
+  /** Show the ahead/behind arrows (default: true). Independent of `showUpstream`. */
   showAheadBehind?: boolean;
   showWorkingTree?: boolean;
   showOperation?: boolean;
   showTag?: boolean;
   showTimeSinceCommit?: boolean;
   showStashCount?: boolean;
+  /** Show the upstream branch name, e.g. `→origin/main` (default: false). Does not affect the ahead/behind arrows, which `showAheadBehind` controls separately. */
   showUpstream?: boolean;
   showRepoName?: boolean;
   /** Show the worktree indicator when in a linked worktree. Defaults to `showRepoName`, so setting it explicitly decouples the two. */
