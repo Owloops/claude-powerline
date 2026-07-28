@@ -1,7 +1,8 @@
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "fs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, utimesSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
-import { findAgentTranscripts } from "../src/utils/claude";
+import { findAgentTranscripts, collectProjectFiles } from "../src/utils/claude";
+import { CacheManager } from "../src/utils/cache";
 
 describe("findAgentTranscripts", () => {
   let tempDir: string;
@@ -20,7 +21,11 @@ describe("findAgentTranscripts", () => {
     return subagentsDir;
   }
 
-  function writeAgentFile(subagentsDir: string, name: string, sessionId: string): string {
+  function writeAgentFile(
+    subagentsDir: string,
+    name: string,
+    sessionId: string,
+  ): string {
     const filePath = join(subagentsDir, name);
     writeFileSync(filePath, JSON.stringify({ sessionId }) + "\n");
     return filePath;
@@ -29,7 +34,11 @@ describe("findAgentTranscripts", () => {
   it("finds agent transcripts in <session-uuid>/subagents/", async () => {
     const sessionId = "abc123";
     const subagentsDir = makeSubagentsDir(sessionId);
-    const agentFile = writeAgentFile(subagentsDir, "agent-a1b2c3.jsonl", sessionId);
+    const agentFile = writeAgentFile(
+      subagentsDir,
+      "agent-a1b2c3.jsonl",
+      sessionId,
+    );
 
     const result = await findAgentTranscripts(sessionId, tempDir);
 
@@ -77,12 +86,131 @@ describe("findAgentTranscripts", () => {
     const sessionId = "abc123";
     const subagentsDir = makeSubagentsDir(sessionId);
     writeAgentFile(subagentsDir, "agent-valid.jsonl", sessionId);
-    writeFileSync(join(subagentsDir, "agent-ignored.txt"), JSON.stringify({ sessionId }) + "\n");
-    writeFileSync(join(subagentsDir, "other.jsonl"), JSON.stringify({ sessionId }) + "\n");
+    writeFileSync(
+      join(subagentsDir, "agent-ignored.txt"),
+      JSON.stringify({ sessionId }) + "\n",
+    );
+    writeFileSync(
+      join(subagentsDir, "other.jsonl"),
+      JSON.stringify({ sessionId }) + "\n",
+    );
 
     const result = await findAgentTranscripts(sessionId, tempDir);
 
     expect(result).toHaveLength(1);
     expect(result[0]).toContain("agent-valid.jsonl");
+  });
+
+  it("finds workflow agent transcripts nested under subagents/workflows/", async () => {
+    const sessionId = "abc123";
+    const subagentsDir = makeSubagentsDir(sessionId);
+    writeAgentFile(subagentsDir, "agent-top.jsonl", sessionId);
+
+    const workflowDir = join(subagentsDir, "workflows", "wf_deadbeef");
+    mkdirSync(workflowDir, { recursive: true });
+    writeAgentFile(workflowDir, "agent-nested.jsonl", sessionId);
+
+    const result = await findAgentTranscripts(sessionId, tempDir);
+
+    expect(result).toHaveLength(2);
+    expect(result.some((f) => f.includes("agent-nested.jsonl"))).toBe(true);
+  });
+});
+
+describe("collectProjectFiles", () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), "powerline-collect-test-"));
+  });
+
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("collects session transcripts alongside flat and nested agent transcripts", async () => {
+    writeFileSync(join(tempDir, "session.jsonl"), "{}\n");
+
+    const subagentsDir = join(tempDir, "session", "subagents");
+    mkdirSync(join(subagentsDir, "workflows", "wf_1"), { recursive: true });
+    writeFileSync(join(subagentsDir, "agent-flat.jsonl"), "{}\n");
+    writeFileSync(
+      join(subagentsDir, "workflows", "wf_1", "agent-nested.jsonl"),
+      "{}\n",
+    );
+
+    const files = await collectProjectFiles(tempDir);
+    const names = files.map((f) => f.filePath.split(/[\\/]/).pop());
+
+    expect(names.sort()).toEqual([
+      "agent-flat.jsonl",
+      "agent-nested.jsonl",
+      "session.jsonl",
+    ]);
+  });
+});
+
+describe("CacheManager.getLatestTranscriptMtime", () => {
+  let claudeDir: string;
+  let projectDir: string;
+
+  beforeEach(() => {
+    claudeDir = mkdtempSync(join(tmpdir(), "powerline-mtime-test-"));
+    projectDir = join(claudeDir, "projects", "some-project");
+    mkdirSync(projectDir, { recursive: true });
+    process.env.CLAUDE_CONFIG_DIR = claudeDir;
+  });
+
+  afterEach(() => {
+    delete process.env.CLAUDE_CONFIG_DIR;
+    rmSync(claudeDir, { recursive: true, force: true });
+  });
+
+  const AGENT_MTIME = new Date("2026-07-21T12:00:00Z");
+
+  function writeAgedFile(filePath: string, mtime: Date): void {
+    mkdirSync(join(filePath, ".."), { recursive: true });
+    writeFileSync(filePath, "{}\n");
+    utimesSync(filePath, mtime, mtime);
+  }
+
+  beforeEach(() => {
+    // An older session transcript, so only an agent file can raise the mtime.
+    writeAgedFile(
+      join(projectDir, "session.jsonl"),
+      new Date("2026-07-21T10:00:00Z"),
+    );
+  });
+
+  // Regression tests for issue #98: agent usage that lands after the session
+  // transcript was last written has to move this timestamp, or the today cache
+  // is served stale while session cost keeps climbing past it.
+  it("reflects agent transcripts under subagents/", async () => {
+    writeAgedFile(
+      join(projectDir, "session", "subagents", "agent-flat.jsonl"),
+      AGENT_MTIME,
+    );
+
+    expect(await CacheManager.getLatestTranscriptMtime()).toBe(
+      AGENT_MTIME.getTime(),
+    );
+  });
+
+  it("reflects workflow agent transcripts nested deeper still", async () => {
+    writeAgedFile(
+      join(
+        projectDir,
+        "session",
+        "subagents",
+        "workflows",
+        "wf_1",
+        "agent-nested.jsonl",
+      ),
+      AGENT_MTIME,
+    );
+
+    expect(await CacheManager.getLatestTranscriptMtime()).toBe(
+      AGENT_MTIME.getTime(),
+    );
   });
 });
