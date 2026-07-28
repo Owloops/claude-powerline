@@ -69,15 +69,16 @@ export class GitService {
       showStashCount?: boolean;
       showUpstream?: boolean;
       showRepoName?: boolean;
+      showWorktree?: boolean;
     } = {},
     projectDir?: string,
   ): Promise<GitInfo | null> {
     let gitDir: string;
-    const isWorktreeDir = this.isWorktree(workingDir);
 
-    if (isWorktreeDir) {
-      // Worktree's .git is a file pointing to the main repo;
-      // git commands must run from the worktree directory.
+    if (this.hasGitFile(workingDir)) {
+      // A `.git` file rather than a directory means a linked worktree or a
+      // submodule; either way git commands must run from this directory
+      // instead of the project dir.
       gitDir = workingDir;
     } else if (projectDir && this.isGitRepo(projectDir)) {
       gitDir = projectDir;
@@ -137,6 +138,10 @@ export class GitService {
         lightOperations.repoName = this.getRepoNameAsync(gitDir);
       }
 
+      if (options.showWorktree) {
+        lightOperations.isWorktree = this.isLinkedWorktreeAsync(gitDir);
+      }
+
       const resultMap = new Map<string, unknown>();
 
       for (const [key, promise] of Object.entries(heavyOperations)) {
@@ -188,7 +193,10 @@ export class GitService {
 
       if (options.showRepoName) {
         result.repoName = (resultMap.get("repoName") as string) || undefined;
-        result.isWorktree = isWorktreeDir;
+      }
+
+      if (options.showWorktree) {
+        result.isWorktree = resultMap.get("isWorktree") === true;
       }
 
       return result;
@@ -336,13 +344,34 @@ export class GitService {
     }
   }
 
-  private isWorktree(workingDir: string): boolean {
+  private hasGitFile(workingDir: string): boolean {
     try {
-      const gitDir = path.join(workingDir, ".git");
-      if (fs.existsSync(gitDir) && fs.statSync(gitDir).isFile()) {
-        return true;
-      }
+      const gitPath = path.join(workingDir, ".git");
+      return fs.existsSync(gitPath) && fs.statSync(gitPath).isFile();
+    } catch {
       return false;
+    }
+  }
+
+  private async isLinkedWorktreeAsync(workingDir: string): Promise<boolean> {
+    try {
+      const result = await this.execGitAsync(
+        "git rev-parse --git-dir --git-common-dir",
+        {
+          cwd: workingDir,
+          encoding: "utf8",
+          timeout: 2000,
+        },
+      );
+      const [gitDir, commonDir] = result.stdout.trim().split("\n");
+      if (!gitDir || !commonDir) return false;
+
+      // A linked worktree has its own git dir under the main repo's
+      // .git/worktrees/, so the two paths differ. They are equal for a normal
+      // checkout, and for a submodule (whose .git is also a file).
+      return (
+        path.resolve(workingDir, gitDir) !== path.resolve(workingDir, commonDir)
+      );
     } catch {
       return false;
     }

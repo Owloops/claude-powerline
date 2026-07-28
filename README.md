@@ -171,11 +171,12 @@ In `--worktree` sessions, the directory segment automatically shows the original
 - `showStashCount`: Show stash count
 - `showUpstream`: Show upstream branch
 - `showRepoName`: Show repository name
+- `showWorktree`: Show the worktree indicator (⧉) when the current directory belongs to a linked git worktree. Defaults to whatever `showRepoName` is, so set it explicitly to get the indicator on its own — or to `false` to suppress it while still showing the repo name
 
 **Symbols:**
 
-- Unicode: `⎇` Branch &#8226; `♯` SHA &#8226; `⌂` Tag &#8226; `⧇` Stash &#8226; `✓` Clean &#8226; `●` Dirty &#8226; `⚠` Conflicts &#8226; `↑3` Ahead &#8226; `↓2` Behind &#8226; `(+1 ~2 ?3)` Staged/Unstaged/Untracked
-- Text: `~` Branch &#8226; `#` SHA &#8226; `T` Tag &#8226; `S` Stash &#8226; `=` Clean &#8226; `*` Dirty &#8226; `!` Conflicts &#8226; `^3` Ahead &#8226; `v2` Behind &#8226; `(+1 ~2 ?3)` Staged/Unstaged/Untracked
+- Unicode: `⎇` Branch &#8226; `♯` SHA &#8226; `⌂` Tag &#8226; `⧇` Stash &#8226; `✓` Clean &#8226; `●` Dirty &#8226; `⚠` Conflicts &#8226; `↑3` Ahead &#8226; `↓2` Behind &#8226; `⧉` Worktree &#8226; `(+1 ~2 ?3)` Staged/Unstaged/Untracked
+- Text: `~` Branch &#8226; `#` SHA &#8226; `T` Tag &#8226; `S` Stash &#8226; `=` Clean &#8226; `*` Dirty &#8226; `!` Conflicts &#8226; `^3` Ahead &#8226; `v2` Behind &#8226; `W` Worktree &#8226; `(+1 ~2 ?3)` Staged/Unstaged/Untracked
 
 </details>
 

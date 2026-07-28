@@ -43,6 +43,7 @@ import {
   TmuxService,
   MetricsProvider,
   SegmentRenderer,
+  shouldShowWorktree,
 } from "./segments";
 import { BlockProvider } from "./segments/block";
 import { TodayProvider } from "./segments/today";
@@ -319,6 +320,9 @@ export class PowerlineRenderer {
       .map((line) => line.segments.context)
       .find((c) => c?.enabled) as ContextSegmentConfig | undefined;
     const autocompactBuffer = contextSegmentConfig?.autocompactBuffer ?? 33000;
+    const gitSegmentConfig = this.config.display.lines
+      .map((line) => line.segments.git)
+      .find((g) => g?.enabled) as GitSegmentConfig | undefined;
 
     const results = await Promise.allSettled([
       this.usageProvider.getUsageInfo(hookData.session_id, hookData),
@@ -337,6 +341,7 @@ export class PowerlineRenderer {
           showStashCount: false,
           showUpstream: false,
           showRepoName: false,
+          showWorktree: shouldShowWorktree(gitSegmentConfig),
         },
         hookData.workspace?.project_dir,
       ),
@@ -647,6 +652,7 @@ export class PowerlineRenderer {
         showStashCount: config?.showStashCount,
         showUpstream: config?.showUpstream,
         showRepoName: config?.showRepoName,
+        showWorktree: shouldShowWorktree(config),
       },
       hookData.workspace?.project_dir,
     );

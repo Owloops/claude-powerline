@@ -1,6 +1,6 @@
 import { BlockProvider } from "../src/segments/block";
 import { TodayProvider } from "../src/segments/today";
-import { SegmentRenderer } from "../src/segments/renderer";
+import { SegmentRenderer, shouldShowWorktree } from "../src/segments/renderer";
 import { CacheTimerProvider } from "../src/segments/cacheTimer";
 import {
   formatCacheTimerElapsed,
@@ -365,11 +365,9 @@ describe("Segment Time Logic", () => {
 
       expect(renderer.renderAgent(base, colors, { enabled: true })).toBeNull();
       expect(
-        renderer.renderAgent(
-          { ...base, agent: { name: "   " } },
-          colors,
-          { enabled: true },
-        ),
+        renderer.renderAgent({ ...base, agent: { name: "   " } }, colors, {
+          enabled: true,
+        }),
       ).toBeNull();
     });
   });
@@ -1048,6 +1046,86 @@ describe("Segment Time Logic", () => {
     });
   });
 
+  describe("Git worktree indicator (issue #94)", () => {
+    const symbols = {
+      branch: "⎇",
+      git_clean: "✓",
+      git_dirty: "●",
+      git_worktree: "⧉",
+    } as any;
+    const colors = { gitBg: "", gitFg: "" } as any;
+    const config = {
+      theme: "dark",
+      display: { style: "minimal", lines: [] },
+    } as any;
+    const renderer = new SegmentRenderer(config, symbols);
+    const gitInfo = {
+      branch: "main",
+      status: "clean",
+      ahead: 0,
+      behind: 0,
+      isWorktree: true,
+    } as any;
+
+    it("renders ⧉ when the service reported a worktree", () => {
+      const git = renderer.renderGit(gitInfo, colors, { enabled: true });
+      expect(git!.text).toContain("⧉");
+    });
+
+    it("does not render ⧉ when isWorktree is false", () => {
+      const git = renderer.renderGit(
+        { ...gitInfo, isWorktree: false },
+        colors,
+        {
+          enabled: true,
+        },
+      );
+      expect(git!.text).not.toContain("⧉");
+    });
+
+    it("does not render ⧉ when the service was not asked to detect it", () => {
+      const git = renderer.renderGit(
+        { ...gitInfo, isWorktree: undefined },
+        colors,
+        { enabled: true },
+      );
+      expect(git!.text).not.toContain("⧉");
+    });
+
+    describe("shouldShowWorktree", () => {
+      it("follows showRepoName when showWorktree is unset", () => {
+        expect(shouldShowWorktree({ enabled: true, showRepoName: true })).toBe(
+          true,
+        );
+        expect(shouldShowWorktree({ enabled: true, showRepoName: false })).toBe(
+          false,
+        );
+      });
+
+      it("decouples the indicator when showWorktree is set explicitly", () => {
+        expect(
+          shouldShowWorktree({
+            enabled: true,
+            showRepoName: false,
+            showWorktree: true,
+          }),
+        ).toBe(true);
+        expect(
+          shouldShowWorktree({
+            enabled: true,
+            showRepoName: true,
+            showWorktree: false,
+          }),
+        ).toBe(false);
+      });
+
+      it("is off when nothing is configured", () => {
+        expect(shouldShowWorktree()).toBe(false);
+        expect(shouldShowWorktree({ enabled: true })).toBe(false);
+      });
+    });
+  });
+
   describe("CacheTimer Segment", () => {
     it("formats elapsed seconds across all thresholds", () => {
       expect(formatCacheTimerElapsed(0)).toBe("0:00");
@@ -1273,19 +1351,15 @@ describe("Segment Time Logic", () => {
       } as any;
       const renderer = new SegmentRenderer(config, symbols);
 
-      const fresh = renderer.renderCacheTimer(
-        { elapsedSeconds: 10 },
-        colors,
-        { displayMode: "remaining" } as any,
-      );
+      const fresh = renderer.renderCacheTimer({ elapsedSeconds: 10 }, colors, {
+        displayMode: "remaining",
+      } as any);
       expect(fresh.text).toContain("59:50");
       expect(fresh.bgColor).toBe(colors.cacheTimerBg);
 
-      const warn = renderer.renderCacheTimer(
-        { elapsedSeconds: 3500 },
-        colors,
-        { displayMode: "remaining" } as any,
-      );
+      const warn = renderer.renderCacheTimer({ elapsedSeconds: 3500 }, colors, {
+        displayMode: "remaining",
+      } as any);
       expect(warn.bgColor).toBe(colors.contextWarningBg);
 
       const critical = renderer.renderCacheTimer(
@@ -1295,11 +1369,9 @@ describe("Segment Time Logic", () => {
       );
       expect(critical.bgColor).toBe(colors.contextCriticalBg);
 
-      const cold = renderer.renderCacheTimer(
-        { elapsedSeconds: 7200 },
-        colors,
-        { displayMode: "remaining" } as any,
-      );
+      const cold = renderer.renderCacheTimer({ elapsedSeconds: 7200 }, colors, {
+        displayMode: "remaining",
+      } as any);
       expect(cold.text).toContain("cold");
       expect(cold.bgColor).toBe(colors.contextCriticalBg);
 
@@ -1392,7 +1464,11 @@ describe("Segment Time Logic", () => {
     const cases: Array<{
       name: string;
       opts: Parameters<typeof renderTodayCase>[0];
-      expected: { isNull: boolean; textContains?: string[]; textEquals?: string };
+      expected: {
+        isNull: boolean;
+        textContains?: string[];
+        textEquals?: string;
+      };
     }> = [
       {
         name: "default flags (both true) -> value + percentage",

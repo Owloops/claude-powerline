@@ -434,6 +434,32 @@ describe("TUI Panel Rendering", () => {
       expect(result["metrics.added"]).toContain(SYMBOLS.metrics_lines_added);
     });
 
+    it("renders the worktree indicator in the git segment and its own token", () => {
+      const config: PowerlineConfig = {
+        ...DEFAULT_CONFIG,
+        display: { ...DEFAULT_CONFIG.display, style: "tui" },
+      };
+      const data = makeTuiData();
+      data.gitInfo!.isWorktree = true;
+      const { data: result } = resolveSegments(data, mkCtx(config, data));
+
+      expect(result["git.worktree"]).toContain(SYMBOLS.git_worktree);
+      expect(result["git"]).toContain(SYMBOLS.git_worktree);
+      expect(result["git.head"]).toContain(SYMBOLS.git_worktree);
+    });
+
+    it("omits the worktree indicator when the git service did not report one", () => {
+      const config: PowerlineConfig = {
+        ...DEFAULT_CONFIG,
+        display: { ...DEFAULT_CONFIG.display, style: "tui" },
+      };
+      const data = makeTuiData();
+      const { data: result } = resolveSegments(data, mkCtx(config, data));
+
+      expect(result["git.worktree"]).toBe("");
+      expect(result["git"]).not.toContain(SYMBOLS.git_worktree);
+    });
+
     it("per-segment showIcon overrides global showIcons", () => {
       const config: PowerlineConfig = {
         ...DEFAULT_CONFIG,

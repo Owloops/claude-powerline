@@ -830,6 +830,7 @@ function formatGitParts(
       ahead: "",
       behind: "",
       working: "",
+      worktree: "",
       head: "",
     };
 
@@ -856,13 +857,18 @@ function formatGitParts(
     counts.push(`?${data.gitInfo.untracked}`);
   const working = counts.length > 0 ? `(${counts.join(" ")})` : "";
 
+  const worktree = data.gitInfo.isWorktree ? sym.git_worktree : "";
+
   const headParts: string[] = [];
+  if (worktree) headParts.push(worktree);
   if (iconVisible) headParts.push(sym.branch);
   headParts.push(data.gitInfo.branch, statusIcon);
   if (ahead) headParts.push(ahead);
   if (behind) headParts.push(behind);
 
-  const infoParts = [data.gitInfo.branch, statusIcon];
+  const infoParts: string[] = [];
+  if (worktree) infoParts.push(worktree);
+  infoParts.push(data.gitInfo.branch, statusIcon);
   if (ahead) infoParts.push(ahead);
   if (behind) infoParts.push(behind);
 
@@ -874,6 +880,7 @@ function formatGitParts(
     ahead,
     behind,
     working,
+    worktree,
     head: headParts.join(" "),
   };
 }
@@ -888,6 +895,7 @@ function formatGitSegment(
   let text = parts.icon
     ? `${parts.icon} ${parts.branch} ${parts.status}`
     : `${parts.branch} ${parts.status}`;
+  if (parts.worktree) text = `${parts.worktree} ${text}`;
   if (parts.ahead) text += ` ${parts.ahead}`;
   if (parts.behind) text += `${parts.behind}`;
   if (parts.working) text += ` ${parts.working}`;
