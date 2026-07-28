@@ -9,7 +9,7 @@ export { MetricsProvider } from "./metrics";
 export type { MetricsInfo } from "./metrics";
 export { CacheTimerProvider } from "./cacheTimer";
 export type { CacheTimerInfo } from "./cacheTimer";
-export { SegmentRenderer } from "./renderer";
+export { SegmentRenderer, shouldShowWorktree } from "./renderer";
 export type {
   PowerlineSymbols,
   AnySegmentConfig,

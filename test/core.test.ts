@@ -1,7 +1,9 @@
 import { PowerlineRenderer } from "../src/powerline";
-import { SessionProvider } from "../src/segments";
+import { GitService, SessionProvider } from "../src/segments";
 import { loadConfigFromCLI } from "../src/config/loader";
+import type { PowerlineConfig } from "../src/config/loader";
 import { DEFAULT_CONFIG } from "../src/config/defaults";
+import { SYMBOLS } from "../src/utils/constants";
 import { writeFileSync, unlinkSync, mkdtempSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
@@ -117,11 +119,113 @@ describe("Core Functionality", () => {
     it("should override config with CLI args", () => {
       const config = loadConfigFromCLI(
         ["--theme=dark", "--style=powerline"],
-        tempDir
+        tempDir,
       );
 
       expect(config.theme).toBe("dark");
       expect(config.display.style).toBe("powerline");
+    });
+  });
+
+  describe("Worktree indicator wiring", () => {
+    let getGitInfo: jest.SpyInstance;
+
+    beforeEach(() => {
+      // Report a worktree only when the caller actually asked for detection,
+      // so these tests fail if the option stops reaching the git service.
+      getGitInfo = jest
+        .spyOn(GitService.prototype, "getGitInfo")
+        .mockImplementation(async (_workingDir, options) => ({
+          branch: "feature",
+          status: "clean" as const,
+          ahead: 0,
+          behind: 0,
+          isWorktree: options?.showWorktree === true,
+        }));
+    });
+
+    afterEach(() => {
+      getGitInfo.mockRestore();
+    });
+
+    const hookData = {
+      session_id: "worktree-session",
+      transcript_path: "/fake/path.jsonl",
+      model: { id: "claude-3-5-sonnet", display_name: "Claude" },
+      hook_event_name: "test",
+    };
+
+    const configWith = (
+      style: "minimal" | "tui",
+      git: Record<string, unknown>,
+    ): PowerlineConfig => ({
+      ...DEFAULT_CONFIG,
+      display: {
+        ...DEFAULT_CONFIG.display,
+        style,
+        lines: [
+          {
+            segments: {
+              ...DEFAULT_CONFIG.display.lines[0]!.segments,
+              git: { enabled: true, ...git },
+            },
+          },
+        ],
+      },
+    });
+
+    it.each(["minimal", "tui"] as const)(
+      "renders the indicator in the %s style when showWorktree is set",
+      async (style) => {
+        const result = await new PowerlineRenderer(
+          configWith(style, { showWorktree: true }),
+        ).generateStatusline({
+          ...hookData,
+          cwd: tempDir,
+          workspace: { project_dir: tempDir, current_dir: tempDir },
+        });
+
+        expect(result).toContain(SYMBOLS.git_worktree);
+      },
+    );
+
+    it.each(["minimal", "tui"] as const)(
+      "omits the indicator in the %s style by default",
+      async (style) => {
+        const result = await new PowerlineRenderer(
+          configWith(style, {}),
+        ).generateStatusline({
+          ...hookData,
+          cwd: tempDir,
+          workspace: { project_dir: tempDir, current_dir: tempDir },
+        });
+
+        expect(result).not.toContain(SYMBOLS.git_worktree);
+      },
+    );
+
+    it("inherits showRepoName when showWorktree is unset", async () => {
+      const result = await new PowerlineRenderer(
+        configWith("minimal", { showRepoName: true }),
+      ).generateStatusline({
+        ...hookData,
+        cwd: tempDir,
+        workspace: { project_dir: tempDir, current_dir: tempDir },
+      });
+
+      expect(result).toContain(SYMBOLS.git_worktree);
+    });
+
+    it("lets showWorktree: false suppress the indicator for repo-name users", async () => {
+      const result = await new PowerlineRenderer(
+        configWith("minimal", { showRepoName: true, showWorktree: false }),
+      ).generateStatusline({
+        ...hookData,
+        cwd: tempDir,
+        workspace: { project_dir: tempDir, current_dir: tempDir },
+      });
+
+      expect(result).not.toContain(SYMBOLS.git_worktree);
     });
   });
 
@@ -137,7 +241,9 @@ describe("Core Functionality", () => {
       const { ContextProvider } = require("../src/segments/context");
       const contextProvider = new ContextProvider(DEFAULT_CONFIG);
       const result =
-        await contextProvider.calculateContextTokensFromTranscript(transcriptPath);
+        await contextProvider.calculateContextTokensFromTranscript(
+          transcriptPath,
+        );
 
       expect(result).toBeDefined();
       expect(result.totalTokens).toBe(15000);
@@ -165,7 +271,7 @@ describe("Core Functionality", () => {
       const contextProvider = new ContextProvider(customConfig);
       const result = await contextProvider.calculateContextTokensFromTranscript(
         transcriptPath,
-        "claude-sonnet-4-20250514"
+        "claude-sonnet-4-20250514",
       );
 
       expect(result).toBeDefined();
@@ -194,7 +300,7 @@ describe("Core Functionality", () => {
       const contextProvider = new ContextProvider(customConfig);
       const result = await contextProvider.calculateContextTokensFromTranscript(
         transcriptPath,
-        "unknown-model"
+        "unknown-model",
       );
 
       expect(result).toBeDefined();
@@ -223,16 +329,18 @@ describe("Core Functionality", () => {
       const { ContextProvider } = require("../src/segments/context");
       const contextProvider = new ContextProvider(customConfig);
 
-      const sonnetResult = await contextProvider.calculateContextTokensFromTranscript(
-        transcriptPath,
-        "claude-3-5-sonnet-20241022"
-      );
+      const sonnetResult =
+        await contextProvider.calculateContextTokensFromTranscript(
+          transcriptPath,
+          "claude-3-5-sonnet-20241022",
+        );
       expect(sonnetResult?.maxTokens).toBe(500000);
 
-      const opusResult = await contextProvider.calculateContextTokensFromTranscript(
-        transcriptPath,
-        "claude-opus-4-20250514"
-      );
+      const opusResult =
+        await contextProvider.calculateContextTokensFromTranscript(
+          transcriptPath,
+          "claude-opus-4-20250514",
+        );
       expect(opusResult?.maxTokens).toBe(400000);
     });
   });

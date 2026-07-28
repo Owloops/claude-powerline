@@ -52,6 +52,17 @@ export interface GitSegmentConfig extends SegmentConfig {
   showStashCount?: boolean;
   showUpstream?: boolean;
   showRepoName?: boolean;
+  /** Show the worktree indicator when in a linked worktree. Defaults to `showRepoName`, so setting it explicitly decouples the two. */
+  showWorktree?: boolean;
+}
+
+/**
+ * Resolves whether the worktree indicator is visible. Both the git service
+ * (to decide whether to detect it) and the renderers (to decide whether to
+ * draw it) go through here, so the two cannot drift apart.
+ */
+export function shouldShowWorktree(config?: GitSegmentConfig): boolean {
+  return config?.showWorktree ?? config?.showRepoName ?? false;
 }
 
 export interface UsageSegmentConfig extends SegmentConfig {
@@ -280,9 +291,12 @@ export class SegmentRenderer {
 
     if (config?.showRepoName && gitInfo.repoName) {
       parts.push(gitInfo.repoName);
-      if (gitInfo.isWorktree) {
-        parts.push(this.symbols.git_worktree);
-      }
+    }
+
+    // isWorktree is only populated when the caller asked for it via
+    // shouldShowWorktree, so there is nothing left to gate on here.
+    if (gitInfo.isWorktree) {
+      parts.push(this.symbols.git_worktree);
     }
 
     if (config?.showOperation && gitInfo.operation) {
