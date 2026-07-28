@@ -156,6 +156,7 @@ In `--worktree` sessions, the directory segment automatically shows the original
   "showTag": false,
   "showTimeSinceCommit": false,
   "showStashCount": false,
+  "showAheadBehind": true,
   "showUpstream": false,
   "showRepoName": false
 }
@@ -169,8 +170,11 @@ In `--worktree` sessions, the directory segment automatically shows the original
 - `showTag`: Show nearest tag
 - `showTimeSinceCommit`: Show time since last commit
 - `showStashCount`: Show stash count
-- `showUpstream`: Show upstream branch
+- `showAheadBehind`: Show ahead/behind arrows (default `true`)
+- `showUpstream`: Show the upstream branch name, e.g. `→origin/main`
 - `showRepoName`: Show repository name
+
+The two upstream options are independent. `showUpstream` controls the branch name only, `showAheadBehind` controls the `↑`/`↓` arrows. The default (`showUpstream: false`) already gives you arrows without the name; to drop the arrows too, set `showAheadBehind: false`.
 
 **Symbols:**
 
