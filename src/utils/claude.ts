@@ -156,37 +156,70 @@ export async function findTranscriptFile(
   return null;
 }
 
+/**
+ * Lists every agent transcript belonging to a session. Agents write to
+ * <session>/subagents/agent-*.jsonl, and workflow agents nest further under
+ * subagents/workflows/<runId>/, so the walk has to recurse.
+ *
+ * This is the single definition of where agent usage lives. Session cost,
+ * daily cost and the cache-invalidation mtime check all go through it, so
+ * they cannot disagree about which files count.
+ */
+export async function findAgentTranscriptPaths(
+  sessionDir: string,
+): Promise<string[]> {
+  const paths: string[] = [];
+
+  const walk = async (dir: string): Promise<void> => {
+    let entries;
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch {
+      // Sessions without agents have no subagents directory at all.
+      return;
+    }
+
+    for (const entry of entries) {
+      const entryPath = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        await walk(entryPath);
+      } else if (
+        entry.name.startsWith("agent-") &&
+        entry.name.endsWith(".jsonl")
+      ) {
+        paths.push(entryPath);
+      }
+    }
+  };
+
+  await walk(join(sessionDir, "subagents"));
+
+  return paths;
+}
+
 export async function findAgentTranscripts(
   sessionId: string,
   projectPath: string,
 ): Promise<string[]> {
   const agentFiles: string[] = [];
 
-  const subagentsDir = join(projectPath, sessionId, "subagents");
+  const candidates = await findAgentTranscriptPaths(
+    join(projectPath, sessionId),
+  );
 
-  try {
-    const files = await readdir(subagentsDir);
-    const agentFileNames = files.filter(
-      (f) => f.startsWith("agent-") && f.endsWith(".jsonl"),
-    );
-
-    for (const fileName of agentFileNames) {
-      const filePath = join(subagentsDir, fileName);
-      try {
-        const content = await readFile(filePath, "utf-8");
-        const firstLine = content.split("\n")[0];
-        if (firstLine) {
-          const parsed = JSON.parse(firstLine);
-          if (parsed.sessionId === sessionId) {
-            agentFiles.push(filePath);
-          }
+  for (const filePath of candidates) {
+    try {
+      const content = await readFile(filePath, "utf-8");
+      const firstLine = content.split("\n")[0];
+      if (firstLine) {
+        const parsed = JSON.parse(firstLine);
+        if (parsed.sessionId === sessionId) {
+          agentFiles.push(filePath);
         }
-      } catch {
-        debug(`Failed to check agent file ${filePath}`);
       }
+    } catch {
+      debug(`Failed to check agent file ${filePath}`);
     }
-  } catch (error) {
-    debug(`Failed to read subagents directory ${subagentsDir}:`, error);
   }
 
   return agentFiles;
@@ -414,7 +447,7 @@ async function statFile(filePath: string): Promise<FileStat | null> {
   }
 }
 
-async function collectProjectFiles(
+export async function collectProjectFiles(
   projectPath: string,
   fileFilter?: (filePath: string, modTime: Date) => boolean,
 ): Promise<FileStat[]> {
@@ -428,15 +461,8 @@ async function collectProjectFiles(
     const subagentFiles = entries
       .filter((e) => e.isDirectory())
       .map(async (e) => {
-        const subagentsDir = join(projectPath, e.name, "subagents");
-        try {
-          const files = await readdir(subagentsDir);
-          return files
-            .filter((f) => f.startsWith("agent-") && f.endsWith(".jsonl"))
-            .map((f) => statFile(join(subagentsDir, f)));
-        } catch {
-          return [];
-        }
+        const paths = await findAgentTranscriptPaths(join(projectPath, e.name));
+        return paths.map((p) => statFile(p));
       });
 
     const [sessionResults, subagentResults] = await Promise.all([

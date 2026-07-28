@@ -8,6 +8,7 @@ import {
   getClaudePaths,
   findProjectPaths,
   getFileModificationDate,
+  collectProjectFiles,
 } from "./claude";
 
 interface ErrnoError extends Error {
@@ -213,32 +214,25 @@ export class CacheManager {
     }
   }
 
+  /**
+   * Newest mtime across every transcript the cost segments read. It must cover
+   * the same files as collectProjectFiles: when it saw only top-level session
+   * transcripts, agent usage could land without moving this timestamp, so the
+   * today cache stayed valid while session cost had already grown past it
+   * (issue #98).
+   */
   static async getLatestTranscriptMtime(): Promise<number> {
     try {
       const claudePaths = getClaudePaths();
       const projectPaths = await findProjectPaths(claudePaths);
 
-      let latestMtime = 0;
+      const fileGroups = await Promise.all(
+        projectPaths.map((projectPath) => collectProjectFiles(projectPath)),
+      );
 
-      for (const projectPath of projectPaths) {
-        try {
-          const files = await fs.promises.readdir(projectPath);
-          const jsonlFiles = files.filter((file) => file.endsWith(".jsonl"));
-
-          for (const file of jsonlFiles) {
-            const filePath = path.join(projectPath, file);
-            const mtime = await getFileModificationDate(filePath);
-            if (mtime && mtime.getTime() > latestMtime) {
-              latestMtime = mtime.getTime();
-            }
-          }
-        } catch (error) {
-          debug(`Failed to read project directory ${projectPath}:`, error);
-          continue;
-        }
-      }
-
-      return latestMtime;
+      return fileGroups
+        .flat()
+        .reduce((latest, file) => Math.max(latest, file.mtime.getTime()), 0);
     } catch (error) {
       debug("Failed to get latest transcript mtime:", error);
       return Date.now();
