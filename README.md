@@ -858,9 +858,10 @@ Here `context.bar` spans the first three columns.
 Use bare segment names to render the full pre-formatted segment:
 
 ```
-context  block  session  today   weekly
-git      dir    version  tmux    metrics
-activity env    agent
+context  block    session  today    weekly
+git      dir      model    version  tmux
+metrics  activity env      agent    thinking
+cacheTimer
 ```
 
 #### Dot-Notation Subsegments
@@ -869,20 +870,22 @@ Use `segment.part` to place individual pieces of a segment into separate cells w
 
 | Segment | Parts |
 |---|---|
-| `git` | `icon`, `branch`, `status`, `ahead`, `behind`, `working`, `head` |
-| `context` | `icon`, `bar`, `pct`, `tokens` |
-| `block` | `icon`, `bar`, `value`, `time`, `budget` |
-| `session` | `icon`, `cost`, `tokens`, `budget` |
+| `session` | `icon`, `label`, `cost`, `tokens`, `budget` |
+| `block` | `icon`, `label`, `value`, `time`, `budget`, `bar` |
 | `today` | `icon`, `cost`, `label`, `budget` |
-| `weekly` | `icon`, `bar`, `pct`, `time` |
+| `weekly` | `icon`, `label`, `pct`, `time`, `bar` |
+| `git` | `icon`, `headVal`, `branch`, `status`, `ahead`, `behind`, `working`, `worktree`, `head` |
+| `context` | `icon`, `label`, `bar`, `pct`, `tokens` |
 | `metrics` | `response`, `responseIcon`, `responseVal`, `lastResponse`, `lastResponseIcon`, `lastResponseVal`, `added`, `addedIcon`, `addedVal`, `removed`, `removedIcon`, `removedVal` |
-| `activity` | `duration`, `durationIcon`, `durationVal`, `messages`, `messagesIcon`, `messagesVal` |
+| `activity` | `icon`, `duration`, `durationIcon`, `durationVal`, `messages`, `messagesIcon`, `messagesVal` |
+| `model` | `icon`, `value` |
 | `version` | `icon`, `value` |
 | `tmux` | `label`, `value` |
-| `dir` | `value` |
+| `dir` | `icon`, `value` |
 | `env` | `prefix`, `value` |
 | `agent` | `icon`, `name` |
 | `thinking` | `icon`, `enabled`, `effort` |
+| `cacheTimer` | `icon`, `value` |
 
 Example, block segment with a progress bar, mirroring the context layout:
 
