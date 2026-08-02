@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { renderTuiPanel } from "../src/tui/renderer";
 import {
   resolveSegments,
@@ -5,6 +7,7 @@ import {
   formatSessionParts,
 } from "../src/tui/sections";
 import type { TuiData, BoxChars, RenderCtx } from "../src/tui/types";
+import { isValidSegmentRef, SEGMENT_PARTS } from "../src/tui/types";
 import type { PowerlineColors } from "../src/themes";
 import type { PowerlineConfig } from "../src/config/loader";
 import { BOX_CHARS, SYMBOLS } from "../src/utils/constants";
@@ -128,6 +131,18 @@ function makeTuiData(overrides: Partial<TuiData> = {}): TuiData {
     ...overrides,
   };
 }
+
+const mkCtx = (config: PowerlineConfig, data: TuiData): RenderCtx => ({
+  lines: [],
+  data,
+  box: BOX_CHARS,
+  contentWidth: 96,
+  innerWidth: 98,
+  sym: SYMBOLS,
+  config,
+  reset: "",
+  colors: PLAIN_COLORS,
+});
 
 describe("TUI Panel Rendering", () => {
   describe("Wide layout (80+ cols)", () => {
@@ -386,18 +401,6 @@ describe("TUI Panel Rendering", () => {
   });
 
   describe("resolveSegments showIcons handling", () => {
-    const mkCtx = (config: PowerlineConfig, data: TuiData): RenderCtx => ({
-      lines: [],
-      data,
-      box: BOX_CHARS,
-      contentWidth: 96,
-      innerWidth: 98,
-      sym: SYMBOLS,
-      config,
-      reset: "",
-      colors: PLAIN_COLORS,
-    });
-
     it("strips leading icons from segments and composite tokens while keeping metrics icons and git status glyphs", () => {
       const config: PowerlineConfig = {
         ...DEFAULT_CONFIG,
@@ -575,6 +578,68 @@ describe("TUI Panel Rendering", () => {
       expect(result["cacheTimer.icon"]).toBe(SYMBOLS.cache_timer);
       expect(result["cacheTimer.value"]).toBe("59:50");
       expect(result["cacheTimer"]).toContain("59:50");
+    });
+  });
+
+  describe("SEGMENT_PARTS registry", () => {
+    // Every optional-data segment populated, so resolveSegments publishes the
+    // full token namespace rather than the subset the default fixture covers.
+    function resolveEverything(): Record<string, string> {
+      const base = makeTuiData();
+      const data = makeTuiData({
+        hookData: {
+          ...base.hookData,
+          rate_limits: {
+            seven_day: {
+              used_percentage: 42,
+              resets_at: Math.floor(Date.now() / 1000) + 4 * 24 * 3600,
+            },
+          },
+        },
+        gitInfo: {
+          branch: "main",
+          status: "dirty",
+          ahead: 1,
+          behind: 2,
+          staged: 1,
+          unstaged: 2,
+          untracked: 3,
+          isWorktree: true,
+        },
+        cacheTimerInfo: { elapsedSeconds: 30 },
+      });
+      return resolveSegments(data, mkCtx(tuiConfig, data)).data;
+    }
+
+    it("validates every token resolveSegments publishes", () => {
+      const rejected = Object.keys(resolveEverything()).filter(
+        (token) => !isValidSegmentRef(token),
+      );
+      expect(rejected).toEqual([]);
+    });
+
+    it("lists no part that resolveSegments never publishes", () => {
+      const result = resolveEverything();
+      const orphaned = Object.entries(SEGMENT_PARTS)
+        .flatMap(([segment, parts]) =>
+          parts.map((part) => `${segment}.${part}`),
+        )
+        .filter((ref) => !(ref in result));
+      expect(orphaned).toEqual([]);
+    });
+
+    it("matches the dot-notation table documented in the README", () => {
+      const readme = readFileSync(join(__dirname, "..", "README.md"), "utf8");
+      const documented = Object.fromEntries(
+        Array.from(
+          readme.matchAll(/^\| `(\w+)` \| ((?:`\w+`(?:, )?)+) \|$/gm),
+          ([, segment, parts]) => [
+            segment,
+            parts!.split(", ").map((part) => part.slice(1, -1)),
+          ],
+        ),
+      );
+      expect(documented).toEqual(SEGMENT_PARTS);
     });
   });
 
