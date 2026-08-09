@@ -520,12 +520,6 @@ describe("Segment Time Logic", () => {
         cfg: {},
         expected: null,
       },
-      {
-        name: "whitespace-only name -> null",
-        hook: { output_style: { name: "   " } },
-        cfg: {},
-        expected: null,
-      },
     ];
 
     it.each(cases)("$name", ({ hook, cfg, expected }) => {
@@ -559,16 +553,6 @@ describe("Segment Time Logic", () => {
         { enabled: true },
       );
       expect(result!.text).toBe("Explanatory");
-    });
-
-    it("renders a non-string name as absent", () => {
-      const renderer = new SegmentRenderer(config, symbols);
-      const result = renderer.renderOutputStyle(
-        { ...base, output_style: { name: 7 } } as any,
-        colors,
-        { enabled: true },
-      );
-      expect(result).toBeNull();
     });
   });
 

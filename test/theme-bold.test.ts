@@ -107,19 +107,22 @@ describe("segment bold theme", () => {
   });
 
   it("applies outputStyle bold from a custom theme through getSegmentBoldFlag", async () => {
-    const makeOutputStyleConfig = (custom: ColorTheme): PowerlineConfig => ({
-      ...makeConfig(custom),
-      display: {
-        ...makeConfig(custom).display,
-        lines: [
-          {
-            segments: {
-              outputStyle: { enabled: true },
+    const makeOutputStyleConfig = (custom: ColorTheme): PowerlineConfig => {
+      const base = makeConfig(custom);
+      return {
+        ...base,
+        display: {
+          ...base.display,
+          lines: [
+            {
+              segments: {
+                outputStyle: { enabled: true },
+              },
             },
-          },
-        ],
-      },
-    });
+          ],
+        },
+      };
+    };
 
     const hookData = { ...mockHookData, output_style: { name: "Explanatory" } };
 

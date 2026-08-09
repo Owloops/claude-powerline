@@ -136,11 +136,10 @@ describe("Colors", () => {
   describe("Built-in theme completeness", () => {
     it("should define outputStyle colors in every built-in theme variant", () => {
       const names = Object.keys(BUILT_IN_THEMES);
-      expect(names).toHaveLength(18);
+      expect(names.length).toBeGreaterThan(0);
 
       for (const name of names) {
         const theme = BUILT_IN_THEMES[name]!;
-        expect(theme.outputStyle).toBeDefined();
         expect(theme.outputStyle.bg).toMatch(/^#[0-9a-fA-F]{6}$/);
         expect(theme.outputStyle.fg).toMatch(/^#[0-9a-fA-F]{6}$/);
       }

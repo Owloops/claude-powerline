@@ -26,9 +26,7 @@ describe("config", () => {
     });
 
     it("should ship outputStyle disabled with both options off", () => {
-      expect(
-        DEFAULT_CONFIG.display.lines[0]?.segments.outputStyle,
-      ).toEqual({
+      expect(DEFAULT_CONFIG.display.lines[0]?.segments.outputStyle).toEqual({
         enabled: false,
         showLabel: false,
         hideDefault: false,

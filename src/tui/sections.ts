@@ -26,7 +26,10 @@ import {
   formatCacheTimerRemaining,
 } from "../utils/formatters";
 import { resolveBudgetDisplay } from "../utils/budget";
-import type { CacheTimerSegmentConfig } from "../segments/renderer";
+import type {
+  CacheTimerSegmentConfig,
+  OutputStyleSegmentConfig,
+} from "../segments/renderer";
 import { colorize, truncateAnsi } from "./primitives";
 import {
   getEffortLevel,
@@ -1010,7 +1013,7 @@ function formatAgentSegment(
 function formatOutputStyleParts(
   data: TuiData,
   sym: SymbolSet,
-  outputStyleConfig: { hideDefault?: boolean } | undefined,
+  outputStyleConfig: OutputStyleSegmentConfig | undefined,
   iconVisible = true,
 ): Record<string, string> {
   const name = getOutputStyleName(data.hookData);
@@ -1027,7 +1030,7 @@ function formatOutputStyleParts(
 function formatOutputStyleSegment(
   data: TuiData,
   sym: SymbolSet,
-  outputStyleConfig: { showLabel?: boolean; hideDefault?: boolean } | undefined,
+  outputStyleConfig: OutputStyleSegmentConfig | undefined,
   iconVisible = true,
 ): string {
   const parts = formatOutputStyleParts(
@@ -1051,11 +1054,14 @@ function formatOutputStyleSegment(
  */
 function getOutputStyleConfig(
   config: PowerlineConfig,
-): { showLabel?: boolean; hideDefault?: boolean } | undefined {
+): OutputStyleSegmentConfig | undefined {
   const configured = config.display.lines.map(
     (line) => line.segments.outputStyle,
   );
-  return configured.find((s) => s?.enabled) ?? configured.find((s) => s);
+  return (
+    configured.find((segment) => segment?.enabled) ??
+    configured.find((segment) => segment !== undefined)
+  );
 }
 
 function buildThinkingBody(
