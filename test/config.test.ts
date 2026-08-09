@@ -24,6 +24,16 @@ describe("config", () => {
       expect(DEFAULT_CONFIG.display.style).toBe("minimal");
       expect(DEFAULT_CONFIG.budget?.session).toBeDefined();
     });
+
+    it("should ship outputStyle disabled with both options off", () => {
+      expect(
+        DEFAULT_CONFIG.display.lines[0]?.segments.outputStyle,
+      ).toEqual({
+        enabled: false,
+        showLabel: false,
+        hideDefault: false,
+      });
+    });
   });
 
   describe("loadConfig", () => {

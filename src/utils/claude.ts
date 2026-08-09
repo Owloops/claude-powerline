@@ -84,6 +84,13 @@ export function getThinkingEnabled(hookData: ClaudeHookData): boolean | null {
   return enabled;
 }
 
+export function getOutputStyleName(hookData: ClaudeHookData): string | null {
+  const name = hookData.output_style?.name;
+  if (typeof name !== "string") return null;
+  const trimmed = name.trim();
+  return trimmed ? trimmed : null;
+}
+
 export function getClaudePaths(): string[] {
   const paths: string[] = [];
 

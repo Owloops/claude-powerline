@@ -37,6 +37,7 @@ export interface ColorTheme {
   agent: SegmentColor;
   thinking: SegmentColor;
   cacheTimer: SegmentColor;
+  outputStyle: SegmentColor;
 }
 
 export interface PowerlineColors {
@@ -92,6 +93,9 @@ export interface PowerlineColors {
   cacheTimerBg: string;
   cacheTimerFg: string;
   cacheTimerBold: boolean;
+  outputStyleBg: string;
+  outputStyleFg: string;
+  outputStyleBold: boolean;
   partFg: Record<string, string>;
 }
 

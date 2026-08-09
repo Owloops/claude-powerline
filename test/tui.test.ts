@@ -7,6 +7,7 @@ import {
 import type { TuiData, BoxChars, RenderCtx } from "../src/tui/types";
 import type { PowerlineColors } from "../src/themes";
 import type { PowerlineConfig } from "../src/config/loader";
+import type { OutputStyleSegmentConfig } from "../src/segments/renderer";
 import { BOX_CHARS, SYMBOLS } from "../src/utils/constants";
 import { DEFAULT_CONFIG } from "../src/config/defaults";
 
@@ -64,6 +65,9 @@ const PLAIN_COLORS: PowerlineColors = {
   cacheTimerBg: "",
   cacheTimerFg: "",
   cacheTimerBold: false,
+  outputStyleBg: "",
+  outputStyleFg: "",
+  outputStyleBold: false,
   partFg: {},
 };
 
@@ -575,6 +579,236 @@ describe("TUI Panel Rendering", () => {
       expect(result["cacheTimer.icon"]).toBe(SYMBOLS.cache_timer);
       expect(result["cacheTimer.value"]).toBe("59:50");
       expect(result["cacheTimer"]).toContain("59:50");
+    });
+
+    it("resolveSegments exposes outputStyle sub-parts (icon, name) when data present, empty when absent", () => {
+      const config: PowerlineConfig = {
+        ...DEFAULT_CONFIG,
+        display: { ...DEFAULT_CONFIG.display, style: "tui" },
+      };
+
+      const withData = makeTuiData({
+        hookData: {
+          ...makeTuiData().hookData,
+          output_style: { name: "Explanatory" },
+        },
+      });
+      const { data: resultPresent } = resolveSegments(
+        withData,
+        mkCtx(config, withData),
+      );
+      expect(resultPresent["outputStyle.icon"]).toBe(SYMBOLS.output_style);
+      expect(resultPresent["outputStyle.name"]).toBe("Explanatory");
+      expect(resultPresent["outputStyle"]).toBe(
+        `${SYMBOLS.output_style} Explanatory`,
+      );
+
+      const absent = makeTuiData();
+      const { data: resultAbsent } = resolveSegments(
+        absent,
+        mkCtx(config, absent),
+      );
+      expect(resultAbsent["outputStyle"]).toBe("");
+      expect(resultAbsent["outputStyle.icon"]).toBe("");
+      expect(resultAbsent["outputStyle.name"]).toBe("");
+    });
+
+    it("resolveSegments honors outputStyle showLabel and hideDefault", () => {
+      const configWith = (
+        segment: OutputStyleSegmentConfig,
+      ): PowerlineConfig => ({
+        ...DEFAULT_CONFIG,
+        display: {
+          ...DEFAULT_CONFIG.display,
+          style: "tui",
+          lines: [
+            {
+              segments: {
+                ...DEFAULT_CONFIG.display.lines[0]!.segments,
+                outputStyle: segment,
+              },
+            },
+          ],
+        },
+      });
+
+      const labelled = makeTuiData({
+        hookData: {
+          ...makeTuiData().hookData,
+          output_style: { name: "Explanatory" },
+        },
+      });
+      const { data: labelledResult } = resolveSegments(
+        labelled,
+        mkCtx(configWith({ enabled: true, showLabel: true }), labelled),
+      );
+      expect(labelledResult["outputStyle"]).toBe(
+        `${SYMBOLS.output_style} style: Explanatory`,
+      );
+      expect(labelledResult["outputStyle.name"]).toBe("Explanatory");
+
+      const defaultStyle = makeTuiData({
+        hookData: {
+          ...makeTuiData().hookData,
+          output_style: { name: "Default" },
+        },
+      });
+      const { data: hiddenResult } = resolveSegments(
+        defaultStyle,
+        mkCtx(configWith({ enabled: true, hideDefault: true }), defaultStyle),
+      );
+      expect(hiddenResult["outputStyle"]).toBe("");
+      expect(hiddenResult["outputStyle.icon"]).toBe("");
+      expect(hiddenResult["outputStyle.name"]).toBe("");
+    });
+
+    it("applies outputStyle options in grid mode even when enabled is false, since cell placement controls visibility there", () => {
+      const configWith = (
+        segment: OutputStyleSegmentConfig,
+      ): PowerlineConfig => ({
+        ...DEFAULT_CONFIG,
+        display: {
+          ...DEFAULT_CONFIG.display,
+          style: "tui",
+          lines: [
+            {
+              segments: {
+                ...DEFAULT_CONFIG.display.lines[0]!.segments,
+                outputStyle: segment,
+              },
+            },
+          ],
+        },
+      });
+
+      const labelled = makeTuiData({
+        hookData: {
+          ...makeTuiData().hookData,
+          output_style: { name: "Explanatory" },
+        },
+      });
+      const { data: labelledResult } = resolveSegments(
+        labelled,
+        mkCtx(configWith({ enabled: false, showLabel: true }), labelled),
+      );
+      expect(labelledResult["outputStyle"]).toBe(
+        `${SYMBOLS.output_style} style: Explanatory`,
+      );
+
+      const defaultStyle = makeTuiData({
+        hookData: {
+          ...makeTuiData().hookData,
+          output_style: { name: "default" },
+        },
+      });
+      const { data: hiddenResult } = resolveSegments(
+        defaultStyle,
+        mkCtx(configWith({ enabled: false, hideDefault: true }), defaultStyle),
+      );
+      expect(hiddenResult["outputStyle"]).toBe("");
+      expect(hiddenResult["outputStyle.name"]).toBe("");
+    });
+  });
+
+  describe("outputStyle in the TUI panel", () => {
+    const styleData = () =>
+      makeTuiData({
+        hookData: {
+          ...makeTuiData().hookData,
+          output_style: { name: "Explanatory" },
+        },
+      });
+
+    const footerConfig = (
+      segment?: OutputStyleSegmentConfig,
+    ): PowerlineConfig => ({
+      ...DEFAULT_CONFIG,
+      display: {
+        ...DEFAULT_CONFIG.display,
+        style: "tui",
+        lines: [
+          {
+            segments: {
+              ...DEFAULT_CONFIG.display.lines[0]!.segments,
+              ...(segment ? { outputStyle: segment } : {}),
+            },
+          },
+        ],
+      },
+    });
+
+    it("omits the footer entry when the segment is disabled in config", async () => {
+      const result = await renderTuiPanel(
+        styleData(),
+        BOX_CHARS,
+        "",
+        100,
+        footerConfig({ enabled: false }),
+      );
+      expect(result).not.toContain("Explanatory");
+      expect(result).not.toContain(SYMBOLS.output_style);
+    });
+
+    it("shows the footer entry when the segment is enabled in config", async () => {
+      const result = await renderTuiPanel(
+        styleData(),
+        BOX_CHARS,
+        "",
+        100,
+        footerConfig({ enabled: true }),
+      );
+      expect(result).toContain(`${SYMBOLS.output_style} Explanatory`);
+    });
+
+    it("omits the footer entry when hideDefault is set and the style is default", async () => {
+      const defaultData = makeTuiData({
+        hookData: {
+          ...makeTuiData().hookData,
+          output_style: { name: "default" },
+        },
+      });
+      const result = await renderTuiPanel(
+        defaultData,
+        BOX_CHARS,
+        "",
+        100,
+        footerConfig({ enabled: true, hideDefault: true }),
+      );
+      expect(result).not.toContain("default");
+      expect(result).not.toContain(SYMBOLS.output_style);
+    });
+
+    it("renders outputStyle.icon and outputStyle.name placed in grid cells", async () => {
+      const gridConfig: PowerlineConfig = {
+        ...DEFAULT_CONFIG,
+        display: {
+          ...DEFAULT_CONFIG.display,
+          style: "tui",
+          tui: {
+            widthReserve: 0,
+            terminalWidth: 100,
+            separator: { column: "  " },
+            breakpoints: [
+              {
+                minWidth: 0,
+                areas: ["outputStyle.icon outputStyle.name"],
+                columns: ["auto", "1fr"],
+                align: ["left", "left"],
+              },
+            ],
+          },
+        },
+      };
+
+      const result = await renderTuiPanel(
+        styleData(),
+        BOX_CHARS,
+        "",
+        100,
+        gridConfig,
+      );
+      expect(result).toContain(SYMBOLS.output_style);
+      expect(result).toContain("Explanatory");
     });
   });
 
