@@ -56,6 +56,7 @@ const SEGMENT_NAME_LIST = [
   "agent",
   "thinking",
   "cacheTimer",
+  "outputStyle",
 ] as const;
 
 export type SegmentName = (typeof SEGMENT_NAME_LIST)[number];
@@ -121,6 +122,7 @@ const SEGMENT_PART_NAMES = {
   agent: ["icon", "name"],
   thinking: ["icon", "enabled", "effort"],
   cacheTimer: ["icon", "value"],
+  outputStyle: ["icon", "name"],
 } as const satisfies Record<SegmentName, readonly string[]>;
 
 export const SEGMENT_PARTS: Record<SegmentName, readonly string[]> =

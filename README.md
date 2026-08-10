@@ -433,6 +433,29 @@ Set `showEnabled: false` to hide the `On`/`Off` state, or `showEffort: false` to
 </details>
 
 <details>
+<summary><strong>Output Style</strong> - Shows the active Claude Code output style (<code>default</code>, <code>Explanatory</code>, <code>Learning</code>, or a custom style)</summary>
+
+Opt-in (`enabled: false` by default).
+
+```json
+"outputStyle": {
+  "enabled": true,
+  "showLabel": false,
+  "hideDefault": false
+}
+```
+
+Set `showLabel: true` to prefix the name with `style: `. Set `hideDefault: true` to omit the segment while the active style is `default` (compared case-insensitively), so the segment only appears once you switch away from the default style.
+
+**Display:** `✎ Explanatory` (or `✎ style: Explanatory` with `showLabel: true`)
+
+**Symbols:** `✎` Output Style (unicode) &#8226; `OS` Output Style (text)
+
+The style name comes from Claude Code on stdin and is rendered verbatim. Older Claude Code builds do not send it — the segment is then hidden entirely rather than rendered empty.
+
+</details>
+
+<details>
 <summary><strong>Cache Timer</strong> - Shows time since last turn, tracking Claude's 5-minute prompt cache TTL</summary>
 
 Opt-in (`enabled: false` by default).
@@ -861,7 +884,7 @@ Use bare segment names to render the full pre-formatted segment:
 context  block    session  today    weekly
 git      dir      model    version  tmux
 metrics  activity env      agent    thinking
-cacheTimer
+cacheTimer  outputStyle
 ```
 
 #### Dot-Notation Subsegments
@@ -886,6 +909,7 @@ Use `segment.part` to place individual pieces of a segment into separate cells w
 | `agent` | `icon`, `name` |
 | `thinking` | `icon`, `enabled`, `effort` |
 | `cacheTimer` | `icon`, `value` |
+| `outputStyle` | `icon`, `name` |
 
 Example, block segment with a progress bar, mirroring the context layout:
 

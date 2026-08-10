@@ -21,6 +21,7 @@ import type {
   AgentSegmentConfig,
   ThinkingSegmentConfig,
   CacheTimerSegmentConfig,
+  OutputStyleSegmentConfig,
 } from "./segments";
 import type { BlockInfo } from "./segments/block";
 import type { TodayInfo } from "./segments/today";
@@ -630,6 +631,14 @@ export class PowerlineRenderer {
       );
     }
 
+    if (segment.type === "outputStyle") {
+      return this.segmentRenderer.renderOutputStyle(
+        hookData,
+        colors,
+        segment.config as OutputStyleSegmentConfig,
+      );
+    }
+
     return null;
   }
 
@@ -768,6 +777,7 @@ export class PowerlineRenderer {
       agent: symbolSet.agent,
       thinking: symbolSet.thinking,
       cache_timer: symbolSet.cache_timer,
+      output_style: symbolSet.output_style,
     };
   }
 
@@ -848,6 +858,7 @@ export class PowerlineRenderer {
     const agent = getSegmentColors("agent");
     const thinking = getSegmentColors("thinking");
     const cacheTimer = getSegmentColors("cacheTimer");
+    const outputStyle = getSegmentColors("outputStyle");
 
     return {
       reset: colorSupport === "none" ? "" : RESET_CODE,
@@ -902,6 +913,9 @@ export class PowerlineRenderer {
       cacheTimerBg: cacheTimer.bg,
       cacheTimerFg: cacheTimer.fg,
       cacheTimerBold: cacheTimer.bold,
+      outputStyleBg: outputStyle.bg,
+      outputStyleFg: outputStyle.fg,
+      outputStyleBold: outputStyle.bold,
       partFg: theme === "custom" ? this.resolvePartColors(convertHex) : {},
     };
   }
@@ -959,6 +973,8 @@ export class PowerlineRenderer {
         return colors.thinkingBg;
       case "cacheTimer":
         return colors.cacheTimerBg;
+      case "outputStyle":
+        return colors.outputStyleBg;
       default:
         return colors.modeBg;
     }
@@ -1000,6 +1016,8 @@ export class PowerlineRenderer {
         return colors.thinkingBold;
       case "cacheTimer":
         return colors.cacheTimerBold;
+      case "outputStyle":
+        return colors.outputStyleBold;
       default:
         return colors.modeBold;
     }

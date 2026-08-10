@@ -18,6 +18,7 @@ export const tokyoNightTheme: ColorTheme = {
   agent: { bg: "#2d2b55", fg: "#bb9af7" },
   thinking: { bg: "#2f2a3d", fg: "#bb9af7" },
   cacheTimer: { bg: "#1f2e2a", fg: "#9ece6a" },
+  outputStyle: { bg: "#2a3d3d", fg: "#73daca" },
 };
 
 export const tokyoNightAnsi256Theme: ColorTheme = {
@@ -38,6 +39,7 @@ export const tokyoNightAnsi256Theme: ColorTheme = {
   agent: { bg: "#5f5f87", fg: "#af87ff" },
   thinking: { bg: "#444460", fg: "#d787ff" },
   cacheTimer: { bg: "#1c3a30", fg: "#87d787" },
+  outputStyle: { bg: "#444460", fg: "#5fd7af" },
 };
 
 export const tokyoNightAnsiTheme: ColorTheme = {
@@ -58,4 +60,5 @@ export const tokyoNightAnsiTheme: ColorTheme = {
   agent: { bg: "#5f5faf", fg: "#d787ff" },
   thinking: { bg: "#585870", fg: "#d787ff" },
   cacheTimer: { bg: "#305050", fg: "#00d787" },
+  outputStyle: { bg: "#585870", fg: "#5fd7af" },
 };

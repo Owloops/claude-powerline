@@ -36,6 +36,7 @@ function makeCustomTheme(overrides: Partial<ColorTheme> = {}): ColorTheme {
     agent: { ...base },
     thinking: { ...base },
     cacheTimer: { ...base },
+    outputStyle: { ...base },
     ...overrides,
   };
 }
@@ -103,6 +104,45 @@ describe("segment bold theme", () => {
     ).generateStatusline(mockHookData);
     expect(tuiPlainOut).not.toContain("\x1b[1m");
     expect(tuiPlainOut).not.toContain("\x1b[22m");
+  });
+
+  it("applies outputStyle bold from a custom theme through getSegmentBoldFlag", async () => {
+    const makeOutputStyleConfig = (custom: ColorTheme): PowerlineConfig => {
+      const base = makeConfig(custom);
+      return {
+        ...base,
+        display: {
+          ...base.display,
+          lines: [
+            {
+              segments: {
+                outputStyle: { enabled: true },
+              },
+            },
+          ],
+        },
+      };
+    };
+
+    const hookData = { ...mockHookData, output_style: { name: "Explanatory" } };
+
+    const boldOut = await new PowerlineRenderer(
+      makeOutputStyleConfig(
+        makeCustomTheme({
+          outputStyle: { bg: "#1f3a3a", fg: "#7fd1c4", bold: true },
+        }),
+      ),
+    ).generateStatusline(hookData);
+    expect(stripAnsi(boldOut)).toContain("✎ Explanatory");
+    expect(boldOut).toContain("\x1b[1m");
+    expect(boldOut).toContain("\x1b[22m");
+
+    const plainOut = await new PowerlineRenderer(
+      makeOutputStyleConfig(makeCustomTheme()),
+    ).generateStatusline(hookData);
+    expect(stripAnsi(plainOut)).toContain("✎ Explanatory");
+    expect(plainOut).not.toContain("\x1b[1m");
+    expect(plainOut).not.toContain("\x1b[22m");
   });
 
   it("preserves visible width — bold SGRs do not affect visibleLength / stripAnsi", () => {

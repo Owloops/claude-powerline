@@ -1,3 +1,10 @@
+# [1.30.0](https://github.com/Owloops/claude-powerline/compare/v1.29.0...v1.30.0) (2026-08-10)
+
+
+### Features
+
+* **segments:** add outputStyle segment showing the active output style ([87f6461](https://github.com/Owloops/claude-powerline/commit/87f64617ec142e569bbac70635dd82d00763bb97))
+
 # [1.29.0](https://github.com/Owloops/claude-powerline/compare/v1.28.0...v1.29.0) (2026-07-28)
 
 
