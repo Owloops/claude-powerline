@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { DEFAULT_CONFIG } from "../src/config/defaults";
 import { loadConfig, loadConfigFromCLI } from "../src/config/loader";
+import { SEGMENT_PARTS } from "../src/tui/types";
 
 jest.mock("node:fs");
 jest.mock("node:os");
@@ -345,6 +346,32 @@ describe("config", () => {
       });
       expect(config.display.tui).toBeUndefined();
       expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining("cells but expected"));
+    });
+
+    it("should accept a worktree indicator as a grid cell", () => {
+      const config = loadWithGrid({
+        breakpoints: [{
+          minWidth: 0,
+          areas: ["git.worktree git.branch"],
+          columns: ["auto", "1fr"],
+        }],
+      });
+      expect(config.display.tui).toBeDefined();
+      expect(stderrSpy).not.toHaveBeenCalled();
+    });
+
+    // Guards the boundary the runtime tokens are actually rejected at: a part
+    // can resolve in resolveSegments and still be turned away here.
+    it("should accept every part in the segment registry as a grid cell", () => {
+      const rejected = Object.entries(SEGMENT_PARTS)
+        .flatMap(([segment, parts]) => parts.map((part) => `${segment}.${part}`))
+        .filter((ref) => {
+          const config = loadWithGrid({
+            breakpoints: [{ minWidth: 0, areas: [ref], columns: ["1fr"] }],
+          });
+          return config.display.tui === undefined;
+        });
+      expect(rejected).toEqual([]);
     });
 
     it("should reject grid config with unknown segment name", () => {

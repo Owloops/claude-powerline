@@ -5,6 +5,8 @@ import type {
   SymbolSet,
   BoxChars,
   RenderCtx,
+  SegmentName,
+  SegmentParts,
   SegmentTemplate,
   JustifyValue,
   TuiTitleConfig,
@@ -30,6 +32,7 @@ import type {
   CacheTimerSegmentConfig,
   OutputStyleSegmentConfig,
 } from "../segments/renderer";
+import { segmentPartNames } from "./types";
 import { colorize, truncateAnsi } from "./primitives";
 import {
   getEffortLevel,
@@ -161,7 +164,7 @@ export function formatContextParts(
   data: TuiData,
   sym: SymbolSet,
   iconVisible = true,
-): Record<string, string> {
+): SegmentParts<"context"> {
   if (!data.contextInfo)
     return { icon: "", label: "context", bar: "", pct: "", tokens: "" };
 
@@ -566,7 +569,7 @@ export function formatBlockParts(
   sym: SymbolSet,
   _config: PowerlineConfig,
   iconVisible = true,
-): Record<string, string> {
+): SegmentParts<"block"> {
   const value = `${Math.round(blockInfo.nativeUtilization)}%`;
   const time = formatTimeRemaining(blockInfo.timeRemaining);
 
@@ -597,7 +600,7 @@ export function formatWeeklyParts(
   sevenDay: { used_percentage: number; resets_at: number },
   sym: SymbolSet,
   iconVisible = true,
-): Record<string, string> {
+): SegmentParts<"weekly"> {
   const pct = `${Math.round(sevenDay.used_percentage)}%`;
   const time = formatLongTimeRemaining(minutesUntilReset(sevenDay.resets_at));
   return {
@@ -625,7 +628,7 @@ export function formatSessionParts(
   sym: SymbolSet,
   config: PowerlineConfig,
   iconVisible = true,
-): Record<string, string> {
+): SegmentParts<"session"> {
   const state = resolveBudgetDisplay(
     usageInfo.session.cost,
     usageInfo.session.tokens,
@@ -685,7 +688,7 @@ export function formatTodayParts(
   sym: SymbolSet,
   config: PowerlineConfig,
   iconVisible = true,
-): Record<string, string> {
+): SegmentParts<"today"> {
   const state = resolveBudgetDisplay(
     todayInfo.cost,
     todayInfo.tokens,
@@ -732,8 +735,8 @@ export function formatTodaySegment(
 function formatMetricsParts(
   data: TuiData,
   sym: SymbolSet,
-): Record<string, string> {
-  const empty = {
+): SegmentParts<"metrics"> {
+  const empty: SegmentParts<"metrics"> = {
     response: "",
     responseIcon: "",
     responseVal: "",
@@ -805,8 +808,8 @@ function formatMetricsSegment(data: TuiData, sym: SymbolSet): string {
 function formatActivityParts(
   data: TuiData,
   sym: SymbolSet,
-): Record<string, string> {
-  const empty = {
+): SegmentParts<"activity"> {
+  const empty: SegmentParts<"activity"> = {
     icon: "",
     duration: "",
     durationIcon: "",
@@ -849,7 +852,7 @@ function formatGitParts(
   data: TuiData,
   sym: SymbolSet,
   iconVisible = true,
-): Record<string, string> {
+): SegmentParts<"git"> {
   if (!data.gitInfo)
     return {
       icon: "",
@@ -936,7 +939,7 @@ function formatDirParts(
   config: PowerlineConfig,
   sym: SymbolSet,
   iconVisible = true,
-): Record<string, string> {
+): SegmentParts<"dir"> {
   return {
     icon: iconVisible ? sym.dir : "",
     value: formatDirValue(data, config),
@@ -962,7 +965,7 @@ function formatVersionParts(
   data: TuiData,
   sym: SymbolSet,
   iconVisible = true,
-): Record<string, string> {
+): SegmentParts<"version"> {
   if (!data.hookData.version) return { icon: "", value: "" };
   return {
     icon: iconVisible ? sym.version : "",
@@ -984,7 +987,7 @@ function formatAgentParts(
   data: TuiData,
   sym: SymbolSet,
   iconVisible = true,
-): Record<string, string> {
+): SegmentParts<"agent"> {
   const raw = data.hookData.agent?.name;
   if (typeof raw !== "string") return { icon: "", name: "" };
   const name = raw.trim();
@@ -1015,7 +1018,7 @@ function formatOutputStyleParts(
   sym: SymbolSet,
   outputStyleConfig: OutputStyleSegmentConfig | undefined,
   iconVisible = true,
-): Record<string, string> {
+): SegmentParts<"outputStyle"> {
   const name = getOutputStyleName(data.hookData);
   if (!name) return { icon: "", name: "" };
   if (outputStyleConfig?.hideDefault && name.toLowerCase() === "default") {
@@ -1086,7 +1089,7 @@ function formatThinkingParts(
   sym: SymbolSet,
   thinkingConfig: { showEnabled?: boolean; showEffort?: boolean } | undefined,
   iconVisible = true,
-): Record<string, string> {
+): SegmentParts<"thinking"> {
   const showEnabled = thinkingConfig?.showEnabled ?? true;
   const showEffort = thinkingConfig?.showEffort ?? true;
   const enabled = showEnabled ? getThinkingEnabled(data.hookData) : null;
@@ -1143,7 +1146,7 @@ function formatCacheTimerParts(
   sym: SymbolSet,
   config?: CacheTimerSegmentConfig,
   iconVisible = true,
-): Record<string, string> {
+): SegmentParts<"cacheTimer"> {
   if (!data.cacheTimerInfo) return { icon: "", value: "" };
   return {
     icon: iconVisible ? sym.cache_timer : "",
@@ -1185,7 +1188,7 @@ function cacheTimerStyle(
   }
   return { fg: colors.cacheTimerFg, bold: colors.cacheTimerBold };
 }
-function formatTmuxParts(data: TuiData): Record<string, string> {
+function formatTmuxParts(data: TuiData): SegmentParts<"tmux"> {
   if (!data.tmuxSessionId) return { label: "", value: "" };
   return { label: "tmux", value: data.tmuxSessionId };
 }
@@ -1196,7 +1199,7 @@ function formatTmuxSegment(data: TuiData): string {
   return `${parts.label}:${parts.value}`;
 }
 
-function formatEnvParts(config: PowerlineConfig): Record<string, string> {
+function formatEnvParts(config: PowerlineConfig): SegmentParts<"env"> {
   const envConfig = config.display.lines
     .map((line) => line.segments.env)
     .find((env) => env?.enabled);
@@ -1214,16 +1217,22 @@ function formatEnvSegment(config: PowerlineConfig): string {
   return parts.prefix ? `${parts.prefix}:${parts.value}` : parts.value;
 }
 
-function addParts(
+function addParts<S extends SegmentName>(
   result: Record<string, string>,
-  segment: string,
-  parts: Record<string, string>,
+  segment: S,
+  parts: SegmentParts<S>,
   color: string,
   reset: string,
   partFg?: Record<string, string>,
   bold = false,
 ): void {
-  for (const [key, value] of Object.entries(parts)) {
+  // Driven by the registry, not by the formatter's own keys, so a part that
+  // config validation would reject can never reach the token namespace.
+  // The lookup widening is safe because `parts` is keyed by this same list;
+  // TypeScript just cannot correlate the two while `S` is still generic.
+  const values = parts as Record<string, string | undefined>;
+  for (const key of segmentPartNames(segment)) {
+    const value = values[key];
     const partKey = `${segment}.${key}`;
     const partColor = partFg?.[partKey] ?? partFg?.[segment] ?? color;
     result[partKey] = value ? colorize(value, partColor, reset, bold) : "";
