@@ -1,3 +1,10 @@
+## [1.30.1](https://github.com/Owloops/claude-powerline/compare/v1.30.0...v1.30.1) (2026-08-10)
+
+
+### Bug Fixes
+
+* **tui:** accept git.worktree in grid cells ([5c99c49](https://github.com/Owloops/claude-powerline/commit/5c99c4965ba523f68101358e8b1b2c776661bee2)), closes [#95](https://github.com/Owloops/claude-powerline/issues/95) [#100](https://github.com/Owloops/claude-powerline/issues/100)
+
 # [1.30.0](https://github.com/Owloops/claude-powerline/compare/v1.29.0...v1.30.0) (2026-08-10)
 
 
