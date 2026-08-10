@@ -27,4 +27,5 @@ export type {
   AgentSegmentConfig,
   ThinkingSegmentConfig,
   CacheTimerSegmentConfig,
+  OutputStyleSegmentConfig,
 } from "./renderer";

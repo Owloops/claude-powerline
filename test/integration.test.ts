@@ -1,5 +1,8 @@
 import { PowerlineRenderer } from "../src/powerline";
 import type { ClaudeHookData } from "../src/utils/claude";
+import type { PowerlineConfig } from "../src/config/loader";
+import type { OutputStyleSegmentConfig } from "../src/segments/renderer";
+import { stripAnsi } from "../src/utils/terminal";
 
 jest.mock("../src/segments/session", () => ({
   SessionProvider: jest.fn().mockImplementation(() => ({
@@ -145,5 +148,82 @@ describe("Integration Tests", () => {
     const result = await renderer.generateStatusline(mockHookData);
 
     expect(typeof result).toBe("string");
+  });
+
+  describe("outputStyle segment end to end", () => {
+    const styleHookData: ClaudeHookData = {
+      ...mockHookData,
+      output_style: { name: "Explanatory" },
+    };
+
+    const configFor = (
+      display: Partial<PowerlineConfig["display"]> = {},
+      segment: OutputStyleSegmentConfig = { enabled: true },
+    ): PowerlineConfig => ({
+      theme: "dark",
+      display: {
+        colorCompatibility: "truecolor",
+        autoWrap: false,
+        ...display,
+        lines: [{ segments: { outputStyle: segment } }],
+      },
+    });
+
+    it.each(["minimal", "powerline", "capsule"] as const)(
+      "renders the style name in %s display style",
+      async (style) => {
+        const result = await new PowerlineRenderer(
+          configFor({ style }),
+        ).generateStatusline(styleHookData);
+        expect(stripAnsi(result)).toContain("✎ Explanatory");
+      },
+    );
+
+    it("renders the text-charset fallback OS instead of the pencil glyph", async () => {
+      const result = await new PowerlineRenderer(
+        configFor({ style: "minimal", charset: "text" }),
+      ).generateStatusline(styleHookData);
+      expect(stripAnsi(result)).toContain("OS Explanatory");
+      expect(result).not.toContain("✎");
+    });
+
+    it("renders the bare name when display.showIcons is false", async () => {
+      const result = await new PowerlineRenderer(
+        configFor({ style: "minimal", showIcons: false }),
+      ).generateStatusline(styleHookData);
+      expect(stripAnsi(result)).toContain("Explanatory");
+      expect(result).not.toContain("✎");
+    });
+
+    it("renders the label form when showLabel is set", async () => {
+      const result = await new PowerlineRenderer(
+        configFor({ style: "minimal" }, { enabled: true, showLabel: true }),
+      ).generateStatusline(styleHookData);
+      expect(stripAnsi(result)).toContain("✎ style: Explanatory");
+    });
+
+    it("omits the segment when hideDefault is set and the style is default", async () => {
+      const defaultHookData: ClaudeHookData = {
+        ...mockHookData,
+        output_style: { name: "default" },
+      };
+
+      const hidden = await new PowerlineRenderer(
+        configFor({ style: "minimal" }, { enabled: true, hideDefault: true }),
+      ).generateStatusline(defaultHookData);
+      expect(stripAnsi(hidden)).not.toContain("default");
+
+      const shown = await new PowerlineRenderer(
+        configFor({ style: "minimal" }, { enabled: true, hideDefault: false }),
+      ).generateStatusline(defaultHookData);
+      expect(stripAnsi(shown)).toContain("✎ default");
+    });
+
+    it("omits the segment when Claude Code sends no output_style", async () => {
+      const result = await new PowerlineRenderer(
+        configFor({ style: "minimal" }),
+      ).generateStatusline(mockHookData);
+      expect(result).not.toContain("✎");
+    });
   });
 });

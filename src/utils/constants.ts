@@ -39,6 +39,7 @@ export const SYMBOLS = {
   agent: "◇",
   thinking: "✦",
   cache_timer: "◴",
+  output_style: "✎",
 } as const;
 
 export const BOX_CHARS = {
@@ -179,4 +180,5 @@ export const TEXT_SYMBOLS = {
   agent: "&",
   thinking: "T",
   cache_timer: "C!",
+  output_style: "OS",
 } as const;

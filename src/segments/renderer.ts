@@ -1,5 +1,9 @@
 import type { ClaudeHookData } from "../utils/claude";
-import { getEffortLevel, getThinkingEnabled } from "../utils/claude";
+import {
+  getEffortLevel,
+  getOutputStyleName,
+  getThinkingEnabled,
+} from "../utils/claude";
 import type { PowerlineColors } from "../themes";
 import type { PowerlineConfig } from "../config/loader";
 import type { BlockInfo } from "./block";
@@ -146,6 +150,13 @@ export interface CacheTimerSegmentConfig extends SegmentConfig {
   ttlSeconds?: number;
 }
 
+export interface OutputStyleSegmentConfig extends SegmentConfig {
+  /** Render "style: <name>" instead of the bare name (default: false). */
+  showLabel?: boolean;
+  /** Omit the segment when the active style is "default" (default: false). */
+  hideDefault?: boolean;
+}
+
 export type AnySegmentConfig =
   | SegmentConfig
   | DirectorySegmentConfig
@@ -162,7 +173,8 @@ export type AnySegmentConfig =
   | WeeklySegmentConfig
   | AgentSegmentConfig
   | ThinkingSegmentConfig
-  | CacheTimerSegmentConfig;
+  | CacheTimerSegmentConfig
+  | OutputStyleSegmentConfig;
 
 export interface PowerlineSymbols {
   right: string;
@@ -200,6 +212,7 @@ export interface PowerlineSymbols {
   agent: string;
   thinking: string;
   cache_timer: string;
+  output_style: string;
 }
 
 export interface SegmentData {
@@ -961,5 +974,24 @@ export class SegmentRenderer {
     }
 
     return { text, bgColor, fgColor, bold };
+  }
+
+  renderOutputStyle(
+    hookData: ClaudeHookData,
+    colors: PowerlineColors,
+    config?: OutputStyleSegmentConfig,
+  ): SegmentData | null {
+    const name = getOutputStyleName(hookData);
+    if (!name) return null;
+    if (config?.hideDefault && name.toLowerCase() === "default") return null;
+
+    const iconPrefix = this.leadingIcon(this.symbols.output_style, config);
+    const body = config?.showLabel ? `style: ${name}` : name;
+
+    return {
+      text: `${iconPrefix}${body}`,
+      bgColor: colors.outputStyleBg,
+      fgColor: colors.outputStyleFg,
+    };
   }
 }

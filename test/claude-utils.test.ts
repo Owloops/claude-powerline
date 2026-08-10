@@ -1,8 +1,61 @@
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, utimesSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
-import { findAgentTranscripts, collectProjectFiles } from "../src/utils/claude";
+import {
+  findAgentTranscripts,
+  collectProjectFiles,
+  getOutputStyleName,
+  type ClaudeHookData,
+} from "../src/utils/claude";
 import { CacheManager } from "../src/utils/cache";
+
+describe("getOutputStyleName", () => {
+  const base = {
+    hook_event_name: "Status",
+    session_id: "test",
+    transcript_path: "/tmp/test.jsonl",
+    cwd: "/test",
+    model: { id: "claude-sonnet-4-6", display_name: "Sonnet" },
+    workspace: { current_dir: "/test", project_dir: "/test" },
+  } as ClaudeHookData;
+
+  const withStyle = (name: unknown): ClaudeHookData =>
+    ({ ...base, output_style: { name } }) as ClaudeHookData;
+
+  it("returns the name when output_style.name is a non-empty string", () => {
+    expect(getOutputStyleName(withStyle("Explanatory"))).toBe("Explanatory");
+  });
+
+  it("trims surrounding whitespace", () => {
+    expect(getOutputStyleName(withStyle("  Explanatory  "))).toBe(
+      "Explanatory",
+    );
+  });
+
+  it("returns null for a whitespace-only name", () => {
+    expect(getOutputStyleName(withStyle("   "))).toBeNull();
+  });
+
+  it("returns null for an empty name", () => {
+    expect(getOutputStyleName(withStyle(""))).toBeNull();
+  });
+
+  it("returns null for a non-string name", () => {
+    expect(getOutputStyleName(withStyle(42))).toBeNull();
+    expect(getOutputStyleName(withStyle(null))).toBeNull();
+    expect(getOutputStyleName(withStyle(undefined))).toBeNull();
+  });
+
+  it("returns null when output_style is absent", () => {
+    expect(getOutputStyleName(base)).toBeNull();
+  });
+
+  it("preserves internal spaces and punctuation verbatim", () => {
+    expect(getOutputStyleName(withStyle("My Custom Style (v2)"))).toBe(
+      "My Custom Style (v2)",
+    );
+  });
+});
 
 describe("findAgentTranscripts", () => {
   let tempDir: string;

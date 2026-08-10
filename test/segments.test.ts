@@ -27,6 +27,12 @@ jest.mock("../src/utils/claude", () => ({
     if (typeof enabled !== "boolean") return null;
     return enabled;
   },
+  getOutputStyleName: (hookData: any) => {
+    const name = hookData?.output_style?.name;
+    if (typeof name !== "string") return null;
+    const trimmed = name.trim();
+    return trimmed ? trimmed : null;
+  },
 }));
 
 const mockLoadEntries = loadEntriesFromProjects as jest.MockedFunction<
@@ -444,6 +450,109 @@ describe("Segment Time Logic", () => {
         expect(result!.bgColor).toBe(colors.thinkingBg);
         expect(result!.fgColor).toBe(colors.thinkingFg);
       }
+    });
+  });
+
+  describe("Output Style Segment", () => {
+    const config = { theme: "dark", display: { style: "minimal" } } as any;
+    const symbols = { output_style: "✎" } as any;
+    const colors = {
+      outputStyleBg: "#1f3a3a",
+      outputStyleFg: "#7fd1c4",
+    } as any;
+
+    const base: ClaudeHookData = {
+      hook_event_name: "Status",
+      session_id: "test",
+      transcript_path: "/tmp/test.json",
+      cwd: "/test",
+      model: { id: "claude-sonnet-4-6", display_name: "Sonnet" },
+      workspace: { current_dir: "/test", project_dir: "/test" },
+    };
+
+    type Case = {
+      name: string;
+      hook: Partial<ClaudeHookData>;
+      cfg: { showIcon?: boolean; showLabel?: boolean; hideDefault?: boolean };
+      expected: string | null;
+    };
+
+    const cases: Case[] = [
+      {
+        name: "name present, no options -> icon and bare name",
+        hook: { output_style: { name: "Explanatory" } },
+        cfg: {},
+        expected: "✎ Explanatory",
+      },
+      {
+        name: "showLabel -> 'style: ' prefix before the name",
+        hook: { output_style: { name: "Explanatory" } },
+        cfg: { showLabel: true },
+        expected: "✎ style: Explanatory",
+      },
+      {
+        name: "showIcon false -> bare name with no leading space",
+        hook: { output_style: { name: "Explanatory" } },
+        cfg: { showIcon: false },
+        expected: "Explanatory",
+      },
+      {
+        name: "hideDefault with lowercase 'default' -> null",
+        hook: { output_style: { name: "default" } },
+        cfg: { hideDefault: true },
+        expected: null,
+      },
+      {
+        name: "hideDefault with capitalised 'Default' -> null (case-insensitive)",
+        hook: { output_style: { name: "Default" } },
+        cfg: { hideDefault: true },
+        expected: null,
+      },
+      {
+        name: "hideDefault false with 'default' -> renders the name",
+        hook: { output_style: { name: "default" } },
+        cfg: { hideDefault: false },
+        expected: "✎ default",
+      },
+      {
+        name: "output_style absent -> null",
+        hook: {},
+        cfg: {},
+        expected: null,
+      },
+    ];
+
+    it.each(cases)("$name", ({ hook, cfg, expected }) => {
+      const renderer = new SegmentRenderer(config, symbols);
+      const result = renderer.renderOutputStyle(
+        { ...base, ...hook } as ClaudeHookData,
+        colors,
+        { enabled: true, ...cfg },
+      );
+      if (expected === null) {
+        expect(result).toBeNull();
+      } else {
+        expect(result).not.toBeNull();
+        expect(result!.text).toBe(expected);
+        expect(result!.bgColor).toBe(colors.outputStyleBg);
+        expect(result!.fgColor).toBe(colors.outputStyleFg);
+      }
+    });
+
+    it("hides the icon when display.showIcons is false globally", () => {
+      const renderer = new SegmentRenderer(
+        {
+          theme: "dark",
+          display: { style: "minimal", showIcons: false },
+        } as any,
+        symbols,
+      );
+      const result = renderer.renderOutputStyle(
+        { ...base, output_style: { name: "Explanatory" } } as ClaudeHookData,
+        colors,
+        { enabled: true },
+      );
+      expect(result!.text).toBe("Explanatory");
     });
   });
 

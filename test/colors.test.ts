@@ -5,7 +5,7 @@ import {
   extractBgToFg,
 } from "../src/utils/colors";
 import { getColorSupport } from "../src/utils/color-support";
-import { getTheme } from "../src/themes";
+import { getTheme, BUILT_IN_THEMES } from "../src/themes";
 
 describe("Colors", () => {
   describe("Core Color Functions", () => {
@@ -130,6 +130,19 @@ describe("Colors", () => {
 
       const noneTheme = getTheme("nord", "none");
       expect(noneTheme?.directory.bg).toBe(ansiTheme?.directory.bg);
+    });
+  });
+
+  describe("Built-in theme completeness", () => {
+    it("should define outputStyle colors in every built-in theme variant", () => {
+      const names = Object.keys(BUILT_IN_THEMES);
+      expect(names.length).toBeGreaterThan(0);
+
+      for (const name of names) {
+        const theme = BUILT_IN_THEMES[name]!;
+        expect(theme.outputStyle.bg).toMatch(/^#[0-9a-fA-F]{6}$/);
+        expect(theme.outputStyle.fg).toMatch(/^#[0-9a-fA-F]{6}$/);
+      }
     });
   });
 });

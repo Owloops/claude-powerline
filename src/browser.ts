@@ -51,6 +51,7 @@ export type {
   AgentSegmentConfig,
   ThinkingSegmentConfig,
   CacheTimerSegmentConfig,
+  OutputStyleSegmentConfig,
   PowerlineSymbols,
   SegmentData,
   BarDisplayStyle,

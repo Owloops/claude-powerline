@@ -26,9 +26,16 @@ import {
   formatCacheTimerRemaining,
 } from "../utils/formatters";
 import { resolveBudgetDisplay } from "../utils/budget";
-import type { CacheTimerSegmentConfig } from "../segments/renderer";
+import type {
+  CacheTimerSegmentConfig,
+  OutputStyleSegmentConfig,
+} from "../segments/renderer";
 import { colorize, truncateAnsi } from "./primitives";
-import { getEffortLevel, getThinkingEnabled } from "../utils/claude";
+import {
+  getEffortLevel,
+  getOutputStyleName,
+  getThinkingEnabled,
+} from "../utils/claude";
 import { resolveIconVisibility } from "../utils/icon-visibility";
 
 export function resolveTitleToken(
@@ -457,6 +464,28 @@ export function collectFooterParts(
         cacheTimerConfig,
       );
       parts.push(colorize(cacheTimerText, fg, reset, bold));
+    }
+  }
+
+  const outputStyleEnabled = config.display.lines.some(
+    (line) => line.segments.outputStyle?.enabled,
+  );
+  if (outputStyleEnabled) {
+    const outputStyleText = formatOutputStyleSegment(
+      data,
+      sym,
+      getOutputStyleConfig(config),
+      resolveIconVisibility(config, "outputStyle"),
+    );
+    if (outputStyleText) {
+      parts.push(
+        colorize(
+          outputStyleText,
+          colors.outputStyleFg,
+          reset,
+          colors.outputStyleBold,
+        ),
+      );
     }
   }
 
@@ -981,6 +1010,60 @@ function formatAgentSegment(
   return parts.icon ? `${parts.icon} ${body}` : body;
 }
 
+function formatOutputStyleParts(
+  data: TuiData,
+  sym: SymbolSet,
+  outputStyleConfig: OutputStyleSegmentConfig | undefined,
+  iconVisible = true,
+): Record<string, string> {
+  const name = getOutputStyleName(data.hookData);
+  if (!name) return { icon: "", name: "" };
+  if (outputStyleConfig?.hideDefault && name.toLowerCase() === "default") {
+    return { icon: "", name: "" };
+  }
+  return {
+    icon: iconVisible ? sym.output_style : "",
+    name,
+  };
+}
+
+function formatOutputStyleSegment(
+  data: TuiData,
+  sym: SymbolSet,
+  outputStyleConfig: OutputStyleSegmentConfig | undefined,
+  iconVisible = true,
+): string {
+  const parts = formatOutputStyleParts(
+    data,
+    sym,
+    outputStyleConfig,
+    iconVisible,
+  );
+  if (!parts.name) return "";
+  const body = outputStyleConfig?.showLabel
+    ? `style: ${parts.name}`
+    : parts.name;
+  return parts.icon ? `${parts.icon} ${body}` : body;
+}
+
+/**
+ * The enabled entry wins, so the hardcoded footer keeps the options of the
+ * line it renders. The fallback to any configured entry exists for grid mode,
+ * where cell placement decides visibility and `enabled` is often left false —
+ * without it, `showLabel` and `hideDefault` would be silently ignored there.
+ */
+function getOutputStyleConfig(
+  config: PowerlineConfig,
+): OutputStyleSegmentConfig | undefined {
+  const configured = config.display.lines.map(
+    (line) => line.segments.outputStyle,
+  );
+  return (
+    configured.find((segment) => segment?.enabled) ??
+    configured.find((segment) => segment !== undefined)
+  );
+}
+
 function buildThinkingBody(
   data: TuiData,
   thinkingConfig: { showEnabled?: boolean; showEffort?: boolean } | undefined,
@@ -1237,6 +1320,7 @@ export function resolveSegments(
     agent: resolveIconVisibility(config, "agent"),
     thinking: resolveIconVisibility(config, "thinking"),
     cacheTimer: resolveIconVisibility(config, "cacheTimer"),
+    outputStyle: resolveIconVisibility(config, "outputStyle"),
   };
 
   // Model
@@ -1544,6 +1628,34 @@ export function resolveSegments(
     reset,
     pf,
     cacheTimerStyleResolved.bold,
+  );
+
+  // Output style
+  const outputStyleSegConfig = getOutputStyleConfig(config);
+  const outputStyleColor = pf?.["outputStyle"] ?? colors.outputStyleFg;
+  result.outputStyle = colorizeOrEmpty(
+    formatOutputStyleSegment(
+      data,
+      sym,
+      outputStyleSegConfig,
+      iconVisible.outputStyle,
+    ),
+    outputStyleColor,
+    colors.outputStyleBold,
+  );
+  addParts(
+    result,
+    "outputStyle",
+    formatOutputStyleParts(
+      data,
+      sym,
+      outputStyleSegConfig,
+      iconVisible.outputStyle,
+    ),
+    colors.outputStyleFg,
+    reset,
+    pf,
+    colors.outputStyleBold,
   );
 
   // Apply segment templates: resolve items and compose default value

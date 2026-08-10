@@ -685,6 +685,13 @@ describe("isValidSegmentRef", () => {
     expect(isValidSegmentRef("version.value")).toBe(true);
   });
 
+  it("should accept outputStyle and its parts", () => {
+    expect(isValidSegmentRef("outputStyle")).toBe(true);
+    expect(isValidSegmentRef("outputStyle.icon")).toBe(true);
+    expect(isValidSegmentRef("outputStyle.name")).toBe(true);
+    expect(isValidSegmentRef("outputStyle.notapart")).toBe(false);
+  });
+
   it("should reject invalid segment names", () => {
     expect(isValidSegmentRef("notasegment")).toBe(false);
     expect(isValidSegmentRef("session.notapart")).toBe(false);
