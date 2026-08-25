@@ -129,11 +129,17 @@ export class ContextProvider {
   /**
    * Calculate context tokens by parsing the transcript file (fallback).
    * Used for older Claude Code versions that don't provide context_window.
+   *
+   * `nativeContextLimit` is Claude Code's own context_window_size when it is
+   * available. It is present even when current_usage is null (no messages
+   * yet), and it resolves 1M variants, plan caps and CLAUDE_CODE_MAX_CONTEXT_TOKENS,
+   * so it always beats inferring a limit from the model id.
    */
   async calculateContextTokensFromTranscript(
     transcriptPath: string,
     modelId?: string,
     autocompactBuffer: number = 33000,
+    nativeContextLimit?: number,
   ): Promise<ContextInfo | null> {
     try {
       debug(`Calculating context tokens from transcript: ${transcriptPath}`);
@@ -168,7 +174,9 @@ export class ContextProvider {
           (usage.cache_read_input_tokens || 0) +
           (usage.cache_creation_input_tokens || 0);
 
-        const contextLimit = modelId ? this.getContextLimit(modelId) : 200000;
+        const contextLimit =
+          nativeContextLimit ??
+          (modelId ? this.getContextLimit(modelId) : 200000);
 
         debug(
           `Most recent main chain context: ${totalTokens} tokens (limit: ${contextLimit})`,
@@ -216,6 +224,7 @@ export class ContextProvider {
       hookData.transcript_path,
       hookData.model?.id,
       autocompactBuffer,
+      hookData.context_window?.context_window_size,
     );
   }
 }

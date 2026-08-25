@@ -276,7 +276,14 @@ The two upstream options are independent. `showUpstream` controls the branch nam
 
 #### Model Context Limits
 
-Configure context window limits for different model types. Defaults to 200K tokens for all models.
+**You normally don't need this.** Claude Code 2.0.65+ reports the real context window
+in its status line data (`context_window.context_window_size`), and that value is used
+automatically. It already accounts for 1M-context models, the `[1m]` model suffix, the
+1M beta header, plan entitlements, and `CLAUDE_CODE_MAX_CONTEXT_TOKENS` — none of which
+can be inferred from the model name.
+
+`modelContextLimits` is only consulted when Claude Code reports no context window data
+at all, i.e. on versions older than 2.0.65.
 
 ```json
 "modelContextLimits": {
@@ -290,8 +297,6 @@ Configure context window limits for different model types. Defaults to 200K toke
 - `sonnet`: Claude Sonnet models (3.5, 4, etc.)
 - `opus`: Claude Opus models
 - `default`: Fallback for unrecognized models (200K)
-
-**Note:** Sonnet 4's 1M context window is currently in beta for tier 4+ users. Set `"sonnet": 1000000` when you have access.
 
 </details>
 
