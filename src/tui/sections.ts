@@ -1,4 +1,4 @@
-import type { PowerlineConfig } from "../config/loader";
+import type { LineConfig, PowerlineConfig } from "../config/loader";
 import type { PowerlineColors } from "../themes";
 import type {
   TuiData,
@@ -31,6 +31,7 @@ import { resolveBudgetDisplay } from "../utils/budget";
 import type {
   CacheTimerSegmentConfig,
   OutputStyleSegmentConfig,
+  UsageSegmentConfig,
 } from "../segments/renderer";
 import { segmentPartNames } from "./types";
 import { colorize, truncateAnsi } from "./primitives";
@@ -623,14 +624,43 @@ export function formatWeeklySegment(
   return text;
 }
 
+/** Find a segment's config across lines: enabled entry first, then any configured entry. */
+function findConfiguredSegment<K extends keyof LineConfig["segments"]>(
+  config: PowerlineConfig,
+  key: K,
+): LineConfig["segments"][K] {
+  const configured = config.display.lines.map((line) => line.segments[key]);
+  return (
+    configured.find((segment) => segment?.enabled) ??
+    configured.find((segment) => segment !== undefined)
+  );
+}
+
+export function getSessionSegmentConfig(
+  config: PowerlineConfig,
+): UsageSegmentConfig | undefined {
+  return findConfiguredSegment(config, "session");
+}
+
+export function resolveSessionCost(
+  session: (TuiData["usageInfo"] & {})["session"],
+  config: PowerlineConfig,
+): number | null {
+  const costSource = getSessionSegmentConfig(config)?.costSource;
+  if (costSource === "calculated") return session.calculatedCost;
+  if (costSource === "official") return session.officialCost;
+  return session.cost;
+}
+
 export function formatSessionParts(
   usageInfo: TuiData["usageInfo"] & {},
   sym: SymbolSet,
   config: PowerlineConfig,
   iconVisible = true,
 ): SegmentParts<"session"> {
+  const sessionCost = resolveSessionCost(usageInfo.session, config);
   const state = resolveBudgetDisplay(
-    usageInfo.session.cost,
+    sessionCost,
     usageInfo.session.tokens,
     config.budget?.session,
   );
@@ -648,7 +678,7 @@ export function formatSessionParts(
   return {
     icon: iconVisible ? sym.session_cost : "",
     label: state.percentageOnly ? "" : "session",
-    cost: state.showBase ? formatCost(usageInfo.session.cost) : "",
+    cost: state.showBase ? formatCost(sessionCost) : "",
     tokens: tokenStr,
     budget: state.percentText ? ` ${state.percentText}` : "",
   };
@@ -660,8 +690,9 @@ export function formatSessionSegment(
   config: PowerlineConfig,
   iconVisible = true,
 ): string {
+  const sessionCost = resolveSessionCost(usageInfo.session, config);
   const state = resolveBudgetDisplay(
-    usageInfo.session.cost,
+    sessionCost,
     usageInfo.session.tokens,
     config.budget?.session,
   );
@@ -673,7 +704,7 @@ export function formatSessionSegment(
     return icon ? `${icon} ${state.percentText}` : state.percentText;
   }
 
-  const costStr = formatCost(usageInfo.session.cost);
+  const costStr = formatCost(sessionCost);
   const sessionTokens = usageInfo.session.tokens;
   let text = icon ? `${icon} ${costStr}` : costStr;
   if (sessionTokens !== null && sessionTokens > 0) {
@@ -1058,13 +1089,7 @@ function formatOutputStyleSegment(
 function getOutputStyleConfig(
   config: PowerlineConfig,
 ): OutputStyleSegmentConfig | undefined {
-  const configured = config.display.lines.map(
-    (line) => line.segments.outputStyle,
-  );
-  return (
-    configured.find((segment) => segment?.enabled) ??
-    configured.find((segment) => segment !== undefined)
-  );
+  return findConfiguredSegment(config, "outputStyle");
 }
 
 function buildThinkingBody(
