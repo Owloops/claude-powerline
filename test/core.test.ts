@@ -343,5 +343,41 @@ describe("Core Functionality", () => {
         );
       expect(opusResult?.maxTokens).toBe(400000);
     });
+
+    it("should prefer Claude Code's context_window_size over modelContextLimits when current_usage is absent", async () => {
+      const transcript = [
+        '{"timestamp":"2024-01-01T10:00:00Z","message":{"usage":{"input_tokens":500000}},"isSidechain":false}',
+      ].join("\n");
+
+      const transcriptPath = join(tempDir, "test-native-limit.jsonl");
+      writeFileSync(transcriptPath, transcript);
+
+      const customConfig = {
+        ...DEFAULT_CONFIG,
+        modelContextLimits: { default: 200000, opus: 200000 },
+      };
+
+      const { ContextProvider } = require("../src/segments/context");
+      const contextProvider = new ContextProvider(customConfig);
+
+      const result = await contextProvider.getContextInfo({
+        hook_event_name: "Status",
+        session_id: "test",
+        transcript_path: transcriptPath,
+        cwd: tempDir,
+        model: { id: "claude-opus-5[1m]", display_name: "Opus 5" },
+        workspace: { current_dir: tempDir, project_dir: tempDir },
+        context_window: {
+          total_input_tokens: 500000,
+          total_output_tokens: 0,
+          context_window_size: 1000000,
+        },
+      });
+
+      expect(result).toBeDefined();
+      expect(result.totalTokens).toBe(500000);
+      expect(result.maxTokens).toBe(1000000);
+      expect(result.percentage).toBe(50);
+    });
   });
 });
