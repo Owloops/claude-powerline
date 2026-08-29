@@ -4,6 +4,7 @@ import {
   findTranscriptFile,
   findAgentTranscripts,
   parseJsonlFile,
+  deduplicateEntries,
   type ParsedEntry,
   type ClaudeHookData,
 } from "../utils/claude";
@@ -91,23 +92,25 @@ export class SessionProvider {
         return { totalCost: 0, entries: [] };
       }
 
+      const usageEntries = deduplicateEntries(
+        parsedEntries.filter((entry) => entry.message?.usage),
+      );
+
       const entries: SessionUsageEntry[] = [];
       let totalCost = 0;
 
-      for (const entry of parsedEntries) {
-        if (entry.message?.usage) {
-          const sessionEntry = convertToSessionEntry(entry);
+      for (const entry of usageEntries) {
+        const sessionEntry = convertToSessionEntry(entry);
 
-          if (sessionEntry.costUSD !== undefined) {
-            totalCost += sessionEntry.costUSD;
-          } else {
-            const cost = await PricingService.calculateCostForEntry(entry.raw);
-            sessionEntry.costUSD = cost;
-            totalCost += cost;
-          }
-
-          entries.push(sessionEntry);
+        if (sessionEntry.costUSD !== undefined) {
+          totalCost += sessionEntry.costUSD;
+        } else {
+          const cost = await PricingService.calculateCostForEntry(entry.raw);
+          sessionEntry.costUSD = cost;
+          totalCost += cost;
         }
+
+        entries.push(sessionEntry);
       }
 
       debug(
