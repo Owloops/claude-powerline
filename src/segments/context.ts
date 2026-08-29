@@ -83,7 +83,9 @@ export class ContextProvider {
 
   /**
    * Calculate context info from native Claude Code context_window data (preferred).
-   * Requires Claude Code 2.0.70+ with current_usage field.
+   * Requires Claude Code 2.0.70+ with current_usage field. Claude Code sets
+   * current_usage to null before the first API call in a session and again
+   * right after /compact until the next API call.
    */
   calculateContextFromHookData(
     hookData: ClaudeHookData,

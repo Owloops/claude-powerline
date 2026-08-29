@@ -40,7 +40,7 @@ export interface ClaudeHookData {
       output_tokens: number;
       cache_creation_input_tokens: number;
       cache_read_input_tokens: number;
-    };
+    } | null;
   };
   exceeds_200k_tokens?: boolean;
   rate_limits?: {
