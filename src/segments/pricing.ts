@@ -7,10 +7,22 @@ export interface ModelPricing {
   name: string;
   input: number;
   cache_write_5m: number;
-  cache_write_1h: number;
+  cache_write_1h?: number;
   cache_read: number;
   output: number;
 }
+
+interface EntryUsage {
+  input_tokens?: number;
+  output_tokens?: number;
+  cache_creation_input_tokens?: number;
+  cache_read_input_tokens?: number;
+  cache_creation?: {
+    ephemeral_1h_input_tokens?: number;
+    ephemeral_5m_input_tokens?: number;
+  };
+}
+
 const OFFLINE_PRICING_DATA: Record<string, ModelPricing> = {
   "claude-haiku-4-5-20251001": {
     name: "Claude Haiku 4.5",
@@ -405,7 +417,7 @@ export class PricingService {
     entry: Record<string, unknown>,
   ): Promise<number> {
     const message = entry.message as Record<string, unknown> | undefined;
-    const usage = message?.usage as Record<string, number> | undefined;
+    const usage = message?.usage as EntryUsage | undefined;
     if (!usage) {
       return 0;
     }
@@ -418,11 +430,23 @@ export class PricingService {
     const cacheCreationTokens = usage.cache_creation_input_tokens || 0;
     const cacheReadTokens = usage.cache_read_input_tokens || 0;
 
+    const cacheCreation = usage.cache_creation;
+    const oneHourTokens = cacheCreation?.ephemeral_1h_input_tokens ?? 0;
+    const explicitFiveMinuteTokens =
+      cacheCreation?.ephemeral_5m_input_tokens ?? 0;
+    const uncategorizedFiveMinuteTokens = Math.max(
+      0,
+      cacheCreationTokens - oneHourTokens - explicitFiveMinuteTokens,
+    );
+    const cacheWrite1hRate = pricing.cache_write_1h ?? pricing.cache_write_5m;
+
     const inputCost = (inputTokens / 1_000_000) * pricing.input;
     const outputCost = (outputTokens / 1_000_000) * pricing.output;
     const cacheReadCost = (cacheReadTokens / 1_000_000) * pricing.cache_read;
     const cacheCreationCost =
-      (cacheCreationTokens / 1_000_000) * pricing.cache_write_5m;
+      (oneHourTokens / 1_000_000) * cacheWrite1hRate +
+      ((explicitFiveMinuteTokens + uncategorizedFiveMinuteTokens) / 1_000_000) *
+        pricing.cache_write_5m;
 
     return inputCost + outputCost + cacheCreationCost + cacheReadCost;
   }
