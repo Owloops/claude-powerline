@@ -344,7 +344,7 @@ describe("Core Functionality", () => {
       expect(opusResult?.maxTokens).toBe(400000);
     });
 
-    it("should prefer Claude Code's context_window_size over modelContextLimits when current_usage is absent", async () => {
+    it("should prefer Claude Code's context_window_size over modelContextLimits when current_usage is null", async () => {
       const transcript = [
         '{"timestamp":"2024-01-01T10:00:00Z","message":{"usage":{"input_tokens":500000}},"isSidechain":false}',
       ].join("\n");
@@ -371,6 +371,7 @@ describe("Core Functionality", () => {
           total_input_tokens: 500000,
           total_output_tokens: 0,
           context_window_size: 1000000,
+          current_usage: null,
         },
       });
 
@@ -378,6 +379,9 @@ describe("Core Functionality", () => {
       expect(result.totalTokens).toBe(500000);
       expect(result.maxTokens).toBe(1000000);
       expect(result.percentage).toBe(50);
+      expect(result.usableTokens).toBe(967000);
+      expect(result.usablePercentage).toBe(52);
+      expect(result.contextLeftPercentage).toBe(48);
     });
   });
 });
