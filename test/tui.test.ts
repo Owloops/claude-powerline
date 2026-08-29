@@ -5,6 +5,8 @@ import {
   resolveSegments,
   formatTodayParts,
   formatSessionParts,
+  formatSessionSegment,
+  getSessionSegmentConfig,
 } from "../src/tui/sections";
 import type { TuiData, BoxChars, RenderCtx } from "../src/tui/types";
 import { isValidSegmentRef, SEGMENT_PARTS } from "../src/tui/types";
@@ -969,6 +971,101 @@ describe("TUI Panel Rendering", () => {
         cost: "",
         tokens: "",
         budget: "",
+      });
+    });
+  });
+
+  describe("Session costSource (TUI)", () => {
+    const officialConfig: PowerlineConfig = {
+      ...DEFAULT_CONFIG,
+      display: {
+        ...DEFAULT_CONFIG.display,
+        style: "tui",
+        lines: [
+          {
+            segments: {
+              ...DEFAULT_CONFIG.display.lines[0]!.segments,
+              session: { enabled: true, type: "cost", costSource: "official" },
+            },
+          },
+        ],
+      },
+      budget: {
+        session: { amount: 10, warningThreshold: 80 },
+      },
+    };
+
+    const usageInfo = {
+      session: {
+        cost: 1.25,
+        calculatedCost: 1.25,
+        officialCost: 5,
+        tokens: 100,
+        tokenBreakdown: null,
+      },
+    };
+
+    it("formatSessionParts uses officialCost for cost and budget percentage", () => {
+      const parts = formatSessionParts(
+        usageInfo as any,
+        SYMBOLS as any,
+        officialConfig,
+        true,
+      );
+      expect(parts.cost).toBe("$5.00");
+      // 5 / 10 = 50%, not 1.25 / 10 = 13%
+      expect(parts.budget).toContain("50%");
+    });
+
+    it("formatSessionSegment uses officialCost for cost and budget percentage", () => {
+      const text = formatSessionSegment(
+        usageInfo as any,
+        SYMBOLS as any,
+        officialConfig,
+        true,
+      );
+      expect(text).toContain("$5.00");
+      expect(text).toContain("50%");
+    });
+
+    it("narrow layout uses officialCost", async () => {
+      const result = await renderTuiPanel(
+        makeTuiData({ usageInfo }),
+        BOX_CHARS,
+        "",
+        40,
+        officialConfig,
+      );
+      expect(result).toContain("$5.00");
+      expect(result).not.toContain("$1.25");
+    });
+
+    it("getSessionSegmentConfig prefers the enabled entry over earlier disabled ones", () => {
+      const config: PowerlineConfig = {
+        ...officialConfig,
+        display: {
+          ...officialConfig.display,
+          lines: [
+            {
+              segments: {
+                session: {
+                  enabled: false,
+                  type: "cost",
+                  costSource: "official",
+                },
+              },
+            },
+            {
+              segments: {
+                session: { enabled: true, type: "cost" },
+              },
+            },
+          ],
+        },
+      };
+      expect(getSessionSegmentConfig(config)).toEqual({
+        enabled: true,
+        type: "cost",
       });
     });
   });

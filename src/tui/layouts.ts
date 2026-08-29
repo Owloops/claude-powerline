@@ -18,6 +18,7 @@ import {
   formatWeeklySegment,
   formatSessionSegment,
   formatTodaySegment,
+  resolveSessionCost,
 } from "./sections";
 
 // --- Wide layout (80+ cols): metrics on 1 line, workspace+footer on 1 line ---
@@ -250,9 +251,10 @@ export function renderNarrowMetrics(ctx: RenderCtx): void {
 
   const sessionAndToday: string[] = [];
   if (data.usageInfo) {
+    const sessionCost = resolveSessionCost(data.usageInfo.session, config);
     const sessionText = showSessionIcon
-      ? `${sym.session_cost} ${formatCost(data.usageInfo.session.cost)}`
-      : formatCost(data.usageInfo.session.cost);
+      ? `${sym.session_cost} ${formatCost(sessionCost)}`
+      : formatCost(sessionCost);
     sessionAndToday.push(
       colorize(sessionText, colors.sessionFg, reset, colors.sessionBold),
     );
