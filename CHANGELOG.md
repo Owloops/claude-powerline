@@ -1,3 +1,10 @@
+## [1.30.3](https://github.com/Owloops/claude-powerline/compare/v1.30.2...v1.30.3) (2026-08-31)
+
+
+### Bug Fixes
+
+* **cache:** remove unused getFileModificationDate import ([0ecb4b3](https://github.com/Owloops/claude-powerline/commit/0ecb4b3aa14c851be14589b6048f02ef07b453ec))
+
 ## [1.30.2](https://github.com/Owloops/claude-powerline/compare/v1.30.1...v1.30.2) (2026-08-31)
 
 
