@@ -51,7 +51,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'npm'
+      
+      - name: Upgrade npm for trusted publishing (OIDC requires npm >= 11.5.1)
+        run: npm install -g npm@latest
       
       - name: Install dependencies
         run: npm ci
@@ -62,5 +64,7 @@ jobs:
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          # Kept as fallback until trusted publishing is verified;
+          # remove NPM_TOKEN afterwards.
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npx semantic-release
