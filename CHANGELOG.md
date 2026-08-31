@@ -1,3 +1,14 @@
+## [1.30.2](https://github.com/Owloops/claude-powerline/compare/v1.30.1...v1.30.2) (2026-08-31)
+
+
+### Bug Fixes
+
+* **context:** model current_usage as nullable in hook payload ([4f1ef1d](https://github.com/Owloops/claude-powerline/commit/4f1ef1dbd0ef0ffefb2fd35ef6def8c185891d7a))
+* **context:** use Claude Code's context_window_size when current_usage is absent ([808ff7b](https://github.com/Owloops/claude-powerline/commit/808ff7b1e124c7d93a5edd3dfde3a14cdabf7e83))
+* **pricing:** price 1h cache writes at the cache_write_1h rate ([19875b7](https://github.com/Owloops/claude-powerline/commit/19875b78d7fa336905996e44147f798b7159044e)), closes [#104](https://github.com/Owloops/claude-powerline/issues/104)
+* **session:** deduplicate transcript entries when summing session usage ([f7a107c](https://github.com/Owloops/claude-powerline/commit/f7a107c46882d9bbd8ff1fd420ae96fc7e636071)), closes [#103](https://github.com/Owloops/claude-powerline/issues/103) [#106](https://github.com/Owloops/claude-powerline/issues/106)
+* **tui:** honor session costSource in TUI renderers ([10dd03a](https://github.com/Owloops/claude-powerline/commit/10dd03ac6421c32965348c0306bda1a00f45afbf)), closes [#105](https://github.com/Owloops/claude-powerline/issues/105)
+
 ## [1.30.1](https://github.com/Owloops/claude-powerline/compare/v1.30.0...v1.30.1) (2026-08-10)
 
 
