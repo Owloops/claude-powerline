@@ -7,7 +7,6 @@ import { debug } from "./logger";
 import {
   getClaudePaths,
   findProjectPaths,
-  getFileModificationDate,
   collectProjectFiles,
 } from "./claude";
 
