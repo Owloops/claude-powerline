@@ -14,6 +14,7 @@ import type {
   MetricsSegmentConfig,
   BlockSegmentConfig,
   TodaySegmentConfig,
+  MonthSegmentConfig,
   VersionSegmentConfig,
   SessionIdSegmentConfig,
   EnvSegmentConfig,
@@ -25,6 +26,7 @@ import type {
 } from "./segments";
 import type { BlockInfo } from "./segments/block";
 import type { TodayInfo } from "./segments/today";
+import type { MonthInfo } from "./segments/month";
 import type { CacheTimerInfo } from "./segments/cacheTimer";
 import type { TuiData } from "./tui";
 
@@ -48,6 +50,7 @@ import {
 } from "./segments";
 import { BlockProvider } from "./segments/block";
 import { TodayProvider } from "./segments/today";
+import { MonthProvider } from "./segments/month";
 import { CacheTimerProvider } from "./segments/cacheTimer";
 import {
   SYMBOLS,
@@ -73,6 +76,7 @@ export class PowerlineRenderer {
   private _usageProvider?: UsageProvider;
   private _blockProvider?: BlockProvider;
   private _todayProvider?: TodayProvider;
+  private _monthProvider?: MonthProvider;
   private _contextProvider?: ContextProvider;
   private _gitService?: GitService;
   private _tmuxService?: TmuxService;
@@ -103,6 +107,13 @@ export class PowerlineRenderer {
       this._todayProvider = new TodayProvider();
     }
     return this._todayProvider;
+  }
+
+  private get monthProvider(): MonthProvider {
+    if (!this._monthProvider) {
+      this._monthProvider = new MonthProvider();
+    }
+    return this._monthProvider;
   }
 
   private get contextProvider(): ContextProvider {
@@ -170,6 +181,10 @@ export class PowerlineRenderer {
       ? await this.todayProvider.getTodayInfo()
       : null;
 
+    const monthInfo = this.needsSegmentInfo("month")
+      ? await this.monthProvider.getMonthInfo()
+      : null;
+
     const contextSegmentConfig = this.config.display.lines
       .map((line) => line.segments.context)
       .find((c) => c?.enabled) as ContextSegmentConfig | undefined;
@@ -192,6 +207,7 @@ export class PowerlineRenderer {
         usageInfo,
         blockInfo,
         todayInfo,
+        monthInfo,
         contextInfo,
         metricsInfo,
         cacheTimerInfo,
@@ -206,6 +222,7 @@ export class PowerlineRenderer {
           usageInfo,
           blockInfo,
           todayInfo,
+          monthInfo,
           contextInfo,
           metricsInfo,
           cacheTimerInfo,
@@ -221,6 +238,7 @@ export class PowerlineRenderer {
     usageInfo: UsageInfo | null,
     blockInfo: BlockInfo | null,
     todayInfo: TodayInfo | null,
+    monthInfo: MonthInfo | null,
     contextInfo: ContextInfo | null,
     metricsInfo: MetricsInfo | null,
     cacheTimerInfo: CacheTimerInfo | null,
@@ -250,6 +268,7 @@ export class PowerlineRenderer {
           usageInfo,
           blockInfo,
           todayInfo,
+          monthInfo,
           contextInfo,
           metricsInfo,
           cacheTimerInfo,
@@ -329,6 +348,7 @@ export class PowerlineRenderer {
       this.usageProvider.getUsageInfo(hookData.session_id, hookData),
       this.blockProvider.getActiveBlockInfo(hookData),
       this.todayProvider.getTodayInfo(),
+      this.monthProvider.getMonthInfo(),
       this.contextProvider.getContextInfo(hookData, autocompactBuffer),
       this.metricsProvider.getMetricsInfo(hookData.session_id, hookData),
       this.gitService.getGitInfo(
@@ -355,6 +375,7 @@ export class PowerlineRenderer {
       usageInfo,
       blockInfo,
       todayInfo,
+      monthInfo,
       contextInfo,
       metricsInfo,
       gitInfo,
@@ -369,6 +390,7 @@ export class PowerlineRenderer {
       val(results[5]!),
       val(results[6]!),
       val(results[7]!),
+      val(results[8]!),
     ] as const;
 
     const tuiData: TuiData = {
@@ -376,6 +398,7 @@ export class PowerlineRenderer {
       usageInfo,
       blockInfo,
       todayInfo,
+      monthInfo,
       contextInfo,
       metricsInfo,
       gitInfo,
@@ -453,6 +476,7 @@ export class PowerlineRenderer {
     usageInfo: UsageInfo | null,
     blockInfo: BlockInfo | null,
     todayInfo: TodayInfo | null,
+    monthInfo: MonthInfo | null,
     contextInfo: ContextInfo | null,
     metricsInfo: MetricsInfo | null,
     cacheTimerInfo: CacheTimerInfo | null,
@@ -475,6 +499,7 @@ export class PowerlineRenderer {
         usageInfo,
         blockInfo,
         todayInfo,
+        monthInfo,
         contextInfo,
         metricsInfo,
         cacheTimerInfo,
@@ -502,6 +527,7 @@ export class PowerlineRenderer {
     usageInfo: UsageInfo | null,
     blockInfo: BlockInfo | null,
     todayInfo: TodayInfo | null,
+    monthInfo: MonthInfo | null,
     contextInfo: ContextInfo | null,
     metricsInfo: MetricsInfo | null,
     cacheTimerInfo: CacheTimerInfo | null,
@@ -579,6 +605,14 @@ export class PowerlineRenderer {
       return this.renderTodaySegment(
         segment.config as TodaySegmentConfig,
         todayInfo,
+        colors,
+      );
+    }
+
+    if (segment.type === "month") {
+      return this.renderMonthSegment(
+        segment.config as MonthSegmentConfig,
+        monthInfo,
         colors,
       );
     }
@@ -722,6 +756,15 @@ export class PowerlineRenderer {
     return this.segmentRenderer.renderToday(todayInfo, colors, config);
   }
 
+  private renderMonthSegment(
+    config: MonthSegmentConfig,
+    monthInfo: MonthInfo | null,
+    colors: PowerlineColors,
+  ) {
+    if (!monthInfo) return null;
+    return this.segmentRenderer.renderMonth(monthInfo, colors, config);
+  }
+
   private renderVersionSegment(
     config: VersionSegmentConfig,
     hookData: ClaudeHookData,
@@ -760,6 +803,7 @@ export class PowerlineRenderer {
       session_cost: symbolSet.session_cost,
       block_cost: symbolSet.block_cost,
       today_cost: symbolSet.today_cost,
+      month_cost: symbolSet.month_cost,
       context_time: symbolSet.context_time,
       metrics_response: symbolSet.metrics_response,
       metrics_last_response: symbolSet.metrics_last_response,
@@ -847,6 +891,7 @@ export class PowerlineRenderer {
     const session = getSegmentColors("session");
     const block = getSegmentColors("block");
     const today = getSegmentColors("today");
+    const month = getSegmentColors("month");
     const tmux = getSegmentColors("tmux");
     const context = getSegmentColors("context");
     const contextWarning = getSegmentColors("contextWarning");
@@ -880,6 +925,9 @@ export class PowerlineRenderer {
       todayBg: today.bg,
       todayFg: today.fg,
       todayBold: today.bold,
+      monthBg: month.bg,
+      monthFg: month.fg,
+      monthBold: month.bold,
       tmuxBg: tmux.bg,
       tmuxFg: tmux.fg,
       tmuxBold: tmux.bold,
@@ -955,6 +1003,8 @@ export class PowerlineRenderer {
         return colors.blockBg;
       case "today":
         return colors.todayBg;
+      case "month":
+        return colors.monthBg;
       case "tmux":
         return colors.tmuxBg;
       case "context":
@@ -998,6 +1048,8 @@ export class PowerlineRenderer {
         return colors.blockBold;
       case "today":
         return colors.todayBold;
+      case "month":
+        return colors.monthBold;
       case "tmux":
         return colors.tmuxBold;
       case "context":

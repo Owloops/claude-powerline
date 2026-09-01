@@ -1,5 +1,6 @@
 import { BlockProvider } from "../src/segments/block";
 import { TodayProvider } from "../src/segments/today";
+import { MonthProvider } from "../src/segments/month";
 import { SegmentRenderer, shouldShowWorktree } from "../src/segments/renderer";
 import { CacheTimerProvider } from "../src/segments/cacheTimer";
 import {
@@ -159,6 +160,51 @@ describe("Segment Time Logic", () => {
     });
   });
 
+  describe("Month Segment", () => {
+    it("should include all entries since the start of the month", async () => {
+      const monthProvider = new MonthProvider();
+      const monthInfo = await monthProvider.getMonthInfo();
+
+      expect(monthInfo.cost).toBe(71.25);
+      expect(monthInfo.tokens).toBe(4950);
+
+      expect(monthInfo.tokenBreakdown).toBeDefined();
+      expect(monthInfo.tokenBreakdown!.input).toBe(3000);
+      expect(monthInfo.tokenBreakdown!.output).toBe(1500);
+      expect(monthInfo.tokenBreakdown!.cacheCreation).toBe(300);
+      expect(monthInfo.tokenBreakdown!.cacheRead).toBe(150);
+    });
+
+    it("should format month consistently using local time", async () => {
+      const monthProvider = new MonthProvider();
+      const monthInfo = await monthProvider.getMonthInfo();
+
+      const expectedDate = new Date();
+      const year = expectedDate.getFullYear();
+      const month = String(expectedDate.getMonth() + 1).padStart(2, "0");
+      const expectedMonthStr = `${year}-${month}`;
+
+      expect(monthInfo.month).toBe(expectedMonthStr);
+    });
+
+    it("should compute days remaining and the daily average from calendar math", async () => {
+      const monthProvider = new MonthProvider();
+      const monthInfo = await monthProvider.getMonthInfo();
+
+      const now = new Date();
+      const daysInMonth = new Date(
+        now.getFullYear(),
+        now.getMonth() + 1,
+        0,
+      ).getDate();
+      const expectedDaysRemaining = daysInMonth - now.getDate();
+      const expectedDailyAverage = 71.25 / now.getDate();
+
+      expect(monthInfo.daysRemaining).toBe(expectedDaysRemaining);
+      expect(monthInfo.dailyAverage).toBeCloseTo(expectedDailyAverage, 10);
+    });
+  });
+
   describe("Time Zone Consistency", () => {
     it("should use local time consistently across segments", async () => {
       const now = new Date();
@@ -182,16 +228,24 @@ describe("Segment Time Logic", () => {
     it("should handle no hook data gracefully", async () => {
       const blockProvider = new BlockProvider();
       const todayProvider = new TodayProvider();
+      const monthProvider = new MonthProvider();
 
       mockLoadEntries.mockResolvedValue([]);
       const blockInfo = await blockProvider.getActiveBlockInfo();
       const todayInfo = await todayProvider.getTodayInfo();
+      const monthInfo = await monthProvider.getMonthInfo();
 
       expect(blockInfo).toBeNull();
 
       expect(todayInfo.cost).toBeNull();
       expect(todayInfo.tokens).toBeNull();
       expect(todayInfo.tokenBreakdown).toBeNull();
+
+      expect(monthInfo.cost).toBeNull();
+      expect(monthInfo.tokens).toBeNull();
+      expect(monthInfo.tokenBreakdown).toBeNull();
+      expect(monthInfo.dailyAverage).toBeNull();
+      expect(monthInfo.daysRemaining).toBeGreaterThanOrEqual(0);
     });
   });
 
@@ -1648,6 +1702,307 @@ describe("Segment Time Logic", () => {
       for (const piece of expected.textContains ?? []) {
         expect(result!.text).toContain(piece);
       }
+    });
+
+    it("renderMonth applies the same flag semantics", () => {
+      const monthSymbols = { month_cost: "◫" } as any;
+      const monthColors = {
+        monthBg: "",
+        monthFg: "",
+        monthBold: false,
+      } as any;
+
+      function renderMonthCase(opts: {
+        cost: number | null;
+        amount?: number;
+        showValue?: boolean;
+        showPercentage?: boolean;
+      }) {
+        const config = {
+          theme: "dark",
+          display: { style: "minimal", showIcons: false, lines: [] },
+          budget: {
+            month: {
+              amount: opts.amount,
+              warningThreshold: 80,
+              showValue: opts.showValue,
+              showPercentage: opts.showPercentage,
+            },
+          },
+        } as any;
+        const renderer = new SegmentRenderer(config, monthSymbols);
+        const monthInfo = {
+          cost: opts.cost,
+          tokens: null,
+          tokenBreakdown: null,
+          month: "2026-04",
+        } as any;
+        return renderer.renderMonth(monthInfo, monthColors, {
+          enabled: true,
+          type: "cost",
+        } as any);
+      }
+
+      expect(renderMonthCase({ cost: 10, amount: 50 })!.text).toBe(
+        "$10.00 20%",
+      );
+      expect(
+        renderMonthCase({ cost: 10, amount: 50, showPercentage: false })!.text,
+      ).toBe("$10.00");
+      expect(
+        renderMonthCase({ cost: 10, amount: 50, showValue: false })!.text,
+      ).toBe("20%");
+      expect(
+        renderMonthCase({
+          cost: 10,
+          amount: 50,
+          showValue: false,
+          showPercentage: false,
+        }),
+      ).toBeNull();
+    });
+
+    it("renderMonth defaults to the calendar icon and switches to the moon phase when configured", () => {
+      const monthSymbols = { month_cost: "◫" } as any;
+      const monthColors = {
+        monthBg: "",
+        monthFg: "",
+        monthBold: false,
+      } as any;
+      const monthInfo = {
+        cost: 10,
+        tokens: null,
+        tokenBreakdown: null,
+        month: "2026-04",
+      } as any;
+
+      const calendarConfig = {
+        theme: "dark",
+        display: { style: "minimal", lines: [] },
+      } as any;
+      const calendarRenderer = new SegmentRenderer(
+        calendarConfig,
+        monthSymbols,
+      );
+      const calendarResult = calendarRenderer.renderMonth(
+        monthInfo,
+        monthColors,
+        {
+          enabled: true,
+          type: "cost",
+        } as any,
+      );
+      expect(calendarResult!.text).toBe("◫ $10.00");
+
+      const moonConfig = {
+        theme: "dark",
+        display: { style: "minimal", lines: [] },
+      } as any;
+      const moonRenderer = new SegmentRenderer(moonConfig, monthSymbols);
+      const moonResult = moonRenderer.renderMonth(monthInfo, monthColors, {
+        enabled: true,
+        type: "cost",
+        icon: "moon",
+      } as any);
+      expect(moonResult!.text).not.toContain("◫");
+      expect(moonResult!.text).toMatch(/^(○|◖|●|◗) \$10\.00$/u);
+
+      const moonEmojiResult = moonRenderer.renderMonth(monthInfo, monthColors, {
+        enabled: true,
+        type: "cost",
+        icon: "moon",
+        moonStyle: "emoji",
+      } as any);
+      expect(moonEmojiResult!.text).toMatch(
+        /^(🌑|🌒|🌓|🌔|🌕|🌖|🌗|🌘) \$10\.00$/u,
+      );
+
+      const moonNerdFontResult = moonRenderer.renderMonth(
+        monthInfo,
+        monthColors,
+        {
+          enabled: true,
+          type: "cost",
+          icon: "moon",
+          moonStyle: "nerd-font",
+        } as any,
+      );
+      const nerdFontIconChar = moonNerdFontResult!.text.codePointAt(0)!;
+      expect(nerdFontIconChar).toBeGreaterThanOrEqual(0xe38d);
+      expect(nerdFontIconChar).toBeLessThanOrEqual(0xe3a8);
+
+      const moonTextCharsetConfig = {
+        theme: "dark",
+        display: { style: "minimal", charset: "text", lines: [] },
+      } as any;
+      const moonTextRenderer = new SegmentRenderer(
+        moonTextCharsetConfig,
+        monthSymbols,
+      );
+      const moonTextResult = moonTextRenderer.renderMonth(
+        monthInfo,
+        monthColors,
+        {
+          enabled: true,
+          type: "cost",
+          icon: "moon",
+        } as any,
+      );
+      expect(moonTextResult!.text).toBe("◫ $10.00");
+    });
+
+    it("renderMonth appends days remaining and daily average when configured", () => {
+      const monthSymbols = { month_cost: "◫" } as any;
+      const monthColors = {
+        monthBg: "",
+        monthFg: "",
+        monthBold: false,
+      } as any;
+      const monthInfo = {
+        cost: 20,
+        tokens: null,
+        tokenBreakdown: null,
+        month: "2026-04",
+        daysRemaining: 12,
+        dailyAverage: 1.25,
+      } as any;
+      const config = {
+        theme: "dark",
+        display: { style: "minimal", showIcons: false, lines: [] },
+        budget: { month: { amount: 100, warningThreshold: 80 } },
+      } as any;
+      const renderer = new SegmentRenderer(config, monthSymbols);
+
+      expect(
+        renderer.renderMonth(monthInfo, monthColors, {
+          enabled: true,
+          type: "cost",
+        } as any)!.text,
+      ).toBe("$20.00 20%");
+
+      expect(
+        renderer.renderMonth(monthInfo, monthColors, {
+          enabled: true,
+          type: "cost",
+          showDaysRemaining: true,
+        } as any)!.text,
+      ).toBe("$20.00 20% (12d)");
+
+      expect(
+        renderer.renderMonth(monthInfo, monthColors, {
+          enabled: true,
+          type: "cost",
+          showDailyAverage: true,
+        } as any)!.text,
+      ).toBe("$20.00 20% · $1.25/day");
+
+      expect(
+        renderer.renderMonth(monthInfo, monthColors, {
+          enabled: true,
+          type: "cost",
+          showDaysRemaining: true,
+          showDailyAverage: true,
+        } as any)!.text,
+      ).toBe("$20.00 20% (12d) · $1.25/day");
+
+      const noAverageInfo = { ...monthInfo, dailyAverage: null } as any;
+      expect(
+        renderer.renderMonth(noAverageInfo, monthColors, {
+          enabled: true,
+          type: "cost",
+          showDailyAverage: true,
+        } as any)!.text,
+      ).toBe("$20.00 20%");
+    });
+
+    it("renderMonth applies warning/critical colors based on budget percentage", () => {
+      const monthSymbols = { month_cost: "◫" } as any;
+      const colors = {
+        monthBg: "#2a1f14",
+        monthFg: "#e8b86d",
+        monthBold: false,
+        contextWarningBg: "#92400e",
+        contextWarningFg: "#fbbf24",
+        contextWarningBold: false,
+        contextCriticalBg: "#991b1b",
+        contextCriticalFg: "#fca5a5",
+        contextCriticalBold: false,
+      } as any;
+
+      const config = {
+        theme: "dark",
+        display: { style: "minimal" },
+        budget: { month: { amount: 100, warningThreshold: 80 } },
+      } as any;
+      const renderer = new SegmentRenderer(config, monthSymbols);
+
+      const normal = renderer.renderMonth(
+        {
+          cost: 20,
+          tokens: null,
+          tokenBreakdown: null,
+          month: "2026-04",
+          daysRemaining: 12,
+          dailyAverage: null,
+        },
+        colors,
+        { enabled: true, type: "cost" },
+      );
+      expect(normal!.bgColor).toBe(colors.monthBg);
+      expect(normal!.fgColor).toBe(colors.monthFg);
+
+      const warning = renderer.renderMonth(
+        {
+          cost: 60,
+          tokens: null,
+          tokenBreakdown: null,
+          month: "2026-04",
+          daysRemaining: 12,
+          dailyAverage: null,
+        },
+        colors,
+        { enabled: true, type: "cost" },
+      );
+      expect(warning!.bgColor).toBe(colors.contextWarningBg);
+      expect(warning!.fgColor).toBe(colors.contextWarningFg);
+
+      const critical = renderer.renderMonth(
+        {
+          cost: 90,
+          tokens: null,
+          tokenBreakdown: null,
+          month: "2026-04",
+          daysRemaining: 12,
+          dailyAverage: null,
+        },
+        colors,
+        { enabled: true, type: "cost" },
+      );
+      expect(critical!.bgColor).toBe(colors.contextCriticalBg);
+      expect(critical!.fgColor).toBe(colors.contextCriticalFg);
+
+      const noBudgetConfig = {
+        theme: "dark",
+        display: { style: "minimal" },
+      } as any;
+      const noBudgetRenderer = new SegmentRenderer(
+        noBudgetConfig,
+        monthSymbols,
+      );
+      const noBudget = noBudgetRenderer.renderMonth(
+        {
+          cost: 999,
+          tokens: null,
+          tokenBreakdown: null,
+          month: "2026-04",
+          daysRemaining: 12,
+          dailyAverage: null,
+        },
+        colors,
+        { enabled: true, type: "cost" },
+      );
+      expect(noBudget!.bgColor).toBe(colors.monthBg);
+      expect(noBudget!.fgColor).toBe(colors.monthFg);
     });
 
     it("renderSession applies the same flag semantics", () => {

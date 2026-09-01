@@ -20,6 +20,7 @@ export type {
   MetricsSegmentConfig,
   BlockSegmentConfig,
   TodaySegmentConfig,
+  MonthSegmentConfig,
   VersionSegmentConfig,
   SessionIdSegmentConfig,
   EnvSegmentConfig,

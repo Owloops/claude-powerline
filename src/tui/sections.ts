@@ -26,8 +26,11 @@ import {
   abbreviateFishStyle,
   formatCacheTimerElapsed,
   formatCacheTimerRemaining,
+  formatDaysRemaining,
+  formatDailyAverage,
 } from "../utils/formatters";
 import { resolveBudgetDisplay } from "../utils/budget";
+import { getMoonPhaseIcon } from "../utils/moonPhase";
 import type {
   CacheTimerSegmentConfig,
   OutputStyleSegmentConfig,
@@ -763,6 +766,93 @@ export function formatTodaySegment(
   return text;
 }
 
+function resolveMonthIcon(sym: SymbolSet, config: PowerlineConfig): string {
+  const monthSegConfig = findConfiguredSegment(config, "month");
+  const useMoonIcon =
+    monthSegConfig?.icon === "moon" && config.display.charset !== "text";
+  return useMoonIcon
+    ? getMoonPhaseIcon(monthSegConfig?.moonStyle ?? "monochrome")
+    : sym.month_cost;
+}
+
+export function formatMonthParts(
+  monthInfo: TuiData["monthInfo"] & {},
+  sym: SymbolSet,
+  config: PowerlineConfig,
+  iconVisible = true,
+): SegmentParts<"month"> {
+  const state = resolveBudgetDisplay(
+    monthInfo.cost,
+    monthInfo.tokens,
+    config.budget?.month,
+  );
+
+  if (state.suppressAll) {
+    return {
+      icon: "",
+      label: "",
+      cost: "",
+      budget: "",
+      daysRemaining: "",
+      dailyAverage: "",
+    };
+  }
+
+  const monthSegConfig = findConfiguredSegment(config, "month");
+
+  return {
+    icon: iconVisible ? resolveMonthIcon(sym, config) : "",
+    cost: state.showBase ? formatCost(monthInfo.cost) : "",
+    label: state.percentageOnly ? "" : "month",
+    budget: state.percentText ? ` ${state.percentText}` : "",
+    daysRemaining: monthSegConfig?.showDaysRemaining
+      ? `(${formatDaysRemaining(monthInfo.daysRemaining)})`
+      : "",
+    dailyAverage:
+      monthSegConfig?.showDailyAverage && monthInfo.dailyAverage !== null
+        ? formatDailyAverage(monthInfo.dailyAverage)
+        : "",
+  };
+}
+
+export function formatMonthSegment(
+  monthInfo: TuiData["monthInfo"] & {},
+  sym: SymbolSet,
+  config: PowerlineConfig,
+  iconVisible = true,
+): string {
+  const state = resolveBudgetDisplay(
+    monthInfo.cost,
+    monthInfo.tokens,
+    config.budget?.month,
+  );
+  if (state.suppressAll) return "";
+
+  const icon = iconVisible ? resolveMonthIcon(sym, config) : "";
+  const monthSegConfig = findConfiguredSegment(config, "month");
+
+  const appendExtras = (text: string): string => {
+    let result = text;
+    if (monthSegConfig?.showDaysRemaining) {
+      result += ` (${formatDaysRemaining(monthInfo.daysRemaining)})`;
+    }
+    if (monthSegConfig?.showDailyAverage && monthInfo.dailyAverage !== null) {
+      result += ` · ${formatDailyAverage(monthInfo.dailyAverage)}`;
+    }
+    return result;
+  };
+
+  if (!state.showBase) {
+    const base = icon ? `${icon} ${state.percentText}` : state.percentText;
+    return appendExtras(base);
+  }
+
+  const costStr = formatCost(monthInfo.cost);
+  let text = icon ? `${icon} ${costStr} month` : `${costStr} month`;
+  if (state.percentText) text += ` ${state.percentText}`;
+  return appendExtras(text);
+}
+
 function formatMetricsParts(
   data: TuiData,
   sym: SymbolSet,
@@ -1347,6 +1437,7 @@ export function resolveSegments(
     block: resolveIconVisibility(config, "block"),
     session: resolveIconVisibility(config, "session"),
     today: resolveIconVisibility(config, "today"),
+    month: resolveIconVisibility(config, "month"),
     weekly: resolveIconVisibility(config, "weekly"),
     git: resolveIconVisibility(config, "git"),
     directory: resolveIconVisibility(config, "directory"),
@@ -1458,6 +1549,41 @@ export function resolveSegments(
     );
   } else {
     result.today = "";
+  }
+
+  // Month
+  if (data.monthInfo) {
+    const monthBudgetState = resolveBudgetDisplay(
+      data.monthInfo.cost,
+      data.monthInfo.tokens,
+      config.budget?.month,
+    );
+    const monthWarningThreshold = config.budget?.month?.warningThreshold ?? 80;
+    const monthDefaultFg = pf?.["month"] ?? colors.monthFg;
+    const { fg: monthColor, bold: monthBold } = resolveThresholdStyle(
+      monthBudgetState.percentage ?? -1,
+      monthDefaultFg,
+      colors.monthBold,
+      colors,
+      50,
+      monthWarningThreshold,
+    );
+    result.month = colorizeOrEmpty(
+      formatMonthSegment(data.monthInfo, sym, config, iconVisible.month),
+      monthColor,
+      monthBold,
+    );
+    addParts(
+      result,
+      "month",
+      formatMonthParts(data.monthInfo, sym, config, iconVisible.month),
+      monthColor,
+      reset,
+      pf,
+      monthBold,
+    );
+  } else {
+    result.month = "";
   }
 
   // Weekly

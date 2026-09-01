@@ -16,6 +16,7 @@ import type {
   MetricsSegmentConfig,
   BlockSegmentConfig,
   TodaySegmentConfig,
+  MonthSegmentConfig,
   VersionSegmentConfig,
   SessionIdSegmentConfig,
   EnvSegmentConfig,
@@ -34,6 +35,7 @@ export interface LineConfig {
     session?: UsageSegmentConfig;
     block?: BlockSegmentConfig;
     today?: TodaySegmentConfig;
+    month?: MonthSegmentConfig;
     tmux?: TmuxSegmentConfig;
     context?: ContextSegmentConfig;
     metrics?: MetricsSegmentConfig;
@@ -70,6 +72,7 @@ export interface BudgetItemConfig {
 export interface BudgetConfig {
   session?: BudgetItemConfig;
   today?: BudgetItemConfig;
+  month?: BudgetItemConfig;
   block?: BudgetItemConfig;
 }
 

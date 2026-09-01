@@ -32,6 +32,7 @@ export type { ContextInfo } from "./segments/context";
 export type { MetricsInfo } from "./segments/metrics";
 export type { BlockInfo } from "./segments/block";
 export type { TodayInfo } from "./segments/today";
+export type { MonthInfo } from "./segments/month";
 export type { CacheTimerInfo } from "./segments/cacheTimer";
 
 export type {
@@ -44,6 +45,7 @@ export type {
   MetricsSegmentConfig,
   BlockSegmentConfig,
   TodaySegmentConfig,
+  MonthSegmentConfig,
   VersionSegmentConfig,
   SessionIdSegmentConfig,
   EnvSegmentConfig,
@@ -141,8 +143,17 @@ export {
   formatLongTimeRemaining,
   minutesUntilReset,
   formatCacheTimerElapsed,
+  formatDaysRemaining,
+  formatDailyAverage,
 } from "./utils/formatters";
 export { getBudgetStatus } from "./utils/budget";
+export {
+  getMoonPhaseEmoji,
+  getMoonPhaseMonochrome,
+  getMoonPhaseNerdFont,
+  getMoonPhaseIcon,
+} from "./utils/moonPhase";
+export type { MoonIconStyle } from "./utils/moonPhase";
 
 // --- TUI components ---
 
