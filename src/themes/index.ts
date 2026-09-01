@@ -26,6 +26,7 @@ export interface ColorTheme {
   session: SegmentColor;
   block: SegmentColor;
   today: SegmentColor;
+  month: SegmentColor;
   tmux: SegmentColor;
   context: SegmentColor;
   contextWarning: SegmentColor;
@@ -60,6 +61,9 @@ export interface PowerlineColors {
   todayBg: string;
   todayFg: string;
   todayBold: boolean;
+  monthBg: string;
+  monthFg: string;
+  monthBold: boolean;
   tmuxBg: string;
   tmuxFg: string;
   tmuxBold: boolean;

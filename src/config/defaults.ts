@@ -34,6 +34,15 @@ export const DEFAULT_CONFIG: PowerlineConfig = {
             showUnits: true,
           },
           today: { enabled: true, type: "cost", showUnits: true },
+          month: {
+            enabled: false,
+            type: "cost",
+            showUnits: true,
+            icon: "calendar",
+            moonStyle: "monochrome",
+            showDaysRemaining: false,
+            showDailyAverage: false,
+          },
           block: {
             enabled: false,
             type: "cost",
@@ -74,6 +83,10 @@ export const DEFAULT_CONFIG: PowerlineConfig = {
     today: {
       warningThreshold: 80,
       amount: 50,
+    },
+    month: {
+      warningThreshold: 80,
+      amount: 500,
     },
     block: {
       warningThreshold: 80,

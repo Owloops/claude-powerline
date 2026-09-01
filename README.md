@@ -238,6 +238,37 @@ The two upstream options are independent. `showUpstream` controls the branch nam
 </details>
 
 <details>
+<summary><strong>Month</strong> - Shows total usage for the current calendar month with budget monitoring</summary>
+
+```json
+"month": {
+  "enabled": true,
+  "type": "cost",
+  "icon": "calendar"
+}
+```
+
+**Options:**
+
+- `type`: Display format - `cost` | `tokens` | `both` | `breakdown`
+- `showUnits`: Show the trailing `tokens` unit when `type` is `tokens` or `both` (default: `true`). Set to `false` to render `◫ $123.45 (4.4M)` instead of `◫ $123.45 (4.4M tokens)`. Only applies to the powerline/capsule/minimal styles; the `tui` style already renders tokens without a suffix
+- `icon`: Leading icon style - `calendar` (default, static `◫`) | `moon` (today's real lunar phase). `moon` is ignored under `charset: "text"`, which always falls back to the ASCII symbol
+- `moonStyle`: Rendering style for `icon: "moon"` (default: `"monochrome"`):
+  - `"monochrome"`: plain-Unicode 4-phase indicator (`○◖●◗`) that takes on the segment's theme color, like every other icon
+  - `"emoji"`: full-color 8-phase emoji (`🌑🌒🌓🌔🌕🌖🌗🌘`); ignores theme color (fixed palette)
+  - `"nerd-font"`: Weather Icons' 28-phase glyph set, theme-colored. **Requires a Nerd Font–patched terminal font** — this can't be detected at runtime, so only set this if you already know you have one, the same way you'd opt into `style: "powerline"`/`"capsule"`
+- `showDaysRemaining`: Append the number of days left in the current month in parentheses next to the budget percentage, e.g. `◫ $23.45 9% (12d)` (default: `false`)
+- `showDailyAverage`: Append the average cost per day so far this month, e.g. `◫ $23.45 9% (12d) · $1.56/day` (default: `false`)
+
+Opt-in (`enabled: false` by default). Resets on the 1st of each month.
+
+**Color reacts to spend by default.** `budget.month.amount` defaults to `500`, so as soon as you enable the segment its color shifts with usage: the theme's normal `month` color under 50% of budget, the warning color (yellow-ish) from 50% up to `warningThreshold` (default 80%), and the critical color (red-ish) at or above it — with no other config needed. Set `budget.month.amount` to your own limit, or `0`/omit the whole `month` key under `budget` to disable the percentage and keep a static color (see Budget Configuration below).
+
+**Symbols:** `◫` Month (unicode, calendar icon) &#8226; `○◖●◗` Month (unicode, moon icon, `monochrome` style — cycles with the real lunar phase) &#8226; `🌑🌒🌓🌔🌕🌖🌗🌘` Month (unicode, moon icon, `emoji` style) &#8226; `Mo` Month (text)
+
+</details>
+
+<details>
 <summary><strong>Context</strong> - Shows context window usage and auto-compact threshold</summary>
 
 ```json
@@ -576,6 +607,7 @@ Hidden when the variable is unset or empty.
 "budget": {
   "session": { "amount": 10.0, "warningThreshold": 80 },
   "today": { "amount": 25.0, "warningThreshold": 80 },
+  "month": { "amount": 500.0, "warningThreshold": 80 },
   "block": { "amount": 15.0, "type": "cost", "warningThreshold": 80 }
 }
 ```
@@ -590,7 +622,7 @@ Hidden when the variable is unset or empty.
 
 **Indicators:** `25%` Normal &#8226; `+75%` Moderate (50-79%) &#8226; `!85%` Warning (80%+)
 
-**Display toggles.** For `session` and `today`, you can hide the percentage suffix, the base value, or both:
+**Display toggles.** For `session`, `today`, and `month`, you can hide the percentage suffix, the base value, or both:
 
 ```json
 "budget": {
@@ -889,7 +921,7 @@ Use bare segment names to render the full pre-formatted segment:
 context  block    session  today    weekly
 git      dir      model    version  tmux
 metrics  activity env      agent    thinking
-cacheTimer  outputStyle
+cacheTimer  outputStyle  month
 ```
 
 #### Dot-Notation Subsegments
@@ -901,6 +933,7 @@ Use `segment.part` to place individual pieces of a segment into separate cells w
 | `session` | `icon`, `label`, `cost`, `tokens`, `budget` |
 | `block` | `icon`, `label`, `value`, `time`, `budget`, `bar` |
 | `today` | `icon`, `cost`, `label`, `budget` |
+| `month` | `icon`, `cost`, `label`, `budget`, `daysRemaining`, `dailyAverage` |
 | `weekly` | `icon`, `label`, `pct`, `time`, `bar` |
 | `git` | `icon`, `headVal`, `branch`, `status`, `ahead`, `behind`, `working`, `worktree`, `head` |
 | `context` | `icon`, `label`, `bar`, `pct`, `tokens` |

@@ -1,6 +1,7 @@
 import type { UsageInfo } from "../segments/session";
 import type { BlockInfo } from "../segments/block";
 import type { TodayInfo } from "../segments/today";
+import type { MonthInfo } from "../segments/month";
 import type { ContextInfo } from "../segments/context";
 import type { MetricsInfo } from "../segments/metrics";
 import type { GitInfo } from "../segments/git";
@@ -27,6 +28,7 @@ export interface TuiData {
   usageInfo: UsageInfo | null;
   blockInfo: BlockInfo | null;
   todayInfo: TodayInfo | null;
+  monthInfo: MonthInfo | null;
   contextInfo: ContextInfo | null;
   metricsInfo: MetricsInfo | null;
   gitInfo: GitInfo | null;
@@ -44,6 +46,7 @@ const SEGMENT_NAME_LIST = [
   "block",
   "session",
   "today",
+  "month",
   "weekly",
   "git",
   "dir",
@@ -78,6 +81,7 @@ const SEGMENT_PART_NAMES = {
   session: ["icon", "label", "cost", "tokens", "budget"],
   block: ["icon", "label", "value", "time", "budget", "bar"],
   today: ["icon", "cost", "label", "budget"],
+  month: ["icon", "cost", "label", "budget", "daysRemaining", "dailyAverage"],
   weekly: ["icon", "label", "pct", "time", "bar"],
   git: [
     "icon",

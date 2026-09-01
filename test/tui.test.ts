@@ -37,6 +37,9 @@ const PLAIN_COLORS: PowerlineColors = {
   todayBg: "",
   todayFg: "",
   todayBold: false,
+  monthBg: "",
+  monthFg: "",
+  monthBold: false,
   tmuxBg: "",
   tmuxFg: "",
   tmuxBold: false,
@@ -113,6 +116,14 @@ function makeTuiData(overrides: Partial<TuiData> = {}): TuiData {
       tokens: null,
       tokenBreakdown: null,
       date: "2026-03-17",
+    },
+    monthInfo: {
+      cost: 23.45,
+      tokens: null,
+      tokenBreakdown: null,
+      month: "2026-03",
+      daysRemaining: 14,
+      dailyAverage: 1.38,
     },
     contextInfo: {
       totalTokens: 90000,
@@ -972,6 +983,81 @@ describe("TUI Panel Rendering", () => {
         tokens: "",
         budget: "",
       });
+    });
+  });
+
+  describe("Month reactive color (TUI resolveSegments)", () => {
+    const monthColors: PowerlineColors = {
+      ...PLAIN_COLORS,
+      monthFg: "base-fg",
+      monthBold: false,
+      contextWarningFg: "warning-fg",
+      contextWarningBold: true,
+      contextCriticalFg: "critical-fg",
+      contextCriticalBold: true,
+    };
+
+    function monthDataAt(cost: number): TuiData {
+      return makeTuiData({
+        colors: monthColors,
+        monthInfo: {
+          cost,
+          tokens: null,
+          tokenBreakdown: null,
+          month: "2026-04",
+          daysRemaining: 12,
+          dailyAverage: null,
+        },
+      });
+    }
+
+    function ctxFor(data: TuiData): RenderCtx {
+      return {
+        lines: [],
+        data,
+        box: BOX_CHARS,
+        contentWidth: 96,
+        innerWidth: 98,
+        sym: SYMBOLS,
+        config: {
+          ...DEFAULT_CONFIG,
+          budget: { month: { amount: 100, warningThreshold: 80 } },
+        } as PowerlineConfig,
+        reset: "",
+        colors: monthColors,
+      };
+    }
+
+    it("stays at the base color under 50%", () => {
+      const data = monthDataAt(20);
+      const resolved = resolveSegments(data, ctxFor(data));
+      expect(resolved.data.month).toContain("base-fg");
+      expect(resolved.data["month.cost"]).toContain("base-fg");
+    });
+
+    it("switches to the warning color between 50% and the threshold", () => {
+      const data = monthDataAt(60);
+      const resolved = resolveSegments(data, ctxFor(data));
+      expect(resolved.data.month).toContain("warning-fg");
+      expect(resolved.data["month.cost"]).toContain("warning-fg");
+    });
+
+    it("switches to the critical color at or above the warning threshold", () => {
+      const data = monthDataAt(90);
+      const resolved = resolveSegments(data, ctxFor(data));
+      expect(resolved.data.month).toContain("critical-fg");
+      expect(resolved.data["month.cost"]).toContain("critical-fg");
+    });
+
+    it("stays at the base color when no budget amount is configured", () => {
+      const data = monthDataAt(999);
+      const ctx = ctxFor(data);
+      ctx.config = {
+        ...DEFAULT_CONFIG,
+        budget: { month: { warningThreshold: 80 } },
+      } as PowerlineConfig;
+      const resolved = resolveSegments(data, ctx);
+      expect(resolved.data.month).toContain("base-fg");
     });
   });
 

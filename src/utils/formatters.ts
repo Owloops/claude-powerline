@@ -125,6 +125,15 @@ export function formatBurnRate(rate: number | null | undefined): string {
   return rate < 1 ? `${(rate * 100).toFixed(0)}c/h` : `$${rate.toFixed(2)}/h`;
 }
 
+export function formatDaysRemaining(days: number): string {
+  return `${Math.max(0, days)}d`;
+}
+
+export function formatDailyAverage(avgCostPerDay: number | null): string {
+  if (avgCostPerDay === null) return "";
+  return `${formatCost(avgCostPerDay)}/day`;
+}
+
 export function collapseHome(dirPath: string, homeDir?: string): string {
   const home =
     homeDir ??

@@ -144,5 +144,16 @@ describe("Colors", () => {
         expect(theme.outputStyle.fg).toMatch(/^#[0-9a-fA-F]{6}$/);
       }
     });
+
+    it("should define month colors in every built-in theme variant", () => {
+      const names = Object.keys(BUILT_IN_THEMES);
+      expect(names.length).toBeGreaterThan(0);
+
+      for (const name of names) {
+        const theme = BUILT_IN_THEMES[name]!;
+        expect(theme.month.bg).toMatch(/^#[0-9a-fA-F]{6}$/);
+        expect(theme.month.fg).toMatch(/^#[0-9a-fA-F]{6}$/);
+      }
+    });
   });
 });

@@ -16,6 +16,9 @@ import type {
   MetricsInfo,
 } from ".";
 import type { TodayInfo } from "./today";
+import type { MonthInfo } from "./month";
+import { getMoonPhaseIcon } from "../utils/moonPhase";
+import type { MoonIconStyle } from "../utils/moonPhase";
 
 import {
   formatModelName,
@@ -31,6 +34,8 @@ import {
   formatCacheTimerRemaining,
   collapseHome,
   minutesUntilReset,
+  formatDaysRemaining,
+  formatDailyAverage,
 } from "../utils/formatters";
 import { resolveBudgetDisplay } from "../utils/budget";
 import type { BudgetItemConfig } from "../config/loader";
@@ -121,6 +126,25 @@ export interface TodaySegmentConfig extends SegmentConfig {
   showUnits?: boolean;
 }
 
+export interface MonthSegmentConfig extends SegmentConfig {
+  type: "cost" | "tokens" | "both" | "breakdown";
+  /** Show the trailing "tokens" unit on token counts. Only affects `type: "tokens"` and `type: "both"` (default: true). Inert in the `tui` display style, which never renders the suffix. */
+  showUnits?: boolean;
+  /** Leading icon style: "calendar" (default, static) or "moon" (today's real lunar phase). Ignored under `charset: "text"`, which always uses the ASCII fallback. */
+  icon?: "calendar" | "moon";
+  /**
+   * Rendering style for `icon: "moon"` (default: "monochrome").
+   * - `"monochrome"`: plain-Unicode 4-phase indicator, takes on the segment's theme color like every other icon.
+   * - `"emoji"`: full-color 8-phase emoji; ignores theme color (fixed palette).
+   * - `"nerd-font"`: Weather Icons' 28-phase glyph set, theme-colored. Requires a Nerd Font–patched terminal font — not detectable at runtime, so this only looks right if you already know you have one.
+   */
+  moonStyle?: MoonIconStyle;
+  /** Append the number of days left in the current month in parentheses, e.g. `9% (12d)` (default: false). */
+  showDaysRemaining?: boolean;
+  /** Append the average cost per day so far this month, e.g. `$1.56/day` (default: false). */
+  showDailyAverage?: boolean;
+}
+
 export interface VersionSegmentConfig extends SegmentConfig {}
 
 export interface SessionIdSegmentConfig extends SegmentConfig {
@@ -167,6 +191,7 @@ export type AnySegmentConfig =
   | MetricsSegmentConfig
   | BlockSegmentConfig
   | TodaySegmentConfig
+  | MonthSegmentConfig
   | VersionSegmentConfig
   | SessionIdSegmentConfig
   | EnvSegmentConfig
@@ -195,6 +220,7 @@ export interface PowerlineSymbols {
   session_cost: string;
   block_cost: string;
   today_cost: string;
+  month_cost: string;
   context_time: string;
   metrics_response: string;
   metrics_last_response: string;
@@ -790,6 +816,69 @@ export class SegmentRenderer {
       text,
       bgColor: colors.todayBg,
       fgColor: colors.todayFg,
+    };
+  }
+
+  renderMonth(
+    monthInfo: MonthInfo,
+    colors: PowerlineColors,
+    config?: MonthSegmentConfig,
+  ): SegmentData | null {
+    const type = config?.type ?? "cost";
+    const monthBudget = this.config.budget?.month;
+    const formattedUsage = this.formatUsageWithBudget(
+      monthInfo.cost,
+      monthInfo.tokens,
+      monthInfo.tokenBreakdown,
+      type,
+      monthBudget,
+      config?.showUnits ?? true,
+    );
+
+    if (formattedUsage === null) return null;
+
+    let body = formattedUsage;
+    if (config?.showDaysRemaining) {
+      body += ` (${formatDaysRemaining(monthInfo.daysRemaining)})`;
+    }
+    if (config?.showDailyAverage && monthInfo.dailyAverage !== null) {
+      body += ` · ${formatDailyAverage(monthInfo.dailyAverage)}`;
+    }
+
+    const useMoonIcon =
+      config?.icon === "moon" && this.config.display?.charset !== "text";
+    const iconChar = useMoonIcon
+      ? getMoonPhaseIcon(config?.moonStyle ?? "monochrome")
+      : this.symbols.month_cost;
+    const text = `${this.leadingIcon(iconChar, config)}${body}`;
+
+    const { percentage } = resolveBudgetDisplay(
+      monthInfo.cost,
+      monthInfo.tokens,
+      monthBudget,
+    );
+    const warningThreshold = monthBudget?.warningThreshold ?? 80;
+
+    let bgColor = colors.monthBg;
+    let fgColor = colors.monthFg;
+    let bold = colors.monthBold;
+    if (percentage !== null) {
+      if (percentage >= warningThreshold) {
+        bgColor = colors.contextCriticalBg;
+        fgColor = colors.contextCriticalFg;
+        bold = colors.contextCriticalBold;
+      } else if (percentage >= 50) {
+        bgColor = colors.contextWarningBg;
+        fgColor = colors.contextWarningFg;
+        bold = colors.contextWarningBold;
+      }
+    }
+
+    return {
+      text,
+      bgColor,
+      fgColor,
+      bold,
     };
   }
 
