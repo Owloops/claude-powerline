@@ -1,3 +1,23 @@
+# [1.31.0](https://github.com/Owloops/claude-powerline/compare/v1.30.3...v1.31.0) (2026-09-12)
+
+
+### Bug Fixes
+
+* **month:** drop moon icon and pacing toggles pending follow-up PR ([ac384cb](https://github.com/Owloops/claude-powerline/commit/ac384cbb830d1a544f34e023bb9d437f87585f61)), closes [#112](https://github.com/Owloops/claude-powerline/issues/112)
+* **tui:** gate today/month fetches behind their enabled flags ([fd115e6](https://github.com/Owloops/claude-powerline/commit/fd115e606d2b72d30ceef8be1586b29f5891e010))
+* **usage:** cache per-day totals and share one scan between today and month ([8272bb6](https://github.com/Owloops/claude-powerline/commit/8272bb6ed71daf89a941f4007e1c2ff81fc20090))
+
+
+### Features
+
+* **month:** add monthly usage segment with budget-reactive color ([ef5a3aa](https://github.com/Owloops/claude-powerline/commit/ef5a3aaa57c640298453773007968b80717ec5a4))
+* **tui:** add month to the fixed layout, drop reactive budget color ([54fb55b](https://github.com/Owloops/claude-powerline/commit/54fb55b8a16f235939356e725f1e80ba27d80548))
+
+
+### Performance Improvements
+
+* **month:** share a day-bucketed usage window with today ([6aac246](https://github.com/Owloops/claude-powerline/commit/6aac246d67a3b7bfc7d07ec3f1312f1bc808c30a))
+
 ## [1.30.3](https://github.com/Owloops/claude-powerline/compare/v1.30.2...v1.30.3) (2026-08-31)
 
 
