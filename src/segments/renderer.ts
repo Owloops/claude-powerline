@@ -16,6 +16,7 @@ import type {
   MetricsInfo,
 } from ".";
 import type { TodayInfo } from "./today";
+import type { MonthInfo } from "./month";
 
 import {
   formatModelName,
@@ -121,6 +122,12 @@ export interface TodaySegmentConfig extends SegmentConfig {
   showUnits?: boolean;
 }
 
+export interface MonthSegmentConfig extends SegmentConfig {
+  type: "cost" | "tokens" | "both" | "breakdown";
+  /** Show the trailing "tokens" unit on token counts. Only affects `type: "tokens"` and `type: "both"` (default: true). Inert in the `tui` display style, which never renders the suffix. */
+  showUnits?: boolean;
+}
+
 export interface VersionSegmentConfig extends SegmentConfig {}
 
 export interface SessionIdSegmentConfig extends SegmentConfig {
@@ -167,6 +174,7 @@ export type AnySegmentConfig =
   | MetricsSegmentConfig
   | BlockSegmentConfig
   | TodaySegmentConfig
+  | MonthSegmentConfig
   | VersionSegmentConfig
   | SessionIdSegmentConfig
   | EnvSegmentConfig
@@ -195,6 +203,7 @@ export interface PowerlineSymbols {
   session_cost: string;
   block_cost: string;
   today_cost: string;
+  month_cost: string;
   context_time: string;
   metrics_response: string;
   metrics_last_response: string;
@@ -790,6 +799,34 @@ export class SegmentRenderer {
       text,
       bgColor: colors.todayBg,
       fgColor: colors.todayFg,
+    };
+  }
+
+  renderMonth(
+    monthInfo: MonthInfo,
+    colors: PowerlineColors,
+    config?: MonthSegmentConfig,
+  ): SegmentData | null {
+    const type = config?.type ?? "cost";
+    const monthBudget = this.config.budget?.month;
+    const formattedUsage = this.formatUsageWithBudget(
+      monthInfo.cost,
+      monthInfo.tokens,
+      monthInfo.tokenBreakdown,
+      type,
+      monthBudget,
+      config?.showUnits ?? true,
+    );
+
+    if (formattedUsage === null) return null;
+
+    const text = `${this.leadingIcon(this.symbols.month_cost, config)}${formattedUsage}`;
+
+    return {
+      text,
+      bgColor: colors.monthBg,
+      fgColor: colors.monthFg,
+      bold: colors.monthBold,
     };
   }
 

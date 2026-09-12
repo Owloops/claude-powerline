@@ -1,5 +1,6 @@
 import { BlockProvider } from "../src/segments/block";
 import { TodayProvider } from "../src/segments/today";
+import { MonthProvider } from "../src/segments/month";
 import { SegmentRenderer, shouldShowWorktree } from "../src/segments/renderer";
 import { CacheTimerProvider } from "../src/segments/cacheTimer";
 import {
@@ -10,6 +11,7 @@ import {
   loadEntriesFromProjects,
   type ClaudeHookData,
 } from "../src/utils/claude";
+import { CacheManager } from "../src/utils/cache";
 import { mkdirSync, rmSync, writeFileSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
@@ -42,10 +44,13 @@ const mockLoadEntries = loadEntriesFromProjects as jest.MockedFunction<
 describe("Segment Time Logic", () => {
   let tempDir: string;
   let mockEntries: any[];
+  let originalCacheDir: string | undefined;
 
   beforeEach(() => {
     tempDir = join(tmpdir(), `powerline-test-${Date.now()}`);
     mkdirSync(tempDir, { recursive: true });
+    originalCacheDir = process.env.CLAUDE_POWERLINE_CACHE_DIR;
+    process.env.CLAUDE_POWERLINE_CACHE_DIR = tempDir;
 
     const now = new Date();
     const midnight = new Date();
@@ -92,6 +97,11 @@ describe("Segment Time Logic", () => {
 
   afterEach(() => {
     rmSync(tempDir, { recursive: true, force: true });
+    if (originalCacheDir === undefined) {
+      delete process.env.CLAUDE_POWERLINE_CACHE_DIR;
+    } else {
+      process.env.CLAUDE_POWERLINE_CACHE_DIR = originalCacheDir;
+    }
     jest.clearAllMocks();
   });
 
@@ -159,6 +169,183 @@ describe("Segment Time Logic", () => {
     });
   });
 
+  describe("Month Segment", () => {
+    it("should include all entries since the start of the month", async () => {
+      const monthProvider = new MonthProvider();
+      const monthInfo = await monthProvider.getMonthInfo();
+
+      expect(monthInfo.cost).toBe(71.25);
+      expect(monthInfo.tokens).toBe(4950);
+
+      expect(monthInfo.tokenBreakdown).toBeDefined();
+      expect(monthInfo.tokenBreakdown!.input).toBe(3000);
+      expect(monthInfo.tokenBreakdown!.output).toBe(1500);
+      expect(monthInfo.tokenBreakdown!.cacheCreation).toBe(300);
+      expect(monthInfo.tokenBreakdown!.cacheRead).toBe(150);
+    });
+
+    it("should format month consistently using local time", async () => {
+      const monthProvider = new MonthProvider();
+      const monthInfo = await monthProvider.getMonthInfo();
+
+      const expectedDate = new Date();
+      const year = expectedDate.getFullYear();
+      const month = String(expectedDate.getMonth() + 1).padStart(2, "0");
+      const expectedMonthStr = `${year}-${month}`;
+
+      expect(monthInfo.month).toBe(expectedMonthStr);
+    });
+  });
+
+  describe("Usage Window Cache", () => {
+    const now = new Date(2026, 8, 12, 12, 0, 0);
+    const yesterdayEntry = usageEntry(new Date(2026, 8, 11, 9, 0, 0), 10);
+    const todayEntry = usageEntry(new Date(2026, 8, 12, 9, 0, 0), 1);
+    let mtimeSpy: jest.SpyInstance;
+
+    function usageEntry(timestamp: Date, costUSD: number) {
+      return {
+        timestamp,
+        message: {
+          usage: { input_tokens: 100, output_tokens: 10 },
+          model: "claude-3-5-sonnet",
+        },
+        costUSD,
+        raw: {},
+      };
+    }
+
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const staleUsage = {
+      cost: 999,
+      entryCount: 1,
+      tokenBreakdown: { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 },
+    };
+
+    function scansIncludingYesterday() {
+      return mockLoadEntries.mock.calls.filter((call) =>
+        call[0]!(yesterdayEntry as any),
+      ).length;
+    }
+
+    beforeEach(() => {
+      // Only Date is frozen: the cache lock retry loop awaits real timers.
+      jest.useFakeTimers({
+        now,
+        doNotFake: [
+          "setTimeout",
+          "clearTimeout",
+          "setInterval",
+          "clearInterval",
+          "setImmediate",
+          "clearImmediate",
+          "nextTick",
+          "queueMicrotask",
+        ],
+      });
+      mtimeSpy = jest
+        .spyOn(CacheManager, "getLatestTranscriptMtime")
+        .mockResolvedValue(1000);
+      mockLoadEntries.mockResolvedValue([yesterdayEntry, todayEntry] as any);
+    });
+
+    afterEach(() => {
+      mtimeSpy.mockRestore();
+      jest.useRealTimers();
+    });
+
+    it("sums completed days into month but keeps today to the current day", async () => {
+      const monthInfo = await new MonthProvider().getMonthInfo();
+      const todayInfo = await new TodayProvider().getTodayInfo();
+
+      expect(monthInfo.cost).toBe(11);
+      expect(todayInfo.cost).toBe(1);
+    });
+
+    it("reuses today's total until a transcript changes", async () => {
+      const todayProvider = new TodayProvider();
+      await todayProvider.getTodayInfo();
+      await todayProvider.getTodayInfo();
+      expect(mockLoadEntries).toHaveBeenCalledTimes(1);
+
+      mtimeSpy.mockResolvedValue(2000);
+      await todayProvider.getTodayInfo();
+      expect(mockLoadEntries).toHaveBeenCalledTimes(2);
+    });
+
+    it("shares one scan between concurrent today and month renders", async () => {
+      await new MonthProvider().getMonthInfo();
+      mockLoadEntries.mockClear();
+      mtimeSpy.mockResolvedValue(2000);
+
+      await Promise.all([
+        new MonthProvider().getMonthInfo(),
+        new TodayProvider().getTodayInfo(),
+      ]);
+
+      expect(mockLoadEntries).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not re-parse completed days on later renders", async () => {
+      const monthProvider = new MonthProvider();
+      await monthProvider.getMonthInfo();
+      expect(scansIncludingYesterday()).toBe(1);
+
+      mtimeSpy.mockResolvedValue(2000);
+      const monthInfo = await monthProvider.getMonthInfo();
+
+      expect(scansIncludingYesterday()).toBe(1);
+      expect(monthInfo.cost).toBe(11);
+    });
+
+    it("rebuilds a completed day that was cached under another time zone", async () => {
+      await CacheManager.setDayUsageCache(
+        "2026-09-11",
+        staleUsage,
+        "Not/ThisZone",
+      );
+
+      const monthInfo = await new MonthProvider().getMonthInfo();
+
+      expect(monthInfo.cost).toBe(11);
+      expect(scansIncludingYesterday()).toBe(1);
+    });
+
+    it("does not trust a mid-day snapshot as the completed day", async () => {
+      await CacheManager.setDayUsageCache(
+        "2026-09-11",
+        staleUsage,
+        timeZone,
+        500,
+      );
+
+      const monthInfo = await new MonthProvider().getMonthInfo();
+
+      expect(monthInfo.cost).toBe(11);
+    });
+
+    it("prunes day caches older than the retention window once a day completes", async () => {
+      await CacheManager.setDayUsageCache(
+        "2026-01-01",
+        staleUsage,
+        timeZone,
+        1,
+      );
+      expect(
+        await CacheManager.getDayUsageCache("2026-01-01", timeZone, 1),
+      ).not.toBeNull();
+
+      await new MonthProvider().getMonthInfo();
+
+      expect(
+        await CacheManager.getDayUsageCache("2026-01-01", timeZone, 1),
+      ).toBeNull();
+      expect(
+        await CacheManager.getDayUsageCache("2026-09-11", timeZone),
+      ).not.toBeNull();
+    });
+  });
+
   describe("Time Zone Consistency", () => {
     it("should use local time consistently across segments", async () => {
       const now = new Date();
@@ -182,16 +369,22 @@ describe("Segment Time Logic", () => {
     it("should handle no hook data gracefully", async () => {
       const blockProvider = new BlockProvider();
       const todayProvider = new TodayProvider();
+      const monthProvider = new MonthProvider();
 
       mockLoadEntries.mockResolvedValue([]);
       const blockInfo = await blockProvider.getActiveBlockInfo();
       const todayInfo = await todayProvider.getTodayInfo();
+      const monthInfo = await monthProvider.getMonthInfo();
 
       expect(blockInfo).toBeNull();
 
       expect(todayInfo.cost).toBeNull();
       expect(todayInfo.tokens).toBeNull();
       expect(todayInfo.tokenBreakdown).toBeNull();
+
+      expect(monthInfo.cost).toBeNull();
+      expect(monthInfo.tokens).toBeNull();
+      expect(monthInfo.tokenBreakdown).toBeNull();
     });
   });
 
@@ -1647,6 +1840,95 @@ describe("Segment Time Logic", () => {
       }
       for (const piece of expected.textContains ?? []) {
         expect(result!.text).toContain(piece);
+      }
+    });
+
+    it("renderMonth applies the same flag semantics", () => {
+      const monthSymbols = { month_cost: "◫" } as any;
+      const monthColors = {
+        monthBg: "",
+        monthFg: "",
+        monthBold: false,
+      } as any;
+
+      function renderMonthCase(opts: {
+        cost: number | null;
+        amount?: number;
+        showValue?: boolean;
+        showPercentage?: boolean;
+      }) {
+        const config = {
+          theme: "dark",
+          display: { style: "minimal", showIcons: false, lines: [] },
+          budget: {
+            month: {
+              amount: opts.amount,
+              warningThreshold: 80,
+              showValue: opts.showValue,
+              showPercentage: opts.showPercentage,
+            },
+          },
+        } as any;
+        const renderer = new SegmentRenderer(config, monthSymbols);
+        const monthInfo = {
+          cost: opts.cost,
+          tokens: null,
+          tokenBreakdown: null,
+          month: "2026-04",
+        } as any;
+        return renderer.renderMonth(monthInfo, monthColors, {
+          enabled: true,
+          type: "cost",
+        } as any);
+      }
+
+      expect(renderMonthCase({ cost: 10, amount: 50 })!.text).toBe(
+        "$10.00 20%",
+      );
+      expect(
+        renderMonthCase({ cost: 10, amount: 50, showPercentage: false })!.text,
+      ).toBe("$10.00");
+      expect(
+        renderMonthCase({ cost: 10, amount: 50, showValue: false })!.text,
+      ).toBe("20%");
+      expect(
+        renderMonthCase({
+          cost: 10,
+          amount: 50,
+          showValue: false,
+          showPercentage: false,
+        }),
+      ).toBeNull();
+    });
+
+    it("renderMonth uses a static color regardless of budget percentage", () => {
+      const monthSymbols = { month_cost: "◫" } as any;
+      const colors = {
+        monthBg: "#2a1f14",
+        monthFg: "#e8b86d",
+        monthBold: false,
+      } as any;
+
+      const config = {
+        theme: "dark",
+        display: { style: "minimal" },
+        budget: { month: { amount: 100, warningThreshold: 80 } },
+      } as any;
+      const renderer = new SegmentRenderer(config, monthSymbols);
+
+      for (const cost of [20, 60, 90]) {
+        const result = renderer.renderMonth(
+          {
+            cost,
+            tokens: null,
+            tokenBreakdown: null,
+            month: "2026-04",
+          },
+          colors,
+          { enabled: true, type: "cost" },
+        );
+        expect(result!.bgColor).toBe(colors.monthBg);
+        expect(result!.fgColor).toBe(colors.monthFg);
       }
     });
 

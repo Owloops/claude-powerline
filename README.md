@@ -117,6 +117,7 @@ export CLAUDE_POWERLINE_THEME=dark
 export CLAUDE_POWERLINE_STYLE=powerline
 export CLAUDE_POWERLINE_CONFIG=/path/to/config.json
 export CLAUDE_POWERLINE_DEBUG=1  # Enable debug logging
+export CLAUDE_POWERLINE_CACHE_DIR=/path/to/cache  # Usage cache location (default: ~/.claude/powerline)
 ```
 
 </details>
@@ -234,6 +235,29 @@ The two upstream options are independent. `showUpstream` controls the branch nam
 - `showUnits`: Show the trailing `tokens` unit when `type` is `tokens` or `both` (default: `true`). Set to `false` to render `☉ $12.34 (4.4M)` instead of `☉ $12.34 (4.4M tokens)`. Only applies to the powerline/capsule/minimal styles; the `tui` style already renders tokens without a suffix
 
 **Symbols:** `☉` Today (unicode) &#8226; `D` Today (text)
+
+</details>
+
+<details>
+<summary><strong>Month</strong> - Shows total usage for the current calendar month with budget monitoring</summary>
+
+```json
+"month": {
+  "enabled": true,
+  "type": "cost"
+}
+```
+
+**Options:**
+
+- `type`: Display format - `cost` | `tokens` | `both` | `breakdown`
+- `showUnits`: Show the trailing `tokens` unit when `type` is `tokens` or `both` (default: `true`). Set to `false` to render `◫ $123.45 (4.4M)` instead of `◫ $123.45 (4.4M tokens)`. Only applies to the powerline/capsule/minimal styles; the `tui` style already renders tokens without a suffix
+
+Opt-in (`enabled: false` by default). Resets on the 1st of each month.
+
+`budget.month.amount` defaults to `500` (like `today`'s default of `50`) unless overridden. Set it to `0` to disable the percentage — omitting the `month` key entirely does **not** disable it, since the default still applies (see Budget Configuration below).
+
+**Symbols:** `◫` Month (unicode) &#8226; `Mo` Month (text)
 
 </details>
 
@@ -576,6 +600,7 @@ Hidden when the variable is unset or empty.
 "budget": {
   "session": { "amount": 10.0, "warningThreshold": 80 },
   "today": { "amount": 25.0, "warningThreshold": 80 },
+  "month": { "amount": 500.0, "warningThreshold": 80 },
   "block": { "amount": 15.0, "type": "cost", "warningThreshold": 80 }
 }
 ```
@@ -590,7 +615,7 @@ Hidden when the variable is unset or empty.
 
 **Indicators:** `25%` Normal &#8226; `+75%` Moderate (50-79%) &#8226; `!85%` Warning (80%+)
 
-**Display toggles.** For `session` and `today`, you can hide the percentage suffix, the base value, or both:
+**Display toggles.** For `session`, `today`, and `month`, you can hide the percentage suffix, the base value, or both:
 
 ```json
 "budget": {
@@ -889,7 +914,7 @@ Use bare segment names to render the full pre-formatted segment:
 context  block    session  today    weekly
 git      dir      model    version  tmux
 metrics  activity env      agent    thinking
-cacheTimer  outputStyle
+cacheTimer  outputStyle  month
 ```
 
 #### Dot-Notation Subsegments
@@ -901,6 +926,7 @@ Use `segment.part` to place individual pieces of a segment into separate cells w
 | `session` | `icon`, `label`, `cost`, `tokens`, `budget` |
 | `block` | `icon`, `label`, `value`, `time`, `budget`, `bar` |
 | `today` | `icon`, `cost`, `label`, `budget` |
+| `month` | `icon`, `cost`, `label`, `budget` |
 | `weekly` | `icon`, `label`, `pct`, `time`, `bar` |
 | `git` | `icon`, `headVal`, `branch`, `status`, `ahead`, `behind`, `working`, `worktree`, `head` |
 | `context` | `icon`, `label`, `bar`, `pct`, `tokens` |

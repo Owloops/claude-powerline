@@ -1,5 +1,7 @@
 import { PowerlineRenderer } from "../src/powerline";
 import { GitService, SessionProvider } from "../src/segments";
+import { TodayProvider } from "../src/segments/today";
+import { MonthProvider } from "../src/segments/month";
 import { loadConfigFromCLI } from "../src/config/loader";
 import type { PowerlineConfig } from "../src/config/loader";
 import { DEFAULT_CONFIG } from "../src/config/defaults";
@@ -19,6 +21,82 @@ describe("Core Functionality", () => {
     try {
       unlinkSync(join(tempDir, "test.jsonl"));
     } catch {}
+  });
+
+  describe("TUI usage fetches", () => {
+    const hookData = {
+      session_id: "test-session",
+      transcript_path: "/fake/path.jsonl",
+      model: { id: "claude-3-5-sonnet", display_name: "Claude" },
+      hook_event_name: "test",
+    };
+
+    function tuiConfig(
+      segments: Record<string, { enabled: boolean }>,
+    ): PowerlineConfig {
+      return {
+        ...DEFAULT_CONFIG,
+        display: {
+          ...DEFAULT_CONFIG.display,
+          style: "tui",
+          lines: [{ segments: { directory: { enabled: true }, ...segments } }],
+        },
+      } as PowerlineConfig;
+    }
+
+    let todaySpy: jest.SpyInstance;
+    let monthSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      todaySpy = jest
+        .spyOn(TodayProvider.prototype, "getTodayInfo")
+        .mockResolvedValue({
+          cost: null,
+          tokens: null,
+          tokenBreakdown: null,
+          date: "2026-09-12",
+        });
+      monthSpy = jest
+        .spyOn(MonthProvider.prototype, "getMonthInfo")
+        .mockResolvedValue({
+          cost: null,
+          tokens: null,
+          tokenBreakdown: null,
+          month: "2026-09",
+        });
+    });
+
+    afterEach(() => {
+      todaySpy.mockRestore();
+      monthSpy.mockRestore();
+    });
+
+    async function render(config: PowerlineConfig) {
+      await new PowerlineRenderer(config).generateStatusline({
+        ...hookData,
+        cwd: tempDir,
+        workspace: { project_dir: tempDir, current_dir: tempDir },
+      });
+    }
+
+    it("fetches today when no line mentions it, and skips opt-in month", async () => {
+      await render(tuiConfig({}));
+
+      expect(todaySpy).toHaveBeenCalledTimes(1);
+      expect(monthSpy).not.toHaveBeenCalled();
+    });
+
+    it("skips today only when a line turns it off", async () => {
+      await render(tuiConfig({ today: { enabled: false } }));
+
+      expect(todaySpy).not.toHaveBeenCalled();
+    });
+
+    it("fetches month once a line enables it", async () => {
+      await render(tuiConfig({ month: { enabled: true } }));
+
+      expect(monthSpy).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe("Basic Powerline Generation", () => {

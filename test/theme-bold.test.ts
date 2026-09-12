@@ -25,6 +25,7 @@ function makeCustomTheme(overrides: Partial<ColorTheme> = {}): ColorTheme {
     session: { ...base },
     block: { ...base },
     today: { ...base },
+    month: { ...base },
     tmux: { ...base },
     context: { ...base },
     contextWarning: { ...base },

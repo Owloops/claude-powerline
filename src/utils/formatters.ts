@@ -5,6 +5,14 @@ interface TokenBreakdown {
   cacheRead: number;
 }
 
+/** Local calendar date as `YYYY-MM-DD`, the key the usage caches bucket on. */
+export function formatLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export function formatCost(cost: number | null): string {
   if (cost === null) return "$0.00";
   if (cost < 0.01) return "<$0.01";

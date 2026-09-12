@@ -9,6 +9,7 @@ import {
   findProjectPaths,
   collectProjectFiles,
 } from "./claude";
+import { formatLocalDate } from "./formatters";
 
 interface ErrnoError extends Error {
   code?: string;
@@ -17,16 +18,33 @@ interface ErrnoError extends Error {
 export interface CacheEntry<T> {
   data: T;
   timestamp: number;
+  /** Day caches only: the local time zone the day was bucketed in. */
+  timeZone?: string;
+  /** Day caches only: false while the day is still accumulating. */
+  complete?: boolean;
 }
 
+/**
+ * Longer than the widest usage window (a calendar month plus one day of scan
+ * slack), so a cached day is never rebuilt while it can still be shown.
+ */
+const DAY_CACHE_RETENTION_DAYS = 45;
+const DAY_CACHE_FILE = /^day-(\d{4}-\d{2}-\d{2})\.json$/;
+
 export class CacheManager {
-  private static readonly CACHE_DIR = path.join(
-    homedir(),
-    ".claude",
-    "powerline",
-  );
-  private static readonly USAGE_CACHE_DIR = path.join(this.CACHE_DIR, "usage");
-  private static readonly LOCKS_DIR = path.join(this.CACHE_DIR, "locks");
+  /** Resolved on every access so tests can point it at a temporary directory. */
+  private static get CACHE_DIR(): string {
+    return (
+      process.env.CLAUDE_POWERLINE_CACHE_DIR ||
+      path.join(homedir(), ".claude", "powerline")
+    );
+  }
+  private static get USAGE_CACHE_DIR(): string {
+    return path.join(this.CACHE_DIR, "usage");
+  }
+  private static get LOCKS_DIR(): string {
+    return path.join(this.CACHE_DIR, "locks");
+  }
 
   private static isLocked(name: string): boolean {
     const lockFile = path.join(this.LOCKS_DIR, name);
@@ -121,55 +139,72 @@ export class CacheManager {
     return createHash("md5").update(projectPath).digest("hex").substring(0, 8);
   }
 
-  static async getUsageCache(
-    cacheType: "today" | "block" | "pricing",
-    latestMtime?: number,
+  /**
+   * Reads `<name>.json` from the usage cache directory. A missing directory or
+   * file is an ordinary miss, so nothing is created on the read path.
+   */
+  private static async readUsageCache(
+    name: string,
+    isValid: (entry: CacheEntry<unknown>) => boolean,
   ): Promise<unknown> {
     const MAX_RETRIES = 3;
     const RETRY_DELAY_MS = 75;
-    const FILE_ENCODING = "utf-8";
 
-    await this.ensureCacheDirectories();
-    const cachePath = path.join(this.USAGE_CACHE_DIR, `${cacheType}.json`);
-    const lockName = `${cacheType}.usage.lock`;
+    const cachePath = path.join(this.USAGE_CACHE_DIR, `${name}.json`);
+    const lockName = `${name}.usage.lock`;
 
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-      const isCurrentlyLocked = this.isLocked(lockName);
-      if (isCurrentlyLocked) {
-        debug(`Cache for ${cacheType} is locked, waiting...`);
+      if (this.isLocked(lockName)) {
+        debug(`Cache for ${name} is locked, waiting...`);
         await setTimeout(RETRY_DELAY_MS);
         continue;
       }
 
       try {
-        const content = await fs.promises.readFile(cachePath, FILE_ENCODING);
+        const content = await fs.promises.readFile(cachePath, "utf-8");
         const cached: CacheEntry<unknown> = JSON.parse(content);
-        const cacheIsValid = !latestMtime || cached.timestamp >= latestMtime;
 
-        if (cacheIsValid) {
-          debug(`[CACHE-HIT] ${cacheType} disk cache: found`);
+        if (isValid(cached)) {
+          debug(`[CACHE-HIT] ${name} disk cache: found`);
           return this.deserializeDates(cached.data);
-        } else {
-          debug(
-            `${cacheType} cache outdated: cache=${cached.timestamp}, latest=${latestMtime}`,
-          );
-          return null;
         }
+        debug(`${name} cache outdated`);
+        return null;
       } catch (error) {
         if ((error as ErrnoError).code === "ENOENT") {
-          debug(`No shared ${cacheType} usage cache found`);
+          debug(`No ${name} usage cache found`);
           return null;
         }
-        const attemptNumber = attempt + 1;
         debug(
-          `Attempt ${attemptNumber} failed to read ${cacheType} cache: ${(error as Error).message}. Retrying...`,
+          `Attempt ${attempt + 1} failed to read ${name} cache: ${(error as Error).message}. Retrying...`,
         );
         await setTimeout(RETRY_DELAY_MS);
       }
     }
 
-    debug(`Failed to read ${cacheType} cache after ${MAX_RETRIES} attempts.`);
+    debug(`Failed to read ${name} cache after ${MAX_RETRIES} attempts.`);
     return null;
+  }
+
+  private static async writeUsageCache(
+    name: string,
+    entry: CacheEntry<unknown>,
+  ): Promise<void> {
+    const lockName = `${name}.usage.lock`;
+    if (!(await this.acquireLock(lockName))) {
+      debug(`Could not acquire lock to set usage cache for ${name}`);
+      return;
+    }
+
+    try {
+      const cachePath = path.join(this.USAGE_CACHE_DIR, `${name}.json`);
+      await fs.promises.writeFile(cachePath, JSON.stringify(entry), "utf-8");
+      debug(`[CACHE-SET] ${name} disk cache stored`);
+    } catch (error) {
+      debug(`Failed to save ${name} usage cache:`, error);
+    } finally {
+      await this.releaseLock(lockName);
+    }
   }
 
   private static deserializeDates(data: unknown): unknown {
@@ -182,34 +217,85 @@ export class CacheManager {
     return data;
   }
 
-  static async setUsageCache(
-    cacheType: "today" | "block" | "pricing",
+  static getUsageCache(
+    cacheType: "block" | "pricing",
+    latestMtime?: number,
+  ): Promise<unknown> {
+    return this.readUsageCache(
+      cacheType,
+      (entry) => !latestMtime || entry.timestamp >= latestMtime,
+    );
+  }
+
+  static setUsageCache(
+    cacheType: "block" | "pricing",
     data: unknown,
     latestMtime?: number,
   ): Promise<void> {
-    const lockName = `${cacheType}.usage.lock`;
-    const lockAcquired = await this.acquireLock(lockName);
-    if (!lockAcquired) {
-      debug(`Could not acquire lock to set usage cache for ${cacheType}`);
-      return;
-    }
+    return this.writeUsageCache(cacheType, {
+      data,
+      timestamp: latestMtime || Date.now(),
+    });
+  }
+
+  /**
+   * Usage totals for one local calendar day. Pass `latestMtime` for the
+   * current day: the entry is valid while no transcript is newer. Omit it for
+   * a completed day: the entry is valid only if it was written after the day
+   * ended, so a total captured mid-day is never mistaken for the whole day.
+   * A time zone mismatch always invalidates, because the day boundaries move.
+   */
+  static getDayUsageCache(
+    dateStr: string,
+    timeZone: string,
+    latestMtime?: number,
+  ): Promise<unknown> {
+    return this.readUsageCache(`day-${dateStr}`, (entry) => {
+      if (entry.timeZone !== timeZone) return false;
+      return latestMtime === undefined
+        ? entry.complete === true
+        : entry.timestamp >= latestMtime;
+    });
+  }
+
+  static async setDayUsageCache(
+    dateStr: string,
+    data: unknown,
+    timeZone: string,
+    latestMtime?: number,
+  ): Promise<void> {
+    const complete = latestMtime === undefined;
+    await this.writeUsageCache(`day-${dateStr}`, {
+      data,
+      timestamp: latestMtime ?? Date.now(),
+      timeZone,
+      complete,
+    });
+    if (complete) await this.pruneDayUsageCache();
+  }
+
+  private static async pruneDayUsageCache(): Promise<void> {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - DAY_CACHE_RETENTION_DAYS);
+    const cutoffDateStr = formatLocalDate(cutoff);
 
     try {
-      await this.ensureCacheDirectories();
-      const cachePath = path.join(this.USAGE_CACHE_DIR, `${cacheType}.json`);
-      const cacheTimestamp = latestMtime || Date.now();
-      const cacheEntry: CacheEntry<unknown> = {
-        data,
-        timestamp: cacheTimestamp,
-      };
-      const cacheContent = JSON.stringify(cacheEntry);
+      const files = await fs.promises.readdir(this.USAGE_CACHE_DIR);
+      const stale = files.filter((file) => {
+        const dateStr = DAY_CACHE_FILE.exec(file)?.[1];
+        return dateStr !== undefined && dateStr < cutoffDateStr;
+      });
 
-      await fs.promises.writeFile(cachePath, cacheContent, "utf-8");
-      debug(`[CACHE-SET] ${cacheType} disk cache stored`);
+      await Promise.all(
+        stale.map((file) =>
+          fs.promises.unlink(path.join(this.USAGE_CACHE_DIR, file)),
+        ),
+      );
+      if (stale.length > 0) {
+        debug(`Pruned ${stale.length} day usage cache file(s)`);
+      }
     } catch (error) {
-      debug(`Failed to save ${cacheType} usage cache:`, error);
-    } finally {
-      await this.releaseLock(lockName);
+      debug("Failed to prune day usage cache:", error);
     }
   }
 

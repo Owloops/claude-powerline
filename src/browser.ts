@@ -32,6 +32,7 @@ export type { ContextInfo } from "./segments/context";
 export type { MetricsInfo } from "./segments/metrics";
 export type { BlockInfo } from "./segments/block";
 export type { TodayInfo } from "./segments/today";
+export type { MonthInfo } from "./segments/month";
 export type { CacheTimerInfo } from "./segments/cacheTimer";
 
 export type {
@@ -44,6 +45,7 @@ export type {
   MetricsSegmentConfig,
   BlockSegmentConfig,
   TodaySegmentConfig,
+  MonthSegmentConfig,
   VersionSegmentConfig,
   SessionIdSegmentConfig,
   EnvSegmentConfig,

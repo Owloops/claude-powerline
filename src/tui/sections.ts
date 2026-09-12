@@ -357,6 +357,27 @@ export function collectMetricSegments(
     }
   }
 
+  // `month` is opt-in (disabled by default), unlike `today`, so it's gated on
+  // an explicit `enabled` check here rather than bare data presence — the
+  // same pattern `cacheTimer`/`outputStyle` use below — to avoid changing
+  // existing fixed-layout dashboards for users who haven't opted in.
+  const monthEnabled = config.display.lines.some(
+    (line) => line.segments.month?.enabled,
+  );
+  if (monthEnabled && data.monthInfo) {
+    const monthStr = formatMonthSegment(
+      data.monthInfo,
+      sym,
+      config,
+      resolveIconVisibility(config, "month"),
+    );
+    if (monthStr) {
+      segments.push(
+        colorize(monthStr, colors.monthFg, reset, colors.monthBold),
+      );
+    }
+  }
+
   const activityParts = collectActivityParts(data, sym);
   if (activityParts.length > 0) {
     segments.push(
@@ -759,6 +780,55 @@ export function formatTodaySegment(
 
   const costStr = formatCost(todayInfo.cost);
   let text = icon ? `${icon} ${costStr} today` : `${costStr} today`;
+  if (state.percentText) text += ` ${state.percentText}`;
+  return text;
+}
+
+export function formatMonthParts(
+  monthInfo: TuiData["monthInfo"] & {},
+  sym: SymbolSet,
+  config: PowerlineConfig,
+  iconVisible = true,
+): SegmentParts<"month"> {
+  const state = resolveBudgetDisplay(
+    monthInfo.cost,
+    monthInfo.tokens,
+    config.budget?.month,
+  );
+
+  if (state.suppressAll) {
+    return { icon: "", label: "", cost: "", budget: "" };
+  }
+
+  return {
+    icon: iconVisible ? sym.month_cost : "",
+    cost: state.showBase ? formatCost(monthInfo.cost) : "",
+    label: state.percentageOnly ? "" : "month",
+    budget: state.percentText ? ` ${state.percentText}` : "",
+  };
+}
+
+export function formatMonthSegment(
+  monthInfo: TuiData["monthInfo"] & {},
+  sym: SymbolSet,
+  config: PowerlineConfig,
+  iconVisible = true,
+): string {
+  const state = resolveBudgetDisplay(
+    monthInfo.cost,
+    monthInfo.tokens,
+    config.budget?.month,
+  );
+  if (state.suppressAll) return "";
+
+  const icon = iconVisible ? sym.month_cost : "";
+
+  if (!state.showBase) {
+    return icon ? `${icon} ${state.percentText}` : state.percentText;
+  }
+
+  const costStr = formatCost(monthInfo.cost);
+  let text = icon ? `${icon} ${costStr} month` : `${costStr} month`;
   if (state.percentText) text += ` ${state.percentText}`;
   return text;
 }
@@ -1347,6 +1417,7 @@ export function resolveSegments(
     block: resolveIconVisibility(config, "block"),
     session: resolveIconVisibility(config, "session"),
     today: resolveIconVisibility(config, "today"),
+    month: resolveIconVisibility(config, "month"),
     weekly: resolveIconVisibility(config, "weekly"),
     git: resolveIconVisibility(config, "git"),
     directory: resolveIconVisibility(config, "directory"),
@@ -1458,6 +1529,27 @@ export function resolveSegments(
     );
   } else {
     result.today = "";
+  }
+
+  // Month
+  if (data.monthInfo) {
+    const monthColor = pf?.["month"] ?? colors.monthFg;
+    result.month = colorizeOrEmpty(
+      formatMonthSegment(data.monthInfo, sym, config, iconVisible.month),
+      monthColor,
+      colors.monthBold,
+    );
+    addParts(
+      result,
+      "month",
+      formatMonthParts(data.monthInfo, sym, config, iconVisible.month),
+      monthColor,
+      reset,
+      pf,
+      colors.monthBold,
+    );
+  } else {
+    result.month = "";
   }
 
   // Weekly

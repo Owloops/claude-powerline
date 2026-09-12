@@ -7,6 +7,7 @@ import {
   formatSessionParts,
   formatSessionSegment,
   getSessionSegmentConfig,
+  collectMetricSegments,
 } from "../src/tui/sections";
 import type { TuiData, BoxChars, RenderCtx } from "../src/tui/types";
 import { isValidSegmentRef, SEGMENT_PARTS } from "../src/tui/types";
@@ -37,6 +38,9 @@ const PLAIN_COLORS: PowerlineColors = {
   todayBg: "",
   todayFg: "",
   todayBold: false,
+  monthBg: "",
+  monthFg: "",
+  monthBold: false,
   tmuxBg: "",
   tmuxFg: "",
   tmuxBold: false,
@@ -113,6 +117,12 @@ function makeTuiData(overrides: Partial<TuiData> = {}): TuiData {
       tokens: null,
       tokenBreakdown: null,
       date: "2026-03-17",
+    },
+    monthInfo: {
+      cost: 23.45,
+      tokens: null,
+      tokenBreakdown: null,
+      month: "2026-03",
     },
     contextInfo: {
       totalTokens: 90000,
@@ -972,6 +982,134 @@ describe("TUI Panel Rendering", () => {
         tokens: "",
         budget: "",
       });
+    });
+  });
+
+  describe("collectMetricSegments — month (fixed TUI layout)", () => {
+    function dataWithMonth(cost: number | null): TuiData {
+      return makeTuiData({
+        monthInfo: {
+          cost,
+          tokens: null,
+          tokenBreakdown: null,
+          month: "2026-04",
+        },
+      });
+    }
+
+    const monthEnabledConfig: PowerlineConfig = {
+      ...DEFAULT_CONFIG,
+      display: {
+        ...DEFAULT_CONFIG.display,
+        lines: [
+          {
+            segments: {
+              ...DEFAULT_CONFIG.display.lines[0]!.segments,
+              month: { enabled: true, type: "cost", showUnits: true },
+            },
+          },
+        ],
+      },
+    };
+
+    it("includes month when enabled and formattable", () => {
+      const segments = collectMetricSegments(
+        dataWithMonth(20),
+        SYMBOLS,
+        monthEnabledConfig,
+        "",
+        PLAIN_COLORS,
+      );
+      expect(segments.some((s) => s.includes("month"))).toBe(true);
+    });
+
+    it("excludes month when budget suppresses all output", () => {
+      const suppressedConfig: PowerlineConfig = {
+        ...monthEnabledConfig,
+        budget: {
+          month: { amount: 50, showValue: false, showPercentage: false },
+        },
+      };
+      const segments = collectMetricSegments(
+        dataWithMonth(20),
+        SYMBOLS,
+        suppressedConfig,
+        "",
+        PLAIN_COLORS,
+      );
+      expect(segments.some((s) => s.includes("month"))).toBe(false);
+    });
+
+    it("excludes month when not enabled, even with monthInfo present", () => {
+      const segments = collectMetricSegments(
+        dataWithMonth(20),
+        SYMBOLS,
+        DEFAULT_CONFIG,
+        "",
+        PLAIN_COLORS,
+      );
+      expect(segments.some((s) => s.includes("month"))).toBe(false);
+    });
+  });
+
+  describe("Month color (TUI resolveSegments)", () => {
+    const monthColors: PowerlineColors = {
+      ...PLAIN_COLORS,
+      monthFg: "base-fg",
+      monthBold: false,
+      contextWarningFg: "warning-fg",
+      contextWarningBold: true,
+      contextCriticalFg: "critical-fg",
+      contextCriticalBold: true,
+    };
+
+    function monthDataAt(cost: number): TuiData {
+      return makeTuiData({
+        colors: monthColors,
+        monthInfo: {
+          cost,
+          tokens: null,
+          tokenBreakdown: null,
+          month: "2026-04",
+        },
+      });
+    }
+
+    function ctxFor(data: TuiData): RenderCtx {
+      return {
+        lines: [],
+        data,
+        box: BOX_CHARS,
+        contentWidth: 96,
+        innerWidth: 98,
+        sym: SYMBOLS,
+        config: {
+          ...DEFAULT_CONFIG,
+          budget: { month: { amount: 100, warningThreshold: 80 } },
+        } as PowerlineConfig,
+        reset: "",
+        colors: monthColors,
+      };
+    }
+
+    it("stays at the base color regardless of budget percentage", () => {
+      for (const cost of [20, 60, 90]) {
+        const data = monthDataAt(cost);
+        const resolved = resolveSegments(data, ctxFor(data));
+        expect(resolved.data.month).toContain("base-fg");
+        expect(resolved.data["month.cost"]).toContain("base-fg");
+      }
+    });
+
+    it("stays at the base color when no budget amount is configured", () => {
+      const data = monthDataAt(999);
+      const ctx = ctxFor(data);
+      ctx.config = {
+        ...DEFAULT_CONFIG,
+        budget: { month: { warningThreshold: 80 } },
+      } as PowerlineConfig;
+      const resolved = resolveSegments(data, ctx);
+      expect(resolved.data.month).toContain("base-fg");
     });
   });
 
