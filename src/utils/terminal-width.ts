@@ -1,5 +1,6 @@
 import { execSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { closeSync, openSync, readFileSync } from "node:fs";
+import { WriteStream } from "node:tty";
 
 const VALID_TTY_PATTERN = /^[a-zA-Z0-9/]+$/;
 
@@ -123,21 +124,60 @@ function getWindowsTerminalWidth(): number | null {
   return null;
 }
 
-function getUnixTerminalWidth(): number | null {
+/**
+ * @info Asks the device for its width directly. `stty size` does nothing more
+ * than an ioctl(TIOCGWINSZ), which node:tty exposes without spawning a shell
+ * and a binary to read two numbers back off a pipe.
+ */
+export function widthFromTtyDevice(devicePath: string): number | null {
+  let fd: number | null = null;
+  let stream: WriteStream | null = null;
+  try {
+    fd = openSync(devicePath, "r");
+    stream = new WriteStream(fd);
+    return stream.columns > 0 ? stream.columns : null;
+  } catch {
+    return null;
+  } finally {
+    // The stream opens descriptors of its own beyond the one passed in, so
+    // closing the fd alone leaks them. A throw here would escape the catch.
+    try {
+      stream?.destroy();
+    } catch {}
+    if (fd !== null) {
+      try {
+        closeSync(fd);
+      } catch {}
+    }
+  }
+}
+
+// The tui style asks for the width twice per render and it cannot change
+// within the lifetime of a status line process. This wraps the platform switch
+// rather than sitting inside it, so the Windows spawn is memoised too.
+let cachedWidth: number | null | undefined;
+
+function getCachedTerminalWidth(): number | null {
+  if (cachedWidth !== undefined) return cachedWidth;
+
+  // `mode con` answering is the win32 path; when it does not, fall through to
+  // the unix lookup rather than giving up, as getTerminalWidth always has.
+  const windowsWidth =
+    process.platform === "win32" ? getWindowsTerminalWidth() : null;
+
+  cachedWidth = windowsWidth ?? computeUnixTerminalWidth();
+  return cachedWidth;
+}
+
+export function clearTerminalWidthCache(): void {
+  cachedWidth = undefined;
+}
+
+function computeUnixTerminalWidth(): number | null {
   const tty = findParentTty();
   if (tty) {
-    try {
-      const size = execSync(`stty size < /dev/${tty}`, {
-        encoding: "utf8",
-        stdio: ["pipe", "pipe", "ignore"],
-        shell: "/bin/sh",
-      }).trim();
-      const width = size.split(" ")[1];
-      if (width) {
-        const parsed = parseInt(width, 10);
-        if (!isNaN(parsed) && parsed > 0) return parsed;
-      }
-    } catch {}
+    const width = widthFromTtyDevice(`/dev/${tty}`);
+    if (width) return width;
   }
 
   try {
@@ -172,12 +212,7 @@ export function getTerminalWidth(): number | null {
     return applyReserve(process.stdout.columns);
   }
 
-  if (process.platform === "win32") {
-    const width = getWindowsTerminalWidth();
-    if (width) return applyReserve(width);
-  }
-
-  const width = getUnixTerminalWidth();
+  const width = getCachedTerminalWidth();
   return width ? applyReserve(width) : null;
 }
 
@@ -185,9 +220,5 @@ export function getRawTerminalWidth(): number | null {
   // Skip COLUMNS env and process.stdout.columns — Claude Code sets those
   // to an already-reserved panel width. We need the actual terminal width
   // so the grid engine can apply its own widthReserve.
-  if (process.platform === "win32") {
-    return getWindowsTerminalWidth();
-  }
-
-  return getUnixTerminalWidth();
+  return getCachedTerminalWidth();
 }

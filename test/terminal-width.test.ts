@@ -1,4 +1,10 @@
-import { ttyNameFromDevNumber } from "../src/utils/terminal-width";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import {
+  ttyNameFromDevNumber,
+  widthFromTtyDevice,
+} from "../src/utils/terminal-width";
 
 // Device numbers are encoded the way the kernel's new_encode_dev() does it:
 // (minor & 0xff) | (major << 8) | ((minor & ~0xff) << 12)
@@ -39,5 +45,31 @@ describe("ttyNameFromDevNumber", () => {
     expect(ttyNameFromDevNumber(encodeDev(5, 0))).toBeNull();
     expect(ttyNameFromDevNumber(encodeDev(3, 0))).toBeNull();
     expect(ttyNameFromDevNumber(encodeDev(144, 0))).toBeNull();
+  });
+});
+
+describe("widthFromTtyDevice", () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), "tty-width-"));
+  });
+
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("should return null when the path does not exist", () => {
+    expect(widthFromTtyDevice(join(tempDir, "nope"))).toBeNull();
+  });
+
+  it("should return null for a file that is not a terminal", () => {
+    const filePath = join(tempDir, "regular");
+    writeFileSync(filePath, "not a tty");
+    expect(widthFromTtyDevice(filePath)).toBeNull();
+  });
+
+  it("should return null for a character device with no window size", () => {
+    expect(widthFromTtyDevice("/dev/null")).toBeNull();
   });
 });
