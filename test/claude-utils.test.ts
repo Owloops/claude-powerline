@@ -12,6 +12,7 @@ import { tmpdir } from "os";
 import {
   findAgentTranscripts,
   parseJsonlFile,
+  readFirstLine,
   collectProjectFiles,
   getOutputStyleName,
   type ClaudeHookData,
@@ -357,5 +358,60 @@ describe("parseJsonlFile caching", () => {
 
   it("returns an empty array for a missing file", async () => {
     expect(await parseJsonlFile(join(tempDir, "nope.jsonl"))).toEqual([]);
+  });
+});
+
+describe("readFirstLine", () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), "first-line-"));
+  });
+
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  const write = (name: string, content: string): string => {
+    const filePath = join(tempDir, name);
+    writeFileSync(filePath, content);
+    return filePath;
+  };
+
+  it("reads the first line of a multi-line file", async () => {
+    const filePath = write("multi.jsonl", '{"a":1}\n{"b":2}\n{"c":3}\n');
+    expect(await readFirstLine(filePath)).toBe('{"a":1}');
+  });
+
+  it("reads a sole line that has no trailing newline", async () => {
+    expect(await readFirstLine(write("one.jsonl", '{"a":1}'))).toBe('{"a":1}');
+  });
+
+  it("returns null for an empty file", async () => {
+    expect(await readFirstLine(write("empty.jsonl", ""))).toBeNull();
+  });
+
+  it("returns an empty string for a leading blank line", async () => {
+    expect(await readFirstLine(write("blank.jsonl", "\nsecond"))).toBe("");
+  });
+
+  // The reader pulls 8 KiB at a time, so a longer first line exercises the
+  // grow path where one read is not enough to reach the newline.
+  it("reads a first line longer than the read chunk", async () => {
+    const long = "x".repeat(70_000);
+    const filePath = write("long.jsonl", `${long}\nsecond\n`);
+    expect(await readFirstLine(filePath)).toBe(long);
+  });
+
+  it("does not split a multi-byte character across a chunk boundary", async () => {
+    // One leading ASCII byte offsets the 2-byte characters so that one of
+    // them straddles the 8192-byte read boundary.
+    const long = `a${"é".repeat(9000)}`;
+    const filePath = write("utf8.jsonl", `${long}\nsecond\n`);
+    expect(await readFirstLine(filePath)).toBe(long);
+  });
+
+  it("rejects when the file does not exist", async () => {
+    await expect(readFirstLine(join(tempDir, "nope.jsonl"))).rejects.toThrow();
   });
 });
