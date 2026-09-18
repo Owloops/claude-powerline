@@ -339,33 +339,42 @@ export async function getFileModificationDate(
   }
 }
 
+export interface ParsedEntryMessage {
+  id?: string;
+  usage?: {
+    input_tokens?: number;
+    output_tokens?: number;
+    cache_creation_input_tokens?: number;
+    cache_read_input_tokens?: number;
+    cache_creation?: {
+      ephemeral_1h_input_tokens?: number;
+      ephemeral_5m_input_tokens?: number;
+    };
+  };
+  // Transcripts carry this both as a string and as an object with an `id`;
+  // PricingService.extractModelId handles both, so keep it unnarrowed.
+  model?: unknown;
+}
+
+/** @info The fields of a transcript line that cost attribution reads. */
+export interface RawEntryFields {
+  requestId?: string;
+  model?: unknown;
+  model_id?: unknown;
+  message?: ParsedEntryMessage;
+}
+
 export interface ParsedEntry {
   timestamp: Date;
-  message?: {
-    id?: string;
-    usage?: {
-      input_tokens?: number;
-      output_tokens?: number;
-      cache_creation_input_tokens?: number;
-      cache_read_input_tokens?: number;
-    };
-    model?: string;
-  };
+  message?: ParsedEntryMessage;
   costUSD?: number;
   isSidechain?: boolean;
-  raw: Record<string, unknown>;
+  raw: RawEntryFields;
 }
 
 export function createUniqueHash(entry: ParsedEntry): string | null {
-  const messageId =
-    entry.message?.id ||
-    (typeof entry.raw.message === "object" &&
-    entry.raw.message !== null &&
-    "id" in entry.raw.message
-      ? (entry.raw.message.id as string)
-      : undefined);
-  const requestId =
-    "requestId" in entry.raw ? (entry.raw.requestId as string) : undefined;
+  const messageId = entry.message?.id;
+  const requestId = entry.raw.requestId;
 
   if (!messageId || !requestId) {
     return null;
@@ -442,6 +451,46 @@ export async function parseJsonlFile(filePath: string): Promise<ParsedEntry[]> {
   }
 }
 
+interface RawTranscriptLine extends RawEntryFields {
+  timestamp?: string;
+  costUSD?: unknown;
+  isSidechain?: unknown;
+}
+
+/**
+ * @info Keeps references only to the fields consumers read. A transcript line
+ * also carries tool results and message content that nothing here touches, and
+ * holding the whole parsed line kept those alive for every entry — peak memory
+ * grew with transcript size rather than with the usage data actually needed.
+ * Both parsers build entries through here so the two cannot drift apart.
+ */
+function toParsedEntry(raw: RawTranscriptLine): ParsedEntry | null {
+  if (!raw.timestamp) return null;
+
+  // `raw.message` and `entry.message` expose the same fields, so one narrowed
+  // object serves both.
+  const message: ParsedEntryMessage | undefined = raw.message
+    ? {
+        id: raw.message.id,
+        model: raw.message.model,
+        usage: raw.message.usage,
+      }
+    : undefined;
+
+  return {
+    timestamp: new Date(raw.timestamp),
+    message,
+    costUSD: typeof raw.costUSD === "number" ? raw.costUSD : undefined,
+    isSidechain: raw.isSidechain === true,
+    raw: {
+      requestId: raw.requestId,
+      model: raw.model,
+      model_id: raw.model_id,
+      message,
+    },
+  };
+}
+
 async function parseJsonlFileInMemory(
   filePath: string,
 ): Promise<ParsedEntry[]> {
@@ -454,16 +503,8 @@ async function parseJsonlFileInMemory(
 
   for (const line of lines) {
     try {
-      const raw = JSON.parse(line);
-      if (!raw.timestamp) continue;
-
-      const entry: ParsedEntry = {
-        timestamp: new Date(raw.timestamp),
-        message: raw.message,
-        costUSD: typeof raw.costUSD === "number" ? raw.costUSD : undefined,
-        isSidechain: raw.isSidechain === true,
-        raw,
-      };
+      const entry = toParsedEntry(JSON.parse(line));
+      if (!entry) continue;
 
       entries.push(entry);
     } catch (parseError) {
@@ -491,16 +532,8 @@ async function parseJsonlFileStreaming(
       if (!trimmedLine) return;
 
       try {
-        const raw = JSON.parse(trimmedLine);
-        if (!raw.timestamp) return;
-
-        const entry: ParsedEntry = {
-          timestamp: new Date(raw.timestamp),
-          message: raw.message,
-          costUSD: typeof raw.costUSD === "number" ? raw.costUSD : undefined,
-          isSidechain: raw.isSidechain === true,
-          raw,
-        };
+        const entry = toParsedEntry(JSON.parse(trimmedLine));
+        if (!entry) return;
 
         entries.push(entry);
       } catch (parseError) {
