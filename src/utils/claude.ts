@@ -350,21 +350,47 @@ export function deduplicateEntries(entries: ParsedEntry[]): ParsedEntry[] {
 
 const STREAMING_THRESHOLD_BYTES = 1024 * 1024;
 
+/**
+ * @info Transcripts are append-only, so path + size + mtime identifies their
+ * contents exactly. Segments resolve transcripts independently — session and
+ * context both parse the session transcript in the same render — and a status
+ * line process is short-lived, so memoising within the render removes the
+ * duplicate parse without letting a stale result outlive the file it came from.
+ */
+// Holds the in-flight parse, not its result: segments are started together, so
+// they all reach the cache before the first parse resolves and would otherwise
+// every one of them miss.
+const parsedFileCache = new Map<string, Promise<ParsedEntry[]>>();
+
+/** @info Entries are shared between callers, so treat them as read-only. */
 export async function parseJsonlFile(filePath: string): Promise<ParsedEntry[]> {
   try {
     const stats = await stat(filePath);
     const fileSizeBytes = stats.size;
-    let entries: ParsedEntry[];
+    const cacheKey = `${filePath}:${fileSizeBytes}:${stats.mtimeMs}`;
 
-    if (fileSizeBytes > STREAMING_THRESHOLD_BYTES) {
+    const cached = parsedFileCache.get(cacheKey);
+    if (cached) {
+      debug(`Reusing parsed entries for ${filePath}`);
+      // Awaited rather than returned, so a cached failure lands in the catch
+      // below like a fresh one instead of rejecting out of here.
+      return await cached;
+    }
+
+    const useStreaming = fileSizeBytes > STREAMING_THRESHOLD_BYTES;
+    if (useStreaming) {
       debug(
         `Using streaming parser for large file ${filePath} (${Math.round(fileSizeBytes / 1024)}KB)`,
       );
-      entries = await parseJsonlFileStreaming(filePath);
-    } else {
-      entries = await parseJsonlFileInMemory(filePath);
     }
 
+    const parsing = useStreaming
+      ? parseJsonlFileStreaming(filePath)
+      : parseJsonlFileInMemory(filePath);
+
+    parsedFileCache.set(cacheKey, parsing);
+
+    const entries = await parsing;
     debug(`Parsed ${entries.length} entries from ${filePath}`);
 
     return entries;

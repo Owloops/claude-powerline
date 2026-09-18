@@ -1,8 +1,17 @@
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, utimesSync } from "fs";
+import {
+  appendFileSync,
+  mkdtempSync,
+  mkdirSync,
+  statSync,
+  writeFileSync,
+  rmSync,
+  utimesSync,
+} from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 import {
   findAgentTranscripts,
+  parseJsonlFile,
   collectProjectFiles,
   getOutputStyleName,
   type ClaudeHookData,
@@ -265,5 +274,88 @@ describe("CacheManager.getLatestTranscriptMtime", () => {
     expect(await CacheManager.getLatestTranscriptMtime()).toBe(
       AGENT_MTIME.getTime(),
     );
+  });
+});
+
+describe("parseJsonlFile caching", () => {
+  let tempDir: string;
+  let filePath: string;
+
+  const line = (id: string, tokens: number) =>
+    JSON.stringify({
+      timestamp: "2026-01-01T00:00:00.000Z",
+      requestId: id,
+      message: { id, model: "claude-opus-5", usage: { input_tokens: tokens } },
+    });
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), "powerline-parse-cache-"));
+    filePath = join(tempDir, "session.jsonl");
+    writeFileSync(filePath, `${line("a", 1)}\n${line("b", 2)}\n`);
+  });
+
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("hands every caller the one shared array", async () => {
+    const first = await parseJsonlFile(filePath);
+    const second = await parseJsonlFile(filePath);
+
+    expect(first).toHaveLength(2);
+    expect(second).toBe(first);
+  });
+
+  // The cache holds the in-flight parse, so a failed one is cached as a
+  // rejection; every caller must still get the empty-result fallback.
+  it("returns no entries to every caller when the parse fails", async () => {
+    expect(await parseJsonlFile(tempDir)).toEqual([]);
+    expect(await parseJsonlFile(tempDir)).toEqual([]);
+  });
+
+  // Segments are started together, so they reach the cache before the first
+  // parse resolves. Caching the resolved array would let every one of them miss.
+  it("parses once when callers arrive concurrently", async () => {
+    const [first, second, third] = await Promise.all([
+      parseJsonlFile(filePath),
+      parseJsonlFile(filePath),
+      parseJsonlFile(filePath),
+    ]);
+
+    expect(second).toBe(first);
+    expect(third).toBe(first);
+    expect(first).toHaveLength(2);
+  });
+
+  // Each half of the cache key gets its own test: rewriting a file moves both
+  // mtime and size, so only a pinned mtime isolates size.
+  // The pin is a whole number of milliseconds because utimesSync cannot
+  // reproduce the sub-millisecond precision a real write leaves behind.
+  it("reparses when the file grows without its mtime moving", async () => {
+    const pinned = new Date(1700000000000);
+    utimesSync(filePath, pinned, pinned);
+
+    expect(await parseJsonlFile(filePath)).toHaveLength(2);
+
+    appendFileSync(filePath, `${line("c", 3)}\n`);
+    utimesSync(filePath, pinned, pinned);
+    expect(statSync(filePath).mtimeMs).toBe(pinned.getTime());
+
+    expect(await parseJsonlFile(filePath)).toHaveLength(3);
+  });
+
+  it("reparses when the file changes without changing size", async () => {
+    expect(await parseJsonlFile(filePath)).toHaveLength(2);
+
+    writeFileSync(filePath, `${line("a", 9)}\n${line("b", 8)}\n`);
+    const later = new Date(Date.now() + 2000);
+    utimesSync(filePath, later, later);
+
+    const entries = await parseJsonlFile(filePath);
+    expect(entries[0]?.message?.usage?.input_tokens).toBe(9);
+  });
+
+  it("returns an empty array for a missing file", async () => {
+    expect(await parseJsonlFile(join(tempDir, "nope.jsonl"))).toEqual([]);
   });
 });

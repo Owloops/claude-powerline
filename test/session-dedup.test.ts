@@ -96,6 +96,19 @@ describe("Session Usage Deduplication", () => {
     expect(usage!.totalCost).toBeCloseTo(1.5, 10);
   });
 
+  // Parsed transcripts are memoised and handed out without copying, so a
+  // caller that appends agent entries onto the array it got back grows the
+  // main transcript's cached entry for everything else in the same render.
+  // Dedup hides this from the totals, so assert on the cache itself.
+  it("does not let agent entries leak into the cached main transcript", async () => {
+    await sessionProvider.getSessionUsage("dedup-session");
+
+    const cached = await claudePaths.parseJsonlFile(
+      join(tempDir, "dedup-session.jsonl"),
+    );
+    expect(cached).toHaveLength(7);
+  });
+
   it("still counts distinct requests and keeps entries without ids", async () => {
     const usage = await sessionProvider.getSessionUsage("dedup-session");
 
