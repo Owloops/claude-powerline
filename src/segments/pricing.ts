@@ -1,6 +1,4 @@
 import { debug } from "../utils/logger";
-import { get } from "node:https";
-import { URL } from "node:url";
 import { CacheManager } from "../utils/cache";
 
 export interface ModelPricing {
@@ -174,6 +172,10 @@ export class PricingService {
     string,
     ModelPricing
   > | null> {
+    // Only reached when the 24h disk cache misses, so keep node:https off the
+    // module graph that every status line render has to load.
+    const { get } = await import("node:https");
+
     return new Promise((resolve) => {
       const parsedUrl = new URL(this.GITHUB_PRICING_URL);
 
