@@ -123,7 +123,7 @@ export async function renderTuiPanel(
         return buildBlockBar(data, cellWidth, sym, reset, colors, config, pf);
       }
       if (segment === "weekly.bar") {
-        return buildWeeklyBar(data, cellWidth, sym, reset, colors, pf);
+        return buildWeeklyBar(data, cellWidth, sym, reset, colors, pf, config);
       }
       const tmpl = templates[segment];
       if (tmpl) {

@@ -23,6 +23,7 @@ import {
   formatTimeRemaining,
   formatLongTimeRemaining,
   minutesUntilReset,
+  pacePercentage,
   abbreviateFishStyle,
   formatCacheTimerElapsed,
   formatCacheTimerRemaining,
@@ -149,6 +150,7 @@ function buildBarString(
   reset: string,
   fgColor: string,
   bold = false,
+  pacePct?: number,
 ): string {
   barWidth = Math.max(5, barWidth);
   const filledCount = Math.max(
@@ -156,9 +158,33 @@ function buildBarString(
     Math.min(barWidth, Math.round((pct / 100) * barWidth)),
   );
   const emptyCount = barWidth - filledCount;
-  const bar =
+  let bar =
     sym.bar_filled.repeat(filledCount) + sym.bar_empty.repeat(emptyCount);
+  if (pacePct !== undefined) {
+    const cells = [...bar];
+    const paceCell = Math.min(
+      Math.round((pacePct / 100) * barWidth),
+      barWidth - 1,
+    );
+    cells[paceCell] =
+      Math.round(pct) > pacePct ? sym.pace_over : sym.pace_under;
+    bar = cells.join("");
+  }
   return colorize(bar, fgColor, reset, bold);
+}
+
+function resolvePacePct(
+  config: PowerlineConfig | undefined,
+  key: "block" | "weekly",
+  minutesRemaining: number,
+): number | undefined {
+  if (!config || !findConfiguredSegment(config, key)?.showPace) {
+    return undefined;
+  }
+  return pacePercentage(
+    minutesRemaining,
+    key === "block" ? 5 * 60 : 7 * 24 * 60,
+  );
 }
 
 export function formatContextParts(
@@ -226,7 +252,8 @@ export function buildBlockBar(
     50,
     warningThreshold,
   );
-  return buildBarString(pct, barWidth, sym, reset, fg, bold);
+  const pacePct = resolvePacePct(config, "block", data.blockInfo.timeRemaining);
+  return buildBarString(pct, barWidth, sym, reset, fg, bold, pacePct);
 }
 
 export function buildWeeklyBar(
@@ -236,6 +263,7 @@ export function buildWeeklyBar(
   reset: string,
   colors: PowerlineColors,
   partFg?: Record<string, string>,
+  config?: PowerlineConfig,
 ): string {
   const sevenDay = data.hookData.rate_limits?.seven_day;
   if (!sevenDay) return "";
@@ -249,7 +277,12 @@ export function buildWeeklyBar(
     colors.weeklyBold,
     colors,
   );
-  return buildBarString(pct, barWidth, sym, reset, fg, bold);
+  const pacePct = resolvePacePct(
+    config,
+    "weekly",
+    minutesUntilReset(sevenDay.resets_at),
+  );
+  return buildBarString(pct, barWidth, sym, reset, fg, bold, pacePct);
 }
 
 export function buildContextLine(
@@ -322,6 +355,7 @@ export function collectMetricSegments(
         formatWeeklySegment(
           sevenDay,
           sym,
+          config,
           resolveIconVisibility(config, "weekly"),
         ),
         colors.weeklyFg,
@@ -589,10 +623,12 @@ export function collectFooterParts(
 export function formatBlockParts(
   blockInfo: TuiData["blockInfo"] & {},
   sym: SymbolSet,
-  _config: PowerlineConfig,
+  config: PowerlineConfig,
   iconVisible = true,
 ): SegmentParts<"block"> {
-  const value = `${Math.round(blockInfo.nativeUtilization)}%`;
+  const pacePct = resolvePacePct(config, "block", blockInfo.timeRemaining);
+  const used = `${Math.round(blockInfo.nativeUtilization)}%`;
+  const value = pacePct === undefined ? used : `${used}/${pacePct}%`;
   const time = formatTimeRemaining(blockInfo.timeRemaining);
 
   return {
@@ -621,10 +657,14 @@ export function formatBlockSegment(
 export function formatWeeklyParts(
   sevenDay: { used_percentage: number; resets_at: number },
   sym: SymbolSet,
+  config: PowerlineConfig,
   iconVisible = true,
 ): SegmentParts<"weekly"> {
-  const pct = `${Math.round(sevenDay.used_percentage)}%`;
-  const time = formatLongTimeRemaining(minutesUntilReset(sevenDay.resets_at));
+  const minutesRemaining = minutesUntilReset(sevenDay.resets_at);
+  const pacePct = resolvePacePct(config, "weekly", minutesRemaining);
+  const used = `${Math.round(sevenDay.used_percentage)}%`;
+  const pct = pacePct === undefined ? used : `${used}/${pacePct}%`;
+  const time = formatLongTimeRemaining(minutesRemaining);
   return {
     icon: iconVisible ? sym.weekly_cost : "",
     label: "weekly",
@@ -637,9 +677,10 @@ export function formatWeeklyParts(
 export function formatWeeklySegment(
   sevenDay: { used_percentage: number; resets_at: number },
   sym: SymbolSet,
+  config: PowerlineConfig,
   iconVisible = true,
 ): string {
-  const parts = formatWeeklyParts(sevenDay, sym, iconVisible);
+  const parts = formatWeeklyParts(sevenDay, sym, config, iconVisible);
   let text = parts.icon ? `${parts.icon} ${parts.pct}` : (parts.pct ?? "");
   if (parts.time) text += ` · ${parts.time}`;
   return text;
@@ -1557,14 +1598,14 @@ export function resolveSegments(
   if (sevenDay) {
     const weeklyColor = pf?.["weekly"] ?? colors.weeklyFg;
     result.weekly = colorizeOrEmpty(
-      formatWeeklySegment(sevenDay, sym, iconVisible.weekly),
+      formatWeeklySegment(sevenDay, sym, config, iconVisible.weekly),
       weeklyColor,
       colors.weeklyBold,
     );
     addParts(
       result,
       "weekly",
-      formatWeeklyParts(sevenDay, sym, iconVisible.weekly),
+      formatWeeklyParts(sevenDay, sym, config, iconVisible.weekly),
       colors.weeklyFg,
       reset,
       pf,

@@ -337,6 +337,7 @@ at all, i.e. on versions older than 2.0.65.
 **Options:**
 
 - `displayStyle`: Visual style for utilization display (see table below)
+- `showPace`: Compare usage against an even spend over the window (default: `false`, see Pace below)
 
 Requires Claude Code's native `rate_limits` hook data (Claude.ai Pro/Max subscribers). Displays the official 5-hour utilization percentage and reset countdown. Hidden when native data is unavailable.
 
@@ -356,7 +357,12 @@ Requires Claude Code's native `rate_limits` hook data (Claude.ai Pro/Max subscri
 | `squares` | `◱ ◼◼◻◻◻◻◻◻◻◻ 23% (4h 12m)` |
 | `ball` | `◱ ──●─────── 23% (4h 12m)` |
 
-**Symbols:** `◱` Block (unicode) &#8226; `B` Block (text)
+**Pace:** `showPace` adds the usage an even spend would have reached by now: `◱ 60%/40% ▲20 (3h)` in text style, `◱ ▰▰▰▰◆▰▱▱▱▱ 60%/40% (3h)` in bar styles (`◆` over pace, `◇` otherwise, `◈` where it meets the `ball` style's ball). The `tui` style shows `60%/40%`, and its `block.bar`/`weekly.bar` grid cells mark the pace the same way.
+
+**Symbols:**
+
+- Unicode: `◱` Block &#8226; `▲8`/`▼8` Points over/under pace &#8226; `◆`/`◇` Over/Under pace
+- Text: `B` Block &#8226; `+8`/`-8` Points over/under pace &#8226; `!`/`:` Over/Under pace (`bar` style and `tui` only)
 
 </details>
 
@@ -373,6 +379,7 @@ Requires Claude Code's native `rate_limits` hook data (Claude.ai Pro/Max subscri
 **Options:**
 
 - `displayStyle`: Visual style for utilization display - same options as the block segment (see table above)
+- `showPace`: Compare usage against an even spend over the window - same behavior as the block segment (see Pace above)
 
 Only visible when Claude Code provides native `rate_limits.seven_day` data (Claude.ai Pro/Max subscribers). Hidden when the data is not available.
 

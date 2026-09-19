@@ -1007,6 +1007,89 @@ describe("Segment Time Logic", () => {
       );
       expect(at90.bgColor).toBe(colors.contextCriticalBg);
     });
+
+    it("should show the pace and keep the usage-based colors with showPace", () => {
+      const config = { theme: "dark", display: { style: "minimal" } } as any;
+      const symbols = {
+        block_cost: "◱",
+        pace_over: "◆",
+        pace_under: "◇",
+        pace_plus: "▲",
+        pace_minus: "▼",
+      } as any;
+      const colors = {
+        blockBg: "#2a2a2a",
+        blockFg: "#87ceeb",
+        contextWarningBg: "#92400e",
+        contextCriticalBg: "#991b1b",
+      } as any;
+      const renderer = new SegmentRenderer(config, symbols);
+
+      // 3 of the 5 hours left puts the pace at 40%.
+      const over = renderer.renderBlock(
+        { nativeUtilization: 60, timeRemaining: 180 },
+        colors,
+        { enabled: true, type: "cost", showPace: true },
+      );
+      expect(over.text).toBe("◱ 60%/40% ▲20 (3h)");
+      expect(over.bgColor).toBe(colors.contextWarningBg);
+
+      const bar = renderer.renderBlock(
+        { nativeUtilization: 60, timeRemaining: 180 },
+        colors,
+        {
+          enabled: true,
+          type: "cost",
+          showPace: true,
+          displayStyle: "geometric",
+        },
+      );
+      expect(bar.text).toBe("◱ ▰▰▰▰◆▰▱▱▱▱ 60%/40% (3h)");
+
+      const onPace = renderer.renderBlock(
+        { nativeUtilization: 45, timeRemaining: 165 },
+        colors,
+        {
+          enabled: true,
+          type: "cost",
+          showPace: true,
+          displayStyle: "geometric",
+        },
+      );
+      expect(onPace.text).toBe("◱ ▰▰▰▰▰◇▱▱▱▱ 45%/45% (2h 45m)");
+
+      const under = renderer.renderBlock(
+        { nativeUtilization: 85, timeRemaining: 30 },
+        colors,
+        { enabled: true, type: "cost", showPace: true },
+      );
+      expect(under.text).toBe("◱ 85%/90% ▼5 (30m)");
+      expect(under.bgColor).toBe(colors.contextCriticalBg);
+    });
+
+    it("should follow the charset's symbols in the text and bar styles only", () => {
+      const config = { theme: "dark", display: { style: "minimal" } } as any;
+      const symbols = {
+        block_cost: "B",
+        bar_filled: "=",
+        bar_empty: "-",
+        pace_over: "!",
+        pace_under: ":",
+        pace_plus: "+",
+        pace_minus: "-",
+      } as any;
+      const renderer = new SegmentRenderer(config, symbols);
+      const render = (displayStyle: "text" | "bar" | "geometric") =>
+        renderer.renderBlock(
+          { nativeUtilization: 60, timeRemaining: 180 },
+          {} as any,
+          { enabled: true, type: "cost", showPace: true, displayStyle },
+        ).text;
+
+      expect(render("text")).toBe("B 60%/40% +20 (3h)");
+      expect(render("bar")).toBe("B ====!=---- 60%/40% (3h)");
+      expect(render("geometric")).toBe("B ▰▰▰▰◆▰▱▱▱▱ 60%/40% (3h)");
+    });
   });
 
   describe("Weekly Segment", () => {
@@ -1062,6 +1145,98 @@ describe("Segment Time Logic", () => {
 
       const result = renderer.renderWeekly(hookData, colors);
       expect(result).toBeNull();
+    });
+
+    describe("showPace", () => {
+      const config = { theme: "dark", display: { style: "minimal" } } as any;
+      const symbols = {
+        weekly_cost: "◑",
+        pace_over: "◆",
+        pace_under: "◇",
+        pace_plus: "▲",
+        pace_minus: "▼",
+      } as any;
+      const colors = {
+        weeklyBg: "#2a2a3a",
+        weeklyFg: "#a0c4e8",
+        contextWarningBg: "#92400e",
+        contextWarningFg: "#fbbf24",
+        contextCriticalBg: "#991b1b",
+        contextCriticalFg: "#fca5a5",
+      } as any;
+      const renderer = new SegmentRenderer(config, symbols);
+
+      // Resetting in 4 days puts the pace at 3/7 of the window: 43%.
+      const weekly = (usedPercentage: number, secondsUntilReset = 4 * 86400) =>
+        ({
+          rate_limits: {
+            seven_day: {
+              used_percentage: usedPercentage,
+              resets_at: Math.floor(Date.now() / 1000) + secondsUntilReset,
+            },
+          },
+        }) as ClaudeHookData;
+
+      it("should leave the text untouched when disabled", () => {
+        const result = renderer.renderWeekly(weekly(60), colors, {
+          enabled: true,
+        });
+        expect(result!.text).toBe("◑ 60% (4d)");
+      });
+
+      it("should show the pace and the delta in text style", () => {
+        const over = renderer.renderWeekly(weekly(60), colors, {
+          enabled: true,
+          showPace: true,
+        });
+        expect(over!.text).toBe("◑ 60%/43% ▲17 (4d)");
+
+        const under = renderer.renderWeekly(weekly(20), colors, {
+          enabled: true,
+          showPace: true,
+        });
+        expect(under!.text).toBe("◑ 20%/43% ▼23 (4d)");
+
+        const onPace = renderer.renderWeekly(weekly(43), colors, {
+          enabled: true,
+          showPace: true,
+        });
+        expect(onPace!.text).toBe("◑ 43%/43% (4d)");
+      });
+
+      it("should mark the pace on the bar, solid only when over pace", () => {
+        const over = renderer.renderWeekly(weekly(60), colors, {
+          enabled: true,
+          showPace: true,
+          displayStyle: "geometric",
+        });
+        expect(over!.text).toBe("◑ ▰▰▰▰◆▰▱▱▱▱ 60%/43% (4d)");
+
+        const under = renderer.renderWeekly(weekly(20), colors, {
+          enabled: true,
+          showPace: true,
+          displayStyle: "geometric",
+        });
+        expect(under!.text).toBe("◑ ▰▰▱▱◇▱▱▱▱▱ 20%/43% (4d)");
+      });
+
+      it("should merge the marker with the ball when they share a cell", () => {
+        const result = renderer.renderWeekly(weekly(40), colors, {
+          enabled: true,
+          showPace: true,
+          displayStyle: "ball",
+        });
+        expect(result!.text).toBe("◑ ────◈───── 40%/43% (4d)");
+      });
+
+      it("should keep the marker on the last cell once the window is over", () => {
+        const result = renderer.renderWeekly(weekly(70, -60), colors, {
+          enabled: true,
+          showPace: true,
+          displayStyle: "geometric",
+        });
+        expect(result!.text).toContain("▰▰▰▰▰▰▰▱▱◇ 70%/100%");
+      });
     });
   });
 

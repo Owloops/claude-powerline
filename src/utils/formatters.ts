@@ -167,6 +167,14 @@ export function minutesUntilReset(epochSeconds: number): number {
   return Math.round(Math.max(0, epochSeconds * 1000 - Date.now()) / 60000);
 }
 
+/** Usage percentage an even spend over the window would have reached by now. */
+export function pacePercentage(
+  minutesRemaining: number,
+  windowMinutes: number,
+): number {
+  return Math.round(Math.max(0, 1 - minutesRemaining / windowMinutes) * 100);
+}
+
 export function formatCacheTimerElapsed(seconds: number): string {
   if (seconds >= 3600) return "1h+";
   if (seconds >= 300) return `${Math.floor(seconds / 60)}m`;

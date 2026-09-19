@@ -103,7 +103,7 @@ export function renderMediumMetrics(ctx: RenderCtx): void {
   if (sevenDay) {
     line1Parts.push(
       colorize(
-        formatWeeklySegment(sevenDay, sym, showWeeklyIcon),
+        formatWeeklySegment(sevenDay, sym, config, showWeeklyIcon),
         colors.weeklyFg,
         reset,
         colors.weeklyBold,
@@ -239,7 +239,7 @@ export function renderNarrowMetrics(ctx: RenderCtx): void {
       contentRow(
         box,
         colorize(
-          formatWeeklySegment(narrowSevenDay, sym, showWeeklyIcon),
+          formatWeeklySegment(narrowSevenDay, sym, config, showWeeklyIcon),
           colors.weeklyFg,
           reset,
           colors.weeklyBold,
