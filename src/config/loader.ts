@@ -56,6 +56,7 @@ export interface DisplayConfig {
   charset?: "unicode" | "text";
   colorCompatibility?: "auto" | "ansi" | "ansi256" | "truecolor";
   autoWrap?: boolean;
+  widthReserve?: number;
   padding?: number;
   showIcons?: boolean;
   tui?: TuiGridConfig;

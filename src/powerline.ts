@@ -264,7 +264,7 @@ export class PowerlineRenderer {
   ): Promise<string> {
     const colors = this.getThemeColors();
     const currentDir = hookData.workspace?.current_dir || hookData.cwd || "/";
-    const terminalWidth = getTerminalWidth();
+    const terminalWidth = getTerminalWidth(this.config.display.widthReserve);
 
     const outputLines: string[] = [];
 
