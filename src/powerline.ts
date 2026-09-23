@@ -838,6 +838,8 @@ export class PowerlineRenderer {
       version: symbolSet.version,
       bar_filled: symbolSet.bar_filled,
       bar_empty: symbolSet.bar_empty,
+      pace_over: symbolSet.pace_over,
+      pace_under: symbolSet.pace_under,
       env: symbolSet.env,
       session_id: symbolSet.session_id,
       weekly_cost: symbolSet.weekly_cost,

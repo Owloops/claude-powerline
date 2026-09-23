@@ -8,6 +8,10 @@ import {
   formatSessionSegment,
   getSessionSegmentConfig,
   collectMetricSegments,
+  formatBlockSegment,
+  formatWeeklySegment,
+  buildBlockBar,
+  buildWeeklyBar,
 } from "../src/tui/sections";
 import type { TuiData, BoxChars, RenderCtx } from "../src/tui/types";
 import { isValidSegmentRef, SEGMENT_PARTS } from "../src/tui/types";
@@ -1205,6 +1209,85 @@ describe("TUI Panel Rendering", () => {
         enabled: true,
         type: "cost",
       });
+    });
+  });
+
+  describe("showPace (TUI)", () => {
+    const paceConfig: PowerlineConfig = {
+      ...DEFAULT_CONFIG,
+      display: {
+        ...DEFAULT_CONFIG.display,
+        style: "tui",
+        lines: [
+          {
+            segments: {
+              ...DEFAULT_CONFIG.display.lines[0]!.segments,
+              block: { enabled: true, type: "cost", showPace: true },
+              weekly: { enabled: true, showPace: true },
+            },
+          },
+        ],
+      },
+    };
+
+    // 3 of the 5 hours left puts the block pace at 40%, 4 of the 7 days left
+    // puts the weekly pace at 43%.
+    const blockInfo = { nativeUtilization: 60, timeRemaining: 180 };
+    const sevenDay = () => ({
+      used_percentage: 20,
+      resets_at: Math.floor(Date.now() / 1000) + 4 * 86400,
+    });
+    const data = () => {
+      const tuiData = makeTuiData({ blockInfo });
+      tuiData.hookData.rate_limits = { seven_day: sevenDay() };
+      return tuiData;
+    };
+
+    it("shows the pace next to the usage", () => {
+      expect(
+        formatBlockSegment(blockInfo, SYMBOLS as any, paceConfig, false),
+      ).toBe("60%/40% · 3h 0m left");
+      expect(
+        formatWeeklySegment(sevenDay(), SYMBOLS as any, paceConfig, false),
+      ).toBe("20%/43% · 4d");
+    });
+
+    it("leaves the usage alone without showPace", () => {
+      expect(
+        formatBlockSegment(blockInfo, SYMBOLS as any, DEFAULT_CONFIG, false),
+      ).toBe("60% · 3h 0m left");
+      expect(
+        formatWeeklySegment(sevenDay(), SYMBOLS as any, DEFAULT_CONFIG, false),
+      ).toBe("20% · 4d");
+    });
+
+    it("marks the pace on the bars", () => {
+      expect(
+        buildBlockBar(data(), 10, SYMBOLS as any, "", PLAIN_COLORS, paceConfig),
+      ).toBe("▪▪▪▪◆▪▫▫▫▫");
+      expect(
+        buildWeeklyBar(
+          data(),
+          10,
+          SYMBOLS as any,
+          "",
+          PLAIN_COLORS,
+          undefined,
+          paceConfig,
+        ),
+      ).toBe("▪▪▫▫◇▫▫▫▫▫");
+    });
+
+    it("shows the pace in the fixed layout", async () => {
+      const result = await renderTuiPanel(
+        data(),
+        BOX_CHARS,
+        "",
+        40,
+        paceConfig,
+      );
+      expect(result).toContain("60%/40%");
+      expect(result).toContain("20%/43%");
     });
   });
 });

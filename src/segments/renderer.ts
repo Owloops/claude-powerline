@@ -32,10 +32,14 @@ import {
   formatCacheTimerRemaining,
   collapseHome,
   minutesUntilReset,
+  pacePercentage,
+  BLOCK_WINDOW_MINUTES,
+  WEEKLY_WINDOW_MINUTES,
 } from "../utils/formatters";
 import { resolveBudgetDisplay } from "../utils/budget";
 import type { BudgetItemConfig } from "../config/loader";
 import { shouldShowIcon } from "../utils/icon-visibility";
+import { SYMBOLS } from "../utils/constants";
 
 export interface SegmentConfig {
   enabled: boolean;
@@ -114,6 +118,8 @@ export interface BlockSegmentConfig extends SegmentConfig {
   type: "cost" | "tokens" | "both" | "time" | "weighted";
   burnType?: "cost" | "tokens" | "both" | "none";
   displayStyle?: BarDisplayStyle;
+  /** Show the usage an even spend would have reached by now (default: false). */
+  showPace?: boolean;
 }
 
 export interface TodaySegmentConfig extends SegmentConfig {
@@ -141,6 +147,8 @@ export interface EnvSegmentConfig extends SegmentConfig {
 
 export interface WeeklySegmentConfig extends SegmentConfig {
   displayStyle?: BarDisplayStyle;
+  /** Show the usage an even spend would have reached by now (default: false). */
+  showPace?: boolean;
 }
 
 export interface AgentSegmentConfig extends SegmentConfig {
@@ -215,6 +223,8 @@ export interface PowerlineSymbols {
   version: string;
   bar_filled: string;
   bar_empty: string;
+  pace_over: string;
+  pace_under: string;
   env: string;
   session_id: string;
   weekly_cost: string;
@@ -601,23 +611,37 @@ export class SegmentRenderer {
     pct: number,
     displayStyle?: BarDisplayStyle,
     timeStr?: string | null,
+    pacePct?: number,
   ): string {
     const style = displayStyle ?? "text";
     const barStyleDef = this.resolveBarStyleDef(style);
     const barLength = 10;
+    const pctStr = pacePct === undefined ? `${pct}%` : `${pct}%/${pacePct}%`;
 
     if (barStyleDef) {
       const filledCount = Math.round((pct / 100) * barLength);
       const emptyCount = barLength - filledCount;
-      const bar = this.buildBar(
-        barStyleDef,
-        filledCount,
-        emptyCount,
-        barLength,
-      );
-      return timeStr ? `${bar} ${pct}% (${timeStr})` : `${bar} ${pct}%`;
+      let bar = this.buildBar(barStyleDef, filledCount, emptyCount, barLength);
+      if (pacePct !== undefined) {
+        const cells = [...bar];
+        const paceCell = Math.min(
+          Math.round((pacePct / 100) * barLength),
+          barLength - 1,
+        );
+        // Only the `bar` style draws its cells from the charset's symbols.
+        const markers = style === "bar" ? this.symbols : SYMBOLS;
+        if (cells[paceCell] === barStyleDef.marker) {
+          cells[paceCell] = "◈";
+        } else {
+          cells[paceCell] =
+            pct > pacePct ? markers.pace_over : markers.pace_under;
+        }
+        bar = cells.join("");
+      }
+      return timeStr ? `${bar} ${pctStr} (${timeStr})` : `${bar} ${pctStr}`;
     }
-    return timeStr ? `${pct}% (${timeStr})` : `${pct}%`;
+
+    return timeStr ? `${pctStr} (${timeStr})` : pctStr;
   }
 
   renderMetrics(
@@ -715,6 +739,9 @@ export class SegmentRenderer {
     const timeStr = formatLongTimeRemaining(blockInfo.timeRemaining);
     const blockBudget = this.config.budget?.block;
     const warningThreshold = blockBudget?.warningThreshold ?? 80;
+    const pacePct = config?.showPace
+      ? pacePercentage(blockInfo.timeRemaining, BLOCK_WINDOW_MINUTES)
+      : undefined;
 
     let bgColor = colors.blockBg;
     let fgColor = colors.blockFg;
@@ -730,7 +757,7 @@ export class SegmentRenderer {
     }
 
     return {
-      text: `${this.leadingIcon(this.symbols.block_cost, config)}${this.formatPercentageWithBar(pct, config?.displayStyle, timeStr)}`,
+      text: `${this.leadingIcon(this.symbols.block_cost, config)}${this.formatPercentageWithBar(pct, config?.displayStyle, timeStr, pacePct)}`,
       bgColor,
       fgColor,
       bold,
@@ -746,9 +773,11 @@ export class SegmentRenderer {
     if (!sevenDay) return null;
 
     const pct = Math.round(sevenDay.used_percentage);
-    const timeStr = formatLongTimeRemaining(
-      minutesUntilReset(sevenDay.resets_at),
-    );
+    const timeRemaining = minutesUntilReset(sevenDay.resets_at);
+    const timeStr = formatLongTimeRemaining(timeRemaining);
+    const pacePct = config?.showPace
+      ? pacePercentage(timeRemaining, WEEKLY_WINDOW_MINUTES)
+      : undefined;
 
     let bgColor = colors.weeklyBg;
     let fgColor = colors.weeklyFg;
@@ -764,7 +793,7 @@ export class SegmentRenderer {
     }
 
     return {
-      text: `${this.leadingIcon(this.symbols.weekly_cost, config)}${this.formatPercentageWithBar(pct, config?.displayStyle, timeStr)}`,
+      text: `${this.leadingIcon(this.symbols.weekly_cost, config)}${this.formatPercentageWithBar(pct, config?.displayStyle, timeStr, pacePct)}`,
       bgColor,
       fgColor,
       bold,
