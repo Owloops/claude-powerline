@@ -74,7 +74,7 @@ export class SessionProvider {
 
       debug(`Found transcript at: ${transcriptPath}`);
 
-      const parsedEntries = await parseJsonlFile(transcriptPath);
+      const entryLists = [await parseJsonlFile(transcriptPath)];
       const projectPath = dirname(transcriptPath);
       const agentTranscripts = await findAgentTranscripts(
         sessionId,
@@ -84,9 +84,10 @@ export class SessionProvider {
       debug(`Found ${agentTranscripts.length} agent transcripts for session`);
 
       for (const agentPath of agentTranscripts) {
-        const agentEntries = await parseJsonlFile(agentPath);
-        parsedEntries.push(...agentEntries);
+        entryLists.push(await parseJsonlFile(agentPath));
       }
+
+      const parsedEntries = entryLists.flat();
 
       if (parsedEntries.length === 0) {
         return { totalCost: 0, entries: [] };

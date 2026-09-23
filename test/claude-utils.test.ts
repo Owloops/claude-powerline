@@ -1,13 +1,26 @@
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, utimesSync } from "fs";
+import {
+  appendFileSync,
+  mkdtempSync,
+  mkdirSync,
+  statSync,
+  writeFileSync,
+  rmSync,
+  utimesSync,
+} from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 import {
   findAgentTranscripts,
+  parseJsonlFile,
+  readFirstLine,
   collectProjectFiles,
+  createUniqueHash,
   getOutputStyleName,
   type ClaudeHookData,
 } from "../src/utils/claude";
 import { CacheManager } from "../src/utils/cache";
+import { PricingService } from "../src/segments/pricing";
+import type { ModelPricing } from "../src/segments/pricing";
 
 describe("getOutputStyleName", () => {
   const base = {
@@ -265,5 +278,322 @@ describe("CacheManager.getLatestTranscriptMtime", () => {
     expect(await CacheManager.getLatestTranscriptMtime()).toBe(
       AGENT_MTIME.getTime(),
     );
+  });
+});
+
+describe("parseJsonlFile caching", () => {
+  let tempDir: string;
+  let filePath: string;
+
+  const line = (id: string, tokens: number) =>
+    JSON.stringify({
+      timestamp: "2026-01-01T00:00:00.000Z",
+      requestId: id,
+      message: { id, model: "claude-opus-5", usage: { input_tokens: tokens } },
+    });
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), "powerline-parse-cache-"));
+    filePath = join(tempDir, "session.jsonl");
+    writeFileSync(filePath, `${line("a", 1)}\n${line("b", 2)}\n`);
+  });
+
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("hands every caller the one shared array", async () => {
+    const first = await parseJsonlFile(filePath);
+    const second = await parseJsonlFile(filePath);
+
+    expect(first).toHaveLength(2);
+    expect(second).toBe(first);
+  });
+
+  // The cache holds the in-flight parse, so a failed one is cached as a
+  // rejection; every caller must still get the empty-result fallback.
+  it("returns no entries to every caller when the parse fails", async () => {
+    expect(await parseJsonlFile(tempDir)).toEqual([]);
+    expect(await parseJsonlFile(tempDir)).toEqual([]);
+  });
+
+  // Segments are started together, so they reach the cache before the first
+  // parse resolves. Caching the resolved array would let every one of them miss.
+  it("parses once when callers arrive concurrently", async () => {
+    const [first, second, third] = await Promise.all([
+      parseJsonlFile(filePath),
+      parseJsonlFile(filePath),
+      parseJsonlFile(filePath),
+    ]);
+
+    expect(second).toBe(first);
+    expect(third).toBe(first);
+    expect(first).toHaveLength(2);
+  });
+
+  // Each half of the cache key gets its own test: rewriting a file moves both
+  // mtime and size, so only a pinned mtime isolates size.
+  // The pin is a whole number of milliseconds because utimesSync cannot
+  // reproduce the sub-millisecond precision a real write leaves behind.
+  it("reparses when the file grows without its mtime moving", async () => {
+    const pinned = new Date(1700000000000);
+    utimesSync(filePath, pinned, pinned);
+
+    expect(await parseJsonlFile(filePath)).toHaveLength(2);
+
+    appendFileSync(filePath, `${line("c", 3)}\n`);
+    utimesSync(filePath, pinned, pinned);
+    expect(statSync(filePath).mtimeMs).toBe(pinned.getTime());
+
+    expect(await parseJsonlFile(filePath)).toHaveLength(3);
+  });
+
+  it("reparses when the file changes without changing size", async () => {
+    expect(await parseJsonlFile(filePath)).toHaveLength(2);
+
+    writeFileSync(filePath, `${line("a", 9)}\n${line("b", 8)}\n`);
+    const later = new Date(Date.now() + 2000);
+    utimesSync(filePath, later, later);
+
+    const entries = await parseJsonlFile(filePath);
+    expect(entries[0]?.message?.usage?.input_tokens).toBe(9);
+  });
+
+  it("returns an empty array for a missing file", async () => {
+    expect(await parseJsonlFile(join(tempDir, "nope.jsonl"))).toEqual([]);
+  });
+});
+
+describe("readFirstLine", () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), "first-line-"));
+  });
+
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  const write = (name: string, content: string): string => {
+    const filePath = join(tempDir, name);
+    writeFileSync(filePath, content);
+    return filePath;
+  };
+
+  it("reads the first line of a multi-line file", async () => {
+    const filePath = write("multi.jsonl", '{"a":1}\n{"b":2}\n{"c":3}\n');
+    expect(await readFirstLine(filePath)).toBe('{"a":1}');
+  });
+
+  it("reads a sole line that has no trailing newline", async () => {
+    expect(await readFirstLine(write("one.jsonl", '{"a":1}'))).toBe('{"a":1}');
+  });
+
+  it("returns null for an empty file", async () => {
+    expect(await readFirstLine(write("empty.jsonl", ""))).toBeNull();
+  });
+
+  it("returns an empty string for a leading blank line", async () => {
+    expect(await readFirstLine(write("blank.jsonl", "\nsecond"))).toBe("");
+  });
+
+  // The reader pulls 8 KiB at a time, so a longer first line exercises the
+  // grow path where one read is not enough to reach the newline.
+  it("reads a first line longer than the read chunk", async () => {
+    const long = "x".repeat(70_000);
+    const filePath = write("long.jsonl", `${long}\nsecond\n`);
+    expect(await readFirstLine(filePath)).toBe(long);
+  });
+
+  it("does not split a multi-byte character across a chunk boundary", async () => {
+    // One leading ASCII byte offsets the 2-byte characters so that one of
+    // them straddles the 8192-byte read boundary.
+    const long = `a${"é".repeat(9000)}`;
+    const filePath = write("utf8.jsonl", `${long}\nsecond\n`);
+    expect(await readFirstLine(filePath)).toBe(long);
+  });
+
+  it("rejects when the file does not exist", async () => {
+    await expect(readFirstLine(join(tempDir, "nope.jsonl"))).rejects.toThrow();
+  });
+});
+
+describe("parsed entries retain only what consumers read", () => {
+  const mockPricing: ModelPricing = {
+    name: "Test Model",
+    input: 10,
+    output: 20,
+    cache_write_5m: 1,
+    cache_write_1h: 4,
+    cache_read: 0.5,
+  };
+
+  let tempDir: string;
+  let getModelPricingSpy: ReturnType<typeof jest.spyOn>;
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), "parsed-narrow-"));
+    getModelPricingSpy = jest
+      .spyOn(PricingService, "getModelPricing")
+      .mockResolvedValue(mockPricing);
+  });
+
+  afterEach(() => {
+    getModelPricingSpy.mockRestore();
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  const writeLines = (name: string, lines: unknown[]): string => {
+    const filePath = join(tempDir, name);
+    writeFileSync(filePath, lines.map((l) => JSON.stringify(l)).join("\n"));
+    return filePath;
+  };
+
+  // A line carries tool results and message content far larger than the usage
+  // data; holding on to them is what made peak memory track transcript size.
+  const bulk = {
+    toolUseResult: "x".repeat(4096),
+    content: "y".repeat(4096),
+  };
+
+  it("drops fields no consumer reads", async () => {
+    const filePath = writeLines("drop.jsonl", [
+      {
+        timestamp: "2026-09-18T10:00:00Z",
+        requestId: "req_1",
+        model_id: "m1",
+        ...bulk,
+        message: { id: "msg_1", model: "claude-opus-4-1", usage: {}, ...bulk },
+      },
+    ]);
+
+    const [entry] = await parseJsonlFile(filePath);
+
+    expect(Object.keys(entry!.raw).sort()).toEqual([
+      "message",
+      "model",
+      "model_id",
+      "requestId",
+    ]);
+    expect(Object.keys(entry!.message!).sort()).toEqual([
+      "id",
+      "model",
+      "usage",
+    ]);
+  });
+
+  it("keeps the fields dedup needs", async () => {
+    const filePath = writeLines("dedup.jsonl", [
+      {
+        timestamp: "2026-09-18T10:00:00Z",
+        requestId: "req_9",
+        message: { id: "msg_9", usage: {} },
+      },
+    ]);
+
+    const [entry] = await parseJsonlFile(filePath);
+
+    expect(createUniqueHash(entry!)).toBe("msg_9:req_9");
+  });
+
+  it("returns null from the hash when the ids are absent", async () => {
+    const filePath = writeLines("nohash.jsonl", [
+      { timestamp: "2026-09-18T10:00:00Z", message: { usage: {} } },
+    ]);
+
+    const [entry] = await parseJsonlFile(filePath);
+
+    expect(createUniqueHash(entry!)).toBeNull();
+  });
+
+  it("prices the full cache breakdown through the parser", async () => {
+    const filePath = writeLines("cost.jsonl", [
+      {
+        timestamp: "2026-09-18T10:00:00Z",
+        ...bulk,
+        message: {
+          model: "test-model",
+          usage: {
+            input_tokens: 1_000_000,
+            output_tokens: 1_000_000,
+            cache_read_input_tokens: 1_000_000,
+            cache_creation_input_tokens: 2_000_000,
+            cache_creation: {
+              ephemeral_1h_input_tokens: 1_000_000,
+              ephemeral_5m_input_tokens: 1_000_000,
+            },
+          },
+        },
+      },
+    ]);
+
+    const [entry] = await parseJsonlFile(filePath);
+
+    // 10 input + 20 output + 0.5 cache read + 4 (1h write) + 1 (5m write)
+    expect(await PricingService.calculateCostForEntry(entry!.raw)).toBeCloseTo(
+      35.5,
+    );
+  });
+
+  // extractModelId accepts message.model as a string or as an object with an
+  // id; narrowing it to a string would silently mis-price every such entry.
+  it("preserves an object-shaped message.model", async () => {
+    const filePath = writeLines("modelobj.jsonl", [
+      {
+        timestamp: "2026-09-18T10:00:00Z",
+        message: {
+          model: { id: "claude-opus-4-1-20250805" },
+          usage: { input_tokens: 1 },
+        },
+      },
+    ]);
+
+    const [entry] = await parseJsonlFile(filePath);
+    await PricingService.calculateCostForEntry(entry!.raw);
+
+    expect(getModelPricingSpy).toHaveBeenCalledWith("claude-opus-4-1-20250805");
+  });
+
+  it("falls back to a top-level model_id", async () => {
+    const filePath = writeLines("modelid.jsonl", [
+      {
+        timestamp: "2026-09-18T10:00:00Z",
+        model_id: "claude-haiku-4-5",
+        message: { usage: { input_tokens: 1 } },
+      },
+    ]);
+
+    const [entry] = await parseJsonlFile(filePath);
+    await PricingService.calculateCostForEntry(entry!.raw);
+
+    expect(getModelPricingSpy).toHaveBeenCalledWith("claude-haiku-4-5");
+  });
+
+  // Files above STREAMING_THRESHOLD_BYTES take a second parser; both build
+  // entries the same way and must not drift apart.
+  it("produces the same entry from the streaming and in-memory parsers", async () => {
+    const line = {
+      timestamp: "2026-09-18T10:00:00Z",
+      requestId: "req_2",
+      model: "claude-opus-4-1",
+      model_id: "m2",
+      ...bulk,
+      message: { id: "msg_2", model: "claude-opus-4-1", usage: {} },
+    };
+
+    const small = writeLines("small.jsonl", [line]);
+    // Pad past the 1 MiB streaming threshold with lines carrying no timestamp,
+    // which the parser skips, leaving the same single entry.
+    const padding = Array.from({ length: 4000 }, () => ({
+      note: "z".repeat(300),
+    }));
+    const large = writeLines("large.jsonl", [line, ...padding]);
+
+    const [fromMemory] = await parseJsonlFile(small);
+    const [fromStream] = await parseJsonlFile(large);
+
+    expect(statSync(large).size).toBeGreaterThan(1024 * 1024);
+    expect(fromStream).toEqual(fromMemory);
   });
 });

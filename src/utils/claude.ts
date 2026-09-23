@@ -1,4 +1,4 @@
-import { readdir, readFile, stat } from "node:fs/promises";
+import { open, readdir, readFile, stat } from "node:fs/promises";
 import { existsSync, createReadStream } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
@@ -204,6 +204,45 @@ export async function findAgentTranscriptPaths(
   return paths;
 }
 
+const FIRST_LINE_CHUNK_BYTES = 8 * 1024;
+
+/**
+ * @info Reads only the first line rather than loading the whole file. Agent
+ * transcripts run to megabytes each and only their first line identifies the
+ * session, and every file that matches is read again in full immediately
+ * afterwards to parse it. Returns null for an empty file.
+ */
+export async function readFirstLine(filePath: string): Promise<string | null> {
+  const handle = await open(filePath, "r");
+  try {
+    let buffered = Buffer.alloc(0);
+
+    for (;;) {
+      const chunk = Buffer.allocUnsafe(FIRST_LINE_CHUNK_BYTES);
+      const { bytesRead } = await handle.read(
+        chunk,
+        0,
+        FIRST_LINE_CHUNK_BYTES,
+        buffered.length,
+      );
+      // EOF before any newline: the whole file is a single line.
+      if (bytesRead === 0) break;
+
+      buffered = Buffer.concat([buffered, chunk.subarray(0, bytesRead)]);
+
+      // 0x0a never occurs inside a multi-byte UTF-8 sequence, so cutting on
+      // it cannot split a character.
+      const newline = buffered.indexOf(0x0a);
+      if (newline !== -1)
+        return buffered.subarray(0, newline).toString("utf-8");
+    }
+
+    return buffered.length > 0 ? buffered.toString("utf-8") : null;
+  } finally {
+    await handle.close();
+  }
+}
+
 export async function findAgentTranscripts(
   sessionId: string,
   projectPath: string,
@@ -214,10 +253,13 @@ export async function findAgentTranscripts(
     join(projectPath, sessionId),
   );
 
+  // Checked one at a time on purpose. Reading the first lines concurrently
+  // measured ~10ms off a ~1.3s render, inside run-to-run noise, and raised the
+  // process's peak fd count from 23 to one per candidate; exhausting that limit
+  // is caught below and silently drops a transcript, understating session cost.
   for (const filePath of candidates) {
     try {
-      const content = await readFile(filePath, "utf-8");
-      const firstLine = content.split("\n")[0];
+      const firstLine = await readFirstLine(filePath);
       if (firstLine) {
         const parsed = JSON.parse(firstLine);
         if (parsed.sessionId === sessionId) {
@@ -297,33 +339,42 @@ export async function getFileModificationDate(
   }
 }
 
+export interface ParsedEntryMessage {
+  id?: string;
+  usage?: {
+    input_tokens?: number;
+    output_tokens?: number;
+    cache_creation_input_tokens?: number;
+    cache_read_input_tokens?: number;
+    cache_creation?: {
+      ephemeral_1h_input_tokens?: number;
+      ephemeral_5m_input_tokens?: number;
+    };
+  };
+  // Transcripts carry this both as a string and as an object with an `id`;
+  // PricingService.extractModelId handles both, so keep it unnarrowed.
+  model?: unknown;
+}
+
+/** @info The fields of a transcript line that cost attribution reads. */
+export interface RawEntryFields {
+  requestId?: string;
+  model?: unknown;
+  model_id?: unknown;
+  message?: ParsedEntryMessage;
+}
+
 export interface ParsedEntry {
   timestamp: Date;
-  message?: {
-    id?: string;
-    usage?: {
-      input_tokens?: number;
-      output_tokens?: number;
-      cache_creation_input_tokens?: number;
-      cache_read_input_tokens?: number;
-    };
-    model?: string;
-  };
+  message?: ParsedEntryMessage;
   costUSD?: number;
   isSidechain?: boolean;
-  raw: Record<string, unknown>;
+  raw: RawEntryFields;
 }
 
 export function createUniqueHash(entry: ParsedEntry): string | null {
-  const messageId =
-    entry.message?.id ||
-    (typeof entry.raw.message === "object" &&
-    entry.raw.message !== null &&
-    "id" in entry.raw.message
-      ? (entry.raw.message.id as string)
-      : undefined);
-  const requestId =
-    "requestId" in entry.raw ? (entry.raw.requestId as string) : undefined;
+  const messageId = entry.message?.id;
+  const requestId = entry.raw.requestId;
 
   if (!messageId || !requestId) {
     return null;
@@ -350,21 +401,53 @@ export function deduplicateEntries(entries: ParsedEntry[]): ParsedEntry[] {
 
 const STREAMING_THRESHOLD_BYTES = 1024 * 1024;
 
-export async function parseJsonlFile(filePath: string): Promise<ParsedEntry[]> {
+/**
+ * @info Transcripts are append-only, so path + size + mtime identifies their
+ * contents exactly. Segments resolve transcripts independently — session and
+ * context both parse the session transcript in the same render — and a status
+ * line process is short-lived, so memoising within the render removes the
+ * duplicate parse without letting a stale result outlive the file it came from.
+ */
+// Holds the in-flight parse, not its result: segments are started together, so
+// they all reach the cache before the first parse resolves and would otherwise
+// every one of them miss.
+const parsedFileCache = new Map<string, Promise<readonly ParsedEntry[]>>();
+
+/**
+ * @info The array and its entries are shared between callers. The readonly
+ * array makes appending to it a type error; the entries are read-only by
+ * convention.
+ */
+export async function parseJsonlFile(
+  filePath: string,
+): Promise<readonly ParsedEntry[]> {
   try {
     const stats = await stat(filePath);
     const fileSizeBytes = stats.size;
-    let entries: ParsedEntry[];
+    const cacheKey = `${filePath}:${fileSizeBytes}:${stats.mtimeMs}`;
 
-    if (fileSizeBytes > STREAMING_THRESHOLD_BYTES) {
+    const cached = parsedFileCache.get(cacheKey);
+    if (cached) {
+      debug(`Reusing parsed entries for ${filePath}`);
+      // Awaited rather than returned, so a cached failure lands in the catch
+      // below like a fresh one instead of rejecting out of here.
+      return await cached;
+    }
+
+    const useStreaming = fileSizeBytes > STREAMING_THRESHOLD_BYTES;
+    if (useStreaming) {
       debug(
         `Using streaming parser for large file ${filePath} (${Math.round(fileSizeBytes / 1024)}KB)`,
       );
-      entries = await parseJsonlFileStreaming(filePath);
-    } else {
-      entries = await parseJsonlFileInMemory(filePath);
     }
 
+    const parsing = useStreaming
+      ? parseJsonlFileStreaming(filePath)
+      : parseJsonlFileInMemory(filePath);
+
+    parsedFileCache.set(cacheKey, parsing);
+
+    const entries = await parsing;
     debug(`Parsed ${entries.length} entries from ${filePath}`);
 
     return entries;
@@ -372,6 +455,46 @@ export async function parseJsonlFile(filePath: string): Promise<ParsedEntry[]> {
     debug(`Failed to read file ${filePath}:`, error);
     return [];
   }
+}
+
+interface RawTranscriptLine extends RawEntryFields {
+  timestamp?: string;
+  costUSD?: unknown;
+  isSidechain?: unknown;
+}
+
+/**
+ * @info Keeps references only to the fields consumers read. A transcript line
+ * also carries tool results and message content that nothing here touches, and
+ * holding the whole parsed line kept those alive for every entry — peak memory
+ * grew with transcript size rather than with the usage data actually needed.
+ * Both parsers build entries through here so the two cannot drift apart.
+ */
+function toParsedEntry(raw: RawTranscriptLine): ParsedEntry | null {
+  if (!raw.timestamp) return null;
+
+  // `raw.message` and `entry.message` expose the same fields, so one narrowed
+  // object serves both.
+  const message: ParsedEntryMessage | undefined = raw.message
+    ? {
+        id: raw.message.id,
+        model: raw.message.model,
+        usage: raw.message.usage,
+      }
+    : undefined;
+
+  return {
+    timestamp: new Date(raw.timestamp),
+    message,
+    costUSD: typeof raw.costUSD === "number" ? raw.costUSD : undefined,
+    isSidechain: raw.isSidechain === true,
+    raw: {
+      requestId: raw.requestId,
+      model: raw.model,
+      model_id: raw.model_id,
+      message,
+    },
+  };
 }
 
 async function parseJsonlFileInMemory(
@@ -386,16 +509,8 @@ async function parseJsonlFileInMemory(
 
   for (const line of lines) {
     try {
-      const raw = JSON.parse(line);
-      if (!raw.timestamp) continue;
-
-      const entry: ParsedEntry = {
-        timestamp: new Date(raw.timestamp),
-        message: raw.message,
-        costUSD: typeof raw.costUSD === "number" ? raw.costUSD : undefined,
-        isSidechain: raw.isSidechain === true,
-        raw,
-      };
+      const entry = toParsedEntry(JSON.parse(line));
+      if (!entry) continue;
 
       entries.push(entry);
     } catch (parseError) {
@@ -423,16 +538,8 @@ async function parseJsonlFileStreaming(
       if (!trimmedLine) return;
 
       try {
-        const raw = JSON.parse(trimmedLine);
-        if (!raw.timestamp) return;
-
-        const entry: ParsedEntry = {
-          timestamp: new Date(raw.timestamp),
-          message: raw.message,
-          costUSD: typeof raw.costUSD === "number" ? raw.costUSD : undefined,
-          isSidechain: raw.isSidechain === true,
-          raw,
-        };
+        const entry = toParsedEntry(JSON.parse(trimmedLine));
+        if (!entry) return;
 
         entries.push(entry);
       } catch (parseError) {

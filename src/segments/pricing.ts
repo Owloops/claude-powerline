@@ -1,7 +1,6 @@
 import { debug } from "../utils/logger";
-import { get } from "node:https";
-import { URL } from "node:url";
 import { CacheManager } from "../utils/cache";
+import type { RawEntryFields } from "../utils/claude";
 
 export interface ModelPricing {
   name: string;
@@ -174,6 +173,10 @@ export class PricingService {
     string,
     ModelPricing
   > | null> {
+    // Only reached when the 24h disk cache misses, so keep node:https off the
+    // module graph that every status line render has to load.
+    const { get } = await import("node:https");
+
     return new Promise((resolve) => {
       const parsedUrl = new URL(this.GITHUB_PRICING_URL);
 
@@ -413,11 +416,8 @@ export class PricingService {
     );
   }
 
-  static async calculateCostForEntry(
-    entry: Record<string, unknown>,
-  ): Promise<number> {
-    const message = entry.message as Record<string, unknown> | undefined;
-    const usage = message?.usage as EntryUsage | undefined;
+  static async calculateCostForEntry(entry: RawEntryFields): Promise<number> {
+    const usage: EntryUsage | undefined = entry.message?.usage;
     if (!usage) {
       return 0;
     }
@@ -451,14 +451,13 @@ export class PricingService {
     return inputCost + outputCost + cacheCreationCost + cacheReadCost;
   }
 
-  private static extractModelId(entry: Record<string, unknown>): string {
+  private static extractModelId(entry: RawEntryFields): string {
     if (entry.model && typeof entry.model === "string") {
       return entry.model;
     }
 
-    const message = entry.message as Record<string, unknown> | undefined;
-    if (message?.model) {
-      const model = message.model;
+    if (entry.message?.model) {
+      const model = entry.message.model;
       if (typeof model === "string") {
         return model;
       }
