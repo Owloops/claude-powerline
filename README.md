@@ -676,7 +676,7 @@ The charset setting works independently from separator styles, giving you 8 poss
 
 Segments flow naturally and wrap to new lines when they exceed the terminal width.
 
-`widthReserve` (default `45`) is the number of columns kept free when deciding where to wrap, leaving room for messages Claude Code may draw next to the status line. If nothing shares the row with your status line, lower it to use the full width:
+`widthReserve` (default `45`) is the number of columns kept free when deciding where to wrap. Outside fullscreen rendering, Claude Code shows notifications (MCP server errors, auto-updates, context-low warnings) on the right side of the status line row, which is what the reserve leaves room for. In [fullscreen rendering](https://code.claude.com/docs/en/fullscreen) notifications get a row of their own, so you can lower it to use the full width:
 
 ```json
 {
