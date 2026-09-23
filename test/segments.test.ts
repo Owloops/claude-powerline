@@ -12,7 +12,7 @@ import {
   type ClaudeHookData,
 } from "../src/utils/claude";
 import { CacheManager } from "../src/utils/cache";
-import { mkdirSync, rmSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 
@@ -334,12 +334,16 @@ describe("Segment Time Logic", () => {
       expect(
         await CacheManager.getDayUsageCache("2026-01-01", timeZone, 1),
       ).not.toBeNull();
+      // Left by a save killed before its rename.
+      const orphan = join(tempDir, "usage", "day-2026-01-01.json.123.tmp");
+      writeFileSync(orphan, "{}");
 
       await new MonthProvider().getMonthInfo();
 
       expect(
         await CacheManager.getDayUsageCache("2026-01-01", timeZone, 1),
       ).toBeNull();
+      expect(existsSync(orphan)).toBe(false);
       expect(
         await CacheManager.getDayUsageCache("2026-09-11", timeZone),
       ).not.toBeNull();

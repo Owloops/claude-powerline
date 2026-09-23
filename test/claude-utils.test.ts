@@ -13,6 +13,7 @@ import {
   findAgentTranscripts,
   parseJsonlFile,
   readFirstLine,
+  readTranscriptFrom,
   collectProjectFiles,
   createUniqueHash,
   getOutputStyleName,
@@ -416,6 +417,41 @@ describe("readFirstLine", () => {
 
   it("rejects when the file does not exist", async () => {
     await expect(readFirstLine(join(tempDir, "nope.jsonl"))).rejects.toThrow();
+  });
+});
+
+describe("readTranscriptFrom", () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), "read-from-"));
+  });
+
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  const prefix = '{"timestamp":"2026-09-18T10:00:00Z","message":{"id":"';
+  const entryLine = (id: string) => `${prefix}${id}"}}\n`;
+
+  // The stream hands out 64 KiB chunks from the start offset. The padding
+  // puts the chunk boundary inside one of the 2-byte characters.
+  it("joins a line across chunks and leaves an unterminated tail out of end", async () => {
+    const skipped = entryLine("skipped");
+    const pad = (65_536 - prefix.length) % 2 === 0 ? "a" : "";
+    const long = pad + "é".repeat(40_000);
+    const complete = skipped + entryLine(long) + entryLine("after");
+    const filePath = join(tempDir, "transcript.jsonl");
+    writeFileSync(filePath, complete + entryLine("tail").trimEnd());
+
+    const read = await readTranscriptFrom(filePath, Buffer.byteLength(skipped));
+
+    expect(read.entries.map((entry) => entry.message?.id)).toEqual([
+      long,
+      "after",
+    ]);
+    expect(read.end).toBe(Buffer.byteLength(complete));
+    expect(read.tail?.message?.id).toBe("tail");
   });
 });
 

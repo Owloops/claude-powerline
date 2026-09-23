@@ -403,10 +403,11 @@ const STREAMING_THRESHOLD_BYTES = 1024 * 1024;
 
 /**
  * @info Transcripts are append-only, so path + size + mtime identifies their
- * contents exactly. Segments resolve transcripts independently — session and
- * context both parse the session transcript in the same render — and a status
- * line process is short-lived, so memoising within the render removes the
- * duplicate parse without letting a stale result outlive the file it came from.
+ * contents exactly. Segments resolve transcripts independently — context and
+ * the today and month scans can all parse the session transcript in the same
+ * render — and a status line process is short-lived, so memoising within the
+ * render removes the duplicate parse without letting a stale result outlive
+ * the file it came from.
  */
 // Holds the in-flight parse, not its result: segments are started together, so
 // they all reach the cache before the first parse resolves and would otherwise
@@ -468,7 +469,7 @@ interface RawTranscriptLine extends RawEntryFields {
  * also carries tool results and message content that nothing here touches, and
  * holding the whole parsed line kept those alive for every entry — peak memory
  * grew with transcript size rather than with the usage data actually needed.
- * Both parsers build entries through here so the two cannot drift apart.
+ * Every parser builds entries through here so they cannot drift apart.
  */
 function toParsedEntry(raw: RawTranscriptLine): ParsedEntry | null {
   if (!raw.timestamp) return null;
@@ -497,26 +498,26 @@ function toParsedEntry(raw: RawTranscriptLine): ParsedEntry | null {
   };
 }
 
+function parseTranscriptLine(line: string): ParsedEntry | null {
+  const trimmed = line.trim();
+  if (!trimmed) return null;
+  try {
+    return toParsedEntry(JSON.parse(trimmed));
+  } catch (parseError) {
+    debug(`Failed to parse JSONL line: ${parseError}`);
+    return null;
+  }
+}
+
 async function parseJsonlFileInMemory(
   filePath: string,
 ): Promise<ParsedEntry[]> {
   const content = await readFile(filePath, "utf-8");
-  const lines = content
-    .trim()
-    .split("\n")
-    .filter((line) => line.trim());
   const entries: ParsedEntry[] = [];
 
-  for (const line of lines) {
-    try {
-      const entry = toParsedEntry(JSON.parse(line));
-      if (!entry) continue;
-
-      entries.push(entry);
-    } catch (parseError) {
-      debug(`Failed to parse JSONL line: ${parseError}`);
-      continue;
-    }
+  for (const line of content.split("\n")) {
+    const entry = parseTranscriptLine(line);
+    if (entry) entries.push(entry);
   }
 
   return entries;
@@ -534,17 +535,8 @@ async function parseJsonlFileStreaming(
     });
 
     rl.on("line", (line) => {
-      const trimmedLine = line.trim();
-      if (!trimmedLine) return;
-
-      try {
-        const entry = toParsedEntry(JSON.parse(trimmedLine));
-        if (!entry) return;
-
-        entries.push(entry);
-      } catch (parseError) {
-        debug(`Failed to parse JSONL line: ${parseError}`);
-      }
+      const entry = parseTranscriptLine(line);
+      if (entry) entries.push(entry);
     });
 
     rl.on("close", () => {
@@ -561,6 +553,58 @@ async function parseJsonlFileStreaming(
       reject(error);
     });
   });
+}
+
+export interface TranscriptRead {
+  /** Entries on the complete lines read, in file order. */
+  entries: ParsedEntry[];
+  /** Offset just past the last newline read, where the next read resumes. */
+  end: number;
+  /**
+   * The entry on a last line not yet ended by a newline, when it parses.
+   * Claude Code may still be writing that line, so `end` stops before it.
+   */
+  tail: ParsedEntry | null;
+}
+
+/**
+ * Parses a transcript from byte offset `start` to its end. Streams, like
+ * parseJsonlFileStreaming, so the first read of a large transcript does not
+ * hold the whole file in memory.
+ */
+export async function readTranscriptFrom(
+  filePath: string,
+  start: number,
+): Promise<TranscriptRead> {
+  const entries: ParsedEntry[] = [];
+  let end = start;
+  // The unterminated start of the next line, as chunks: a tool result line can
+  // span many of them, and concatenating once per line keeps that linear.
+  let partial: Buffer[] = [];
+
+  for await (const chunk of createReadStream(filePath, { start })) {
+    const buffer = chunk as Buffer;
+    let lineStart = 0;
+    let newline: number;
+    while ((newline = buffer.indexOf(0x0a, lineStart)) !== -1) {
+      partial.push(buffer.subarray(lineStart, newline));
+      const line = Buffer.concat(partial);
+      partial = [];
+      end += line.length + 1;
+      lineStart = newline + 1;
+
+      const entry = parseTranscriptLine(line.toString("utf-8"));
+      if (entry) entries.push(entry);
+    }
+    if (lineStart < buffer.length) partial.push(buffer.subarray(lineStart));
+  }
+
+  const tail =
+    partial.length > 0
+      ? parseTranscriptLine(Buffer.concat(partial).toString("utf-8"))
+      : null;
+
+  return { entries, end, tail };
 }
 
 interface FileStat {
