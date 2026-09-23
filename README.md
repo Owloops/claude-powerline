@@ -357,12 +357,12 @@ Requires Claude Code's native `rate_limits` hook data (Claude.ai Pro/Max subscri
 | `squares` | `◱ ◼◼◻◻◻◻◻◻◻◻ 23% (4h 12m)` |
 | `ball` | `◱ ──●─────── 23% (4h 12m)` |
 
-**Pace:** `showPace` adds the usage an even spend would have reached by now: `◱ 60%/40% ▲20 (3h)` in text style, `◱ ▰▰▰▰◆▰▱▱▱▱ 60%/40% (3h)` in bar styles (`◆` over pace, `◇` otherwise, `◈` where it meets the `ball` style's ball). The `tui` style shows `60%/40%`, and its `block.bar`/`weekly.bar` grid cells mark the pace the same way.
+**Pace:** `showPace` adds the usage an even spend would have reached by now, after the actual usage: `◱ 60%/40% (3h)` in text style, `◱ ▰▰▰▰◆▰▱▱▱▱ 60%/40% (3h)` in bar styles (`◆` over pace, `◇` otherwise, `◈` where it meets the `ball` style's ball). The `tui` style shows `60%/40%`, and its `block.bar`/`weekly.bar` grid cells mark the pace the same way.
 
 **Symbols:**
 
-- Unicode: `◱` Block &#8226; `▲8`/`▼8` Points over/under pace &#8226; `◆`/`◇` Over/Under pace
-- Text: `B` Block &#8226; `+8`/`-8` Points over/under pace &#8226; `!`/`:` Over/Under pace (`bar` style and `tui` only)
+- Unicode: `◱` Block &#8226; `◆`/`◇` Over/Under pace
+- Text: `B` Block &#8226; `!`/`:` Over/Under pace (`bar` style and `tui` only)
 
 </details>
 

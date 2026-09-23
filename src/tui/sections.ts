@@ -24,6 +24,8 @@ import {
   formatLongTimeRemaining,
   minutesUntilReset,
   pacePercentage,
+  BLOCK_WINDOW_MINUTES,
+  WEEKLY_WINDOW_MINUTES,
   abbreviateFishStyle,
   formatCacheTimerElapsed,
   formatCacheTimerRemaining,
@@ -183,7 +185,7 @@ function resolvePacePct(
   }
   return pacePercentage(
     minutesRemaining,
-    key === "block" ? 5 * 60 : 7 * 24 * 60,
+    key === "block" ? BLOCK_WINDOW_MINUTES : WEEKLY_WINDOW_MINUTES,
   );
 }
 

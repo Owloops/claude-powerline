@@ -1014,8 +1014,6 @@ describe("Segment Time Logic", () => {
         block_cost: "◱",
         pace_over: "◆",
         pace_under: "◇",
-        pace_plus: "▲",
-        pace_minus: "▼",
       } as any;
       const colors = {
         blockBg: "#2a2a2a",
@@ -1031,7 +1029,7 @@ describe("Segment Time Logic", () => {
         colors,
         { enabled: true, type: "cost", showPace: true },
       );
-      expect(over.text).toBe("◱ 60%/40% ▲20 (3h)");
+      expect(over.text).toBe("◱ 60%/40% (3h)");
       expect(over.bgColor).toBe(colors.contextWarningBg);
 
       const bar = renderer.renderBlock(
@@ -1063,11 +1061,11 @@ describe("Segment Time Logic", () => {
         colors,
         { enabled: true, type: "cost", showPace: true },
       );
-      expect(under.text).toBe("◱ 85%/90% ▼5 (30m)");
+      expect(under.text).toBe("◱ 85%/90% (30m)");
       expect(under.bgColor).toBe(colors.contextCriticalBg);
     });
 
-    it("should follow the charset's symbols in the text and bar styles only", () => {
+    it("should follow the charset's markers in the bar style only", () => {
       const config = { theme: "dark", display: { style: "minimal" } } as any;
       const symbols = {
         block_cost: "B",
@@ -1075,8 +1073,6 @@ describe("Segment Time Logic", () => {
         bar_empty: "-",
         pace_over: "!",
         pace_under: ":",
-        pace_plus: "+",
-        pace_minus: "-",
       } as any;
       const renderer = new SegmentRenderer(config, symbols);
       const render = (displayStyle: "text" | "bar" | "geometric") =>
@@ -1086,7 +1082,7 @@ describe("Segment Time Logic", () => {
           { enabled: true, type: "cost", showPace: true, displayStyle },
         ).text;
 
-      expect(render("text")).toBe("B 60%/40% +20 (3h)");
+      expect(render("text")).toBe("B 60%/40% (3h)");
       expect(render("bar")).toBe("B ====!=---- 60%/40% (3h)");
       expect(render("geometric")).toBe("B ▰▰▰▰◆▰▱▱▱▱ 60%/40% (3h)");
     });
@@ -1153,8 +1149,6 @@ describe("Segment Time Logic", () => {
         weekly_cost: "◑",
         pace_over: "◆",
         pace_under: "◇",
-        pace_plus: "▲",
-        pace_minus: "▼",
       } as any;
       const colors = {
         weeklyBg: "#2a2a3a",
@@ -1184,18 +1178,18 @@ describe("Segment Time Logic", () => {
         expect(result!.text).toBe("◑ 60% (4d)");
       });
 
-      it("should show the pace and the delta in text style", () => {
+      it("should show the pace after the usage in text style", () => {
         const over = renderer.renderWeekly(weekly(60), colors, {
           enabled: true,
           showPace: true,
         });
-        expect(over!.text).toBe("◑ 60%/43% ▲17 (4d)");
+        expect(over!.text).toBe("◑ 60%/43% (4d)");
 
         const under = renderer.renderWeekly(weekly(20), colors, {
           enabled: true,
           showPace: true,
         });
-        expect(under!.text).toBe("◑ 20%/43% ▼23 (4d)");
+        expect(under!.text).toBe("◑ 20%/43% (4d)");
 
         const onPace = renderer.renderWeekly(weekly(43), colors, {
           enabled: true,

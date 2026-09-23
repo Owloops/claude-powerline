@@ -33,6 +33,8 @@ import {
   collapseHome,
   minutesUntilReset,
   pacePercentage,
+  BLOCK_WINDOW_MINUTES,
+  WEEKLY_WINDOW_MINUTES,
 } from "../utils/formatters";
 import { resolveBudgetDisplay } from "../utils/budget";
 import type { BudgetItemConfig } from "../config/loader";
@@ -223,8 +225,6 @@ export interface PowerlineSymbols {
   bar_empty: string;
   pace_over: string;
   pace_under: string;
-  pace_plus: string;
-  pace_minus: string;
   env: string;
   session_id: string;
   weekly_cost: string;
@@ -641,14 +641,7 @@ export class SegmentRenderer {
       return timeStr ? `${bar} ${pctStr} (${timeStr})` : `${bar} ${pctStr}`;
     }
 
-    const delta = pacePct === undefined ? 0 : pct - pacePct;
-    const deltaStr =
-      delta === 0
-        ? ""
-        : ` ${delta > 0 ? this.symbols.pace_plus : this.symbols.pace_minus}${Math.abs(delta)}`;
-    return timeStr
-      ? `${pctStr}${deltaStr} (${timeStr})`
-      : `${pctStr}${deltaStr}`;
+    return timeStr ? `${pctStr} (${timeStr})` : pctStr;
   }
 
   renderMetrics(
@@ -747,7 +740,7 @@ export class SegmentRenderer {
     const blockBudget = this.config.budget?.block;
     const warningThreshold = blockBudget?.warningThreshold ?? 80;
     const pacePct = config?.showPace
-      ? pacePercentage(blockInfo.timeRemaining, 5 * 60)
+      ? pacePercentage(blockInfo.timeRemaining, BLOCK_WINDOW_MINUTES)
       : undefined;
 
     let bgColor = colors.blockBg;
@@ -783,7 +776,7 @@ export class SegmentRenderer {
     const timeRemaining = minutesUntilReset(sevenDay.resets_at);
     const timeStr = formatLongTimeRemaining(timeRemaining);
     const pacePct = config?.showPace
-      ? pacePercentage(timeRemaining, 7 * 24 * 60)
+      ? pacePercentage(timeRemaining, WEEKLY_WINDOW_MINUTES)
       : undefined;
 
     let bgColor = colors.weeklyBg;

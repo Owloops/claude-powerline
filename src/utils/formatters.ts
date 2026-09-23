@@ -167,6 +167,9 @@ export function minutesUntilReset(epochSeconds: number): number {
   return Math.round(Math.max(0, epochSeconds * 1000 - Date.now()) / 60000);
 }
 
+export const BLOCK_WINDOW_MINUTES = 5 * 60;
+export const WEEKLY_WINDOW_MINUTES = 7 * 24 * 60;
+
 /** Usage percentage an even spend over the window would have reached by now. */
 export function pacePercentage(
   minutesRemaining: number,
