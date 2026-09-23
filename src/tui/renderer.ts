@@ -72,7 +72,13 @@ export async function renderTuiPanel(
 
   // Grid path: when display.tui grid config is present
   if (config.display.tui) {
-    const gridConfig = config.display.tui;
+    // The grid keeps its own reserve so it can differ from the classic
+    // styles, but falls back to the display-wide one rather than to 45.
+    const gridConfig = {
+      ...config.display.tui,
+      widthReserve:
+        config.display.tui.widthReserve ?? config.display.widthReserve,
+    };
     const rawWidth =
       gridConfig.terminalWidth ?? options?.rawTerminalWidth ?? 120;
 

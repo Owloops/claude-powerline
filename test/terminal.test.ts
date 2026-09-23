@@ -190,7 +190,7 @@ describe("widthReserve", () => {
     });
   });
 
-  describe("rendering with autoWrap", () => {
+  describe("rendering", () => {
     const mockHookData = {
       session_id: "test-session",
       transcript_path: "/fake/path.jsonl",
@@ -236,6 +236,31 @@ describe("widthReserve", () => {
 
       expect(wrapped.split("\n").length).toBe(2);
       expect(unwrapped.split("\n").length).toBe(1);
+    });
+
+    it("should size the fixed tui panel from the same reserve", async () => {
+      process.env.COLUMNS = "100";
+      const tuiConfig = (widthReserve?: number): PowerlineConfig => {
+        const config = createConfig(widthReserve);
+        return {
+          ...config,
+          display: { ...config.display, autoWrap: false, style: "tui" },
+        };
+      };
+      // The border rows carry the synchronized-output escapes, so measure a
+      // content row.
+      const panelWidth = (output: string) =>
+        visibleLength(output.split("\n")[1] ?? "");
+
+      const reserved = await new PowerlineRenderer(
+        tuiConfig(),
+      ).generateStatusline(mockHookData);
+      const full = await new PowerlineRenderer(tuiConfig(2)).generateStatusline(
+        mockHookData,
+      );
+
+      expect(panelWidth(reserved)).toBe(55);
+      expect(panelWidth(full)).toBe(98);
     });
   });
 });
