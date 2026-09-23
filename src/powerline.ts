@@ -264,7 +264,7 @@ export class PowerlineRenderer {
   ): Promise<string> {
     const colors = this.getThemeColors();
     const currentDir = hookData.workspace?.current_dir || hookData.cwd || "/";
-    const terminalWidth = getTerminalWidth();
+    const terminalWidth = getTerminalWidth(this.config.display.widthReserve);
 
     const outputLines: string[] = [];
 
@@ -351,7 +351,7 @@ export class PowerlineRenderer {
     hookData: ClaudeHookData,
   ): Promise<string> {
     const colors = this.getThemeColors();
-    const terminalWidth = getTerminalWidth();
+    const terminalWidth = getTerminalWidth(this.config.display.widthReserve);
     const currentDir = hookData.workspace?.current_dir || hookData.cwd || "/";
     const charset = this.config.display.charset || "unicode";
     const boxChars = charset === "text" ? BOX_CHARS_TEXT : BOX_CHARS;

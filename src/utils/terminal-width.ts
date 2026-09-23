@@ -195,12 +195,17 @@ function computeUnixTerminalWidth(): number | null {
 
 /**
  * @info Reserves characters for Claude Code's right-side UI messages
- * (e.g., "Current: 2.1.78 · latest: 2.1.78", "Thinking off")
+ * (e.g., "Current: 2.1.78 · latest: 2.1.78", "Thinking off").
+ * Overridable per config via `display.widthReserve`.
  */
 const RESERVED_CHARS = 45;
 
-export function getTerminalWidth(): number | null {
-  const applyReserve = (w: number) => Math.max(1, w - RESERVED_CHARS);
+export function getTerminalWidth(
+  reserve: number = RESERVED_CHARS,
+): number | null {
+  const safeReserve =
+    Number.isFinite(reserve) && reserve >= 0 ? reserve : RESERVED_CHARS;
+  const applyReserve = (w: number) => Math.max(1, w - safeReserve);
 
   const envColumns = process.env.COLUMNS;
   if (envColumns) {

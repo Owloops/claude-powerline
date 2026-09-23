@@ -20,6 +20,7 @@ import type { PowerlineConfig } from "../src/config/loader";
 import type { OutputStyleSegmentConfig } from "../src/segments/renderer";
 import { BOX_CHARS, SYMBOLS } from "../src/utils/constants";
 import { DEFAULT_CONFIG } from "../src/config/defaults";
+import { visibleLength } from "../src/utils/terminal";
 
 // Use empty strings for colors so snapshots capture layout, not ANSI codes
 const PLAIN_COLORS: PowerlineColors = {
@@ -417,6 +418,36 @@ describe("TUI Panel Rendering", () => {
       // block/session/today row should collapse since all null
       // divider between them should be orphaned and removed
       expect(result).toBeDefined();
+    });
+
+    it("should fall back to display.widthReserve when the grid sets none", async () => {
+      const withReserves = (
+        displayReserve: number | undefined,
+        gridReserve: number | undefined,
+      ): PowerlineConfig => ({
+        ...gridConfig,
+        display: {
+          ...gridConfig.display,
+          widthReserve: displayReserve,
+          tui: {
+            ...gridConfig.display.tui!,
+            terminalWidth: 100,
+            widthReserve: gridReserve,
+          },
+        },
+      });
+      // The border rows carry the synchronized-output escapes, so measure a
+      // content row.
+      const panelWidth = async (config: PowerlineConfig) =>
+        visibleLength(
+          (
+            await renderTuiPanel(makeTuiData(), BOX_CHARS, "", 100, config)
+          ).split("\n")[1] ?? "",
+        );
+
+      expect(await panelWidth(withReserves(undefined, undefined))).toBe(55);
+      expect(await panelWidth(withReserves(10, undefined))).toBe(90);
+      expect(await panelWidth(withReserves(10, 30))).toBe(70);
     });
   });
 

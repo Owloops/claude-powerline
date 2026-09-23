@@ -683,6 +683,17 @@ The charset setting works independently from separator styles, giving you 8 poss
 
 Segments flow naturally and wrap to new lines when they exceed the terminal width.
 
+`widthReserve` (default `45`) is the number of columns kept free when deciding where to wrap. Outside fullscreen rendering, Claude Code shows notifications (MCP server errors, auto-updates, context-low warnings) on the right side of the status line row, which is what the reserve leaves room for. In [fullscreen rendering](https://code.claude.com/docs/en/fullscreen) notifications get a row of their own, so you can lower it to use the full width. The same reserve sizes the `tui` panel, unless `display.tui.widthReserve` sets one for the grid layout:
+
+```json
+{
+  "display": {
+    "autoWrap": true,
+    "widthReserve": 2
+  }
+}
+```
+
 **Multi-line Layout** for manual control:
 
 ```json
@@ -834,7 +845,7 @@ Add `display.tui` to your config file to enable the grid engine:
 | Property | Type | Default | Description |
 |---|---|---|---|
 | `fitContent` | `boolean` | `false` | Panel shrinks to fit content instead of filling terminal width |
-| `widthReserve` | `number` | `45` | Characters reserved from terminal width (ignored when `fitContent: true`) |
+| `widthReserve` | `number` | `display.widthReserve`, else `45` | Characters reserved from terminal width (ignored when `fitContent: true`) |
 | `minWidth` | `number` | `32` | Minimum panel width |
 | `maxWidth` | `number` | `∞` | Maximum panel width |
 | `padding.horizontal` | `number` | `0` | Extra horizontal padding in `fitContent` mode |

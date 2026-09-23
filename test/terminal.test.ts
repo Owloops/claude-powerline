@@ -1,4 +1,5 @@
 import { stripAnsi, visibleLength } from "../src/utils/terminal";
+import { getTerminalWidth } from "../src/utils/terminal-width";
 import { PowerlineRenderer } from "../src/powerline";
 import { DEFAULT_CONFIG } from "../src/config/defaults";
 import type { PowerlineConfig } from "../src/config/loader";
@@ -155,6 +156,111 @@ describe("autoWrap functionality", () => {
       for (const line of lines) {
         expect(stripAnsi(line).trim().length).toBeGreaterThan(0);
       }
+    });
+  });
+});
+
+describe("widthReserve", () => {
+  const originalColumns = process.env.COLUMNS;
+
+  afterEach(() => {
+    if (originalColumns === undefined) {
+      delete process.env.COLUMNS;
+    } else {
+      process.env.COLUMNS = originalColumns;
+    }
+  });
+
+  describe("getTerminalWidth", () => {
+    it("should reserve 45 columns by default", () => {
+      process.env.COLUMNS = "120";
+      expect(getTerminalWidth()).toBe(75);
+    });
+
+    it("should honor a custom reserve", () => {
+      process.env.COLUMNS = "120";
+      expect(getTerminalWidth(2)).toBe(118);
+      expect(getTerminalWidth(0)).toBe(120);
+    });
+
+    it("should fall back to the default reserve for invalid values", () => {
+      process.env.COLUMNS = "120";
+      expect(getTerminalWidth(-5)).toBe(75);
+      expect(getTerminalWidth(Number.NaN)).toBe(75);
+    });
+  });
+
+  describe("rendering", () => {
+    const mockHookData = {
+      session_id: "test-session",
+      transcript_path: "/fake/path.jsonl",
+      workspace: {
+        project_dir: "/test/project",
+        current_dir: "/test/project",
+      },
+      model: {
+        id: "claude-3-5-sonnet",
+        display_name: "Claude",
+      },
+      cwd: "/test/project",
+      hook_event_name: "test",
+    };
+
+    const createConfig = (widthReserve?: number): PowerlineConfig => ({
+      ...DEFAULT_CONFIG,
+      display: {
+        ...DEFAULT_CONFIG.display,
+        autoWrap: true,
+        style: "minimal",
+        ...(widthReserve === undefined ? {} : { widthReserve }),
+        lines: [
+          {
+            segments: {
+              directory: { enabled: true },
+              model: { enabled: true },
+            },
+          },
+        ],
+      },
+    });
+
+    it("should wrap earlier with the default reserve than with a small one", async () => {
+      process.env.COLUMNS = "60";
+
+      const wrapped = await new PowerlineRenderer(
+        createConfig(),
+      ).generateStatusline(mockHookData);
+      const unwrapped = await new PowerlineRenderer(
+        createConfig(2),
+      ).generateStatusline(mockHookData);
+
+      expect(wrapped.split("\n").length).toBe(2);
+      expect(unwrapped.split("\n").length).toBe(1);
+    });
+
+    it("should size the fixed tui panel from the same reserve", async () => {
+      process.env.COLUMNS = "100";
+      const tuiConfig = (widthReserve?: number): PowerlineConfig => {
+        const config = createConfig(widthReserve);
+        return {
+          ...config,
+          display: { ...config.display, autoWrap: false, style: "tui" },
+        };
+      };
+      // The border rows carry the synchronized-output escapes, so measure a
+      // content row.
+      const panelWidth = (output: string) =>
+        visibleLength(output.split("\n")[1] ?? "");
+
+      const reserved = await new PowerlineRenderer(
+        tuiConfig(),
+      ).generateStatusline(mockHookData);
+      const full = await new PowerlineRenderer(tuiConfig(2)).generateStatusline(
+        mockHookData,
+      );
+
+      expect(panelWidth(reserved)).toBe(55);
+      expect(panelWidth(full)).toBe(98);
     });
   });
 });
