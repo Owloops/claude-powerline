@@ -1,3 +1,22 @@
+# [1.32.0](https://github.com/Owloops/claude-powerline/compare/v1.31.0...v1.32.0) (2026-09-23)
+
+
+### Features
+
+* **display:** make the autoWrap width reserve configurable ([12fcd0b](https://github.com/Owloops/claude-powerline/commit/12fcd0bea3abb8dc87bc27488fb1f68e10fde92b))
+* **display:** size the tui panel from widthReserve too ([f10f453](https://github.com/Owloops/claude-powerline/commit/f10f453228af6c18a657dd3fc23ee35086216717))
+* **segments:** add showPace option to block/weekly ([579250e](https://github.com/Owloops/claude-powerline/commit/579250e75d1ec3dbe080b281a423fc2760b64e01))
+
+
+### Performance Improvements
+
+* **claude:** keep only the fields consumers read from transcript lines ([61544cb](https://github.com/Owloops/claude-powerline/commit/61544cb2942cbb4a56adaacaa005c82b534058f0))
+* **claude:** memoise parsed transcripts within a render ([1ab88ab](https://github.com/Owloops/claude-powerline/commit/1ab88ab8dd19198c48130cefa2e34b1b92e02ae6))
+* **claude:** read only the first line when matching agent transcripts ([0de8741](https://github.com/Owloops/claude-powerline/commit/0de8741f857b0c5661749bbe28944962576cd6db))
+* **pricing:** import node:https only when pricing is actually fetched ([d87afac](https://github.com/Owloops/claude-powerline/commit/d87afac48905226d0b766b10c18ee6c0e521ec84))
+* **terminal-width:** read the width via ioctl instead of spawning stty ([39566f6](https://github.com/Owloops/claude-powerline/commit/39566f6677f3b542e25fb5a0c4340dd91f7b32b9))
+* **terminal-width:** read tty from /proc instead of spawning ps ([46f8022](https://github.com/Owloops/claude-powerline/commit/46f8022ededffc1ad02595bc24c467db7d3d9bb4))
+
 # [1.31.0](https://github.com/Owloops/claude-powerline/compare/v1.30.3...v1.31.0) (2026-09-12)
 
 
