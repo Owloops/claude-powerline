@@ -411,10 +411,16 @@ const STREAMING_THRESHOLD_BYTES = 1024 * 1024;
 // Holds the in-flight parse, not its result: segments are started together, so
 // they all reach the cache before the first parse resolves and would otherwise
 // every one of them miss.
-const parsedFileCache = new Map<string, Promise<ParsedEntry[]>>();
+const parsedFileCache = new Map<string, Promise<readonly ParsedEntry[]>>();
 
-/** @info Entries are shared between callers, so treat them as read-only. */
-export async function parseJsonlFile(filePath: string): Promise<ParsedEntry[]> {
+/**
+ * @info The array and its entries are shared between callers. The readonly
+ * array makes appending to it a type error; the entries are read-only by
+ * convention.
+ */
+export async function parseJsonlFile(
+  filePath: string,
+): Promise<readonly ParsedEntry[]> {
   try {
     const stats = await stat(filePath);
     const fileSizeBytes = stats.size;
