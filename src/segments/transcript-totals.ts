@@ -10,6 +10,15 @@ import {
 import { PricingService, type BillableTokens } from "./pricing";
 import type { TokenBreakdown } from "./session";
 
+/**
+ * Restricts the totals to the entries of a window of time. Its key is saved
+ * with the state, and a state saved under another key is read as a miss.
+ */
+export interface TotalsWindow {
+  key: string;
+  includes: (entry: ParsedEntry) => boolean;
+}
+
 /** Bumped when the cached shape changes, so an older cache reads as a miss. */
 const STATE_VERSION = 1;
 
@@ -42,6 +51,8 @@ interface FileProgress {
 
 interface CachedState {
   version: number;
+  /** The key of the window the totals are restricted to, if any. */
+  window?: string;
   files: Record<string, FileProgress>;
   /**
    * createUniqueHash of every entry counted. One set for all the transcripts,
@@ -70,9 +81,10 @@ function emptyState(): State {
   };
 }
 
-function toState(cached: unknown): State | null {
+function toState(cached: unknown, window?: TotalsWindow): State | null {
   const state = cached as CachedState | null;
   if (state?.version !== STATE_VERSION) return null;
+  if (state.window !== window?.key) return null;
   return {
     files: state.files,
     seen: new Set(state.seen),
@@ -143,6 +155,7 @@ async function hashHead(filePath: string, length: number): Promise<string> {
 async function advance(
   state: State,
   transcriptPaths: string[],
+  window?: TotalsWindow,
 ): Promise<{ tails: ParsedEntry[]; advanced: boolean } | null> {
   if (Object.keys(state.files).some((p) => !transcriptPaths.includes(p))) {
     return null;
@@ -164,8 +177,12 @@ async function advance(
     }
 
     const read = await readTranscriptFrom(filePath, known?.offset ?? 0);
-    for (const entry of read.entries) addEntry(state, entry);
-    if (read.tail) tails.push(read.tail);
+    for (const entry of read.entries) {
+      if (!window || window.includes(entry)) addEntry(state, entry);
+    }
+    if (read.tail && (!window || window.includes(read.tail))) {
+      tails.push(read.tail);
+    }
 
     if (!known || read.end !== known.offset) {
       advanced = true;
@@ -191,21 +208,23 @@ async function advance(
 export async function readTranscriptTotals(
   name: string,
   transcriptPaths: string[],
+  window?: TotalsWindow,
 ): Promise<TranscriptTotals> {
-  let state = toState(await CacheManager.getTotalsCache(name));
+  let state = toState(await CacheManager.getTotalsCache(name), window);
   if (!state) await CacheManager.pruneTotalsCache();
 
-  let progress = state && (await advance(state, transcriptPaths));
+  let progress = state && (await advance(state, transcriptPaths, window));
   if (!state || !progress) {
     debug(`Reading every transcript for the ${name} totals`);
     state = emptyState();
     // An empty state has no offsets that a transcript could contradict.
-    progress = (await advance(state, transcriptPaths))!;
+    progress = (await advance(state, transcriptPaths, window))!;
   }
 
   if (progress.advanced) {
     const cached: CachedState = {
       version: STATE_VERSION,
+      window: window?.key,
       files: state.files,
       seen: [...state.seen],
       totals: state.totals,

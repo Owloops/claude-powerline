@@ -4,11 +4,6 @@ import { homedir } from "node:os";
 import { createHash } from "node:crypto";
 import { setTimeout } from "node:timers/promises";
 import { debug } from "./logger";
-import {
-  getClaudePaths,
-  findProjectPaths,
-  collectProjectFiles,
-} from "./claude";
 import { formatLocalDate } from "./formatters";
 
 interface ErrnoError extends Error {
@@ -20,7 +15,10 @@ export interface CacheEntry<T> {
   timestamp: number;
   /** Day caches only: the local time zone the day was bucketed in. */
   timeZone?: string;
-  /** Day caches only: false while the day is still accumulating. */
+  /**
+   * Day caches only: always true now. Older versions also cached the current
+   * day, as false, and such a mid-day total must not pass for the whole day.
+   */
   complete?: boolean;
 }
 
@@ -249,39 +247,28 @@ export class CacheManager {
   }
 
   /**
-   * Usage totals for one local calendar day. Pass `latestMtime` for the
-   * current day: the entry is valid while no transcript is newer. Omit it for
-   * a completed day: the entry is valid only if it was written after the day
-   * ended, so a total captured mid-day is never mistaken for the whole day.
-   * A time zone mismatch always invalidates, because the day boundaries move.
+   * Usage totals for one completed local calendar day. A time zone mismatch
+   * invalidates, because the day boundaries move.
    */
-  static getDayUsageCache(
-    dateStr: string,
-    timeZone: string,
-    latestMtime?: number,
-  ): Promise<unknown> {
-    return this.readUsageCache(`day-${dateStr}`, (entry) => {
-      if (entry.timeZone !== timeZone) return false;
-      return latestMtime === undefined
-        ? entry.complete === true
-        : entry.timestamp >= latestMtime;
-    });
+  static getDayUsageCache(dateStr: string, timeZone: string): Promise<unknown> {
+    return this.readUsageCache(
+      `day-${dateStr}`,
+      (entry) => entry.timeZone === timeZone && entry.complete === true,
+    );
   }
 
   static async setDayUsageCache(
     dateStr: string,
     data: unknown,
     timeZone: string,
-    latestMtime?: number,
   ): Promise<void> {
-    const complete = latestMtime === undefined;
     await this.writeUsageCache(`day-${dateStr}`, {
       data,
-      timestamp: latestMtime ?? Date.now(),
+      timestamp: Date.now(),
       timeZone,
-      complete,
+      complete: true,
     });
-    if (complete) await this.pruneDayUsageCache();
+    await this.pruneDayUsageCache();
   }
 
   private static async pruneDayUsageCache(): Promise<void> {
@@ -347,31 +334,6 @@ export class CacheManager {
       }
     } catch (error) {
       debug("Failed to prune totals cache:", error);
-    }
-  }
-
-  /**
-   * Newest mtime across every transcript the cost segments read. It must cover
-   * the same files as collectProjectFiles: when it saw only top-level session
-   * transcripts, agent usage could land without moving this timestamp, so the
-   * today cache stayed valid while session cost had already grown past it
-   * (issue #98).
-   */
-  static async getLatestTranscriptMtime(): Promise<number> {
-    try {
-      const claudePaths = getClaudePaths();
-      const projectPaths = await findProjectPaths(claudePaths);
-
-      const fileGroups = await Promise.all(
-        projectPaths.map((projectPath) => collectProjectFiles(projectPath)),
-      );
-
-      return fileGroups
-        .flat()
-        .reduce((latest, file) => Math.max(latest, file.mtime.getTime()), 0);
-    } catch (error) {
-      debug("Failed to get latest transcript mtime:", error);
-      return Date.now();
     }
   }
 }

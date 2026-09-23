@@ -4,8 +4,12 @@ import type { TokenBreakdown } from "./session";
 import { debug } from "../utils/logger";
 import { PricingService } from "./pricing";
 import { CacheManager } from "../utils/cache";
-import { loadEntriesFromProjects } from "../utils/claude";
+import {
+  collectAllProjectFiles,
+  loadEntriesFromProjects,
+} from "../utils/claude";
 import { formatLocalDate } from "../utils/formatters";
+import { priceTotals, readTranscriptTotals } from "./transcript-totals";
 
 /** Aggregated usage for a window of time; the segments only ever show sums. */
 export interface WindowUsage {
@@ -50,10 +54,8 @@ async function usageOfEntry(entry: ParsedEntry): Promise<WindowUsage | null> {
   const usage = entry.message?.usage;
   if (!usage) return null;
 
-  let cost = entry.costUSD || 0;
-  if (!cost && entry.raw) {
-    cost = await PricingService.calculateCostForEntry(entry.raw);
-  }
+  const cost =
+    entry.costUSD ?? (await PricingService.calculateCostForEntry(entry.raw));
 
   return {
     cost,
@@ -107,21 +109,28 @@ function currentTimeZone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
+/**
+ * One day of slack before the scan boundary: a transcript's mtime can trail
+ * the timestamps of the entries it contains, so a file untouched since just
+ * before the boundary could still hold entries from just after it.
+ */
+function mayHoldEntriesSince(
+  scanStart: Date,
+): (filePath: string, modTime: Date) => boolean {
+  const cutoff = new Date(scanStart);
+  cutoff.setDate(cutoff.getDate() - 1);
+  return (_filePath: string, modTime: Date) => modTime >= cutoff;
+}
+
 /** Parses every transcript that may hold entries for the given days. */
 async function scanDays(
   dayStrings: string[],
 ): Promise<Map<string, WindowUsage>> {
   const scanStart = parseDayString(dayStrings[0]!);
 
-  // One day of slack before the scan boundary: a transcript's mtime can trail
-  // the timestamps of the entries it contains, so a file untouched since just
-  // before the boundary could still hold entries from just after it.
-  const fileFilterCutoff = new Date(scanStart);
-  fileFilterCutoff.setDate(fileFilterCutoff.getDate() - 1);
-
   const parsedEntries = await loadEntriesFromProjects(
     (entry) => entry.timestamp >= scanStart,
-    (_filePath, modTime) => modTime >= fileFilterCutoff,
+    mayHoldEntriesSince(scanStart),
     true,
   );
 
@@ -142,21 +151,31 @@ async function scanDays(
   return buckets;
 }
 
+/**
+ * Reads only what transcripts gained since the last render. A new day, or a
+ * new time zone, starts over from the transcripts modified since yesterday.
+ */
 async function loadTodayUsage(): Promise<WindowUsage> {
-  const todayStr = formatLocalDate(new Date());
-  const timeZone = currentTimeZone();
-  const latestMtime = await CacheManager.getLatestTranscriptMtime();
+  const now = new Date();
+  const todayStr = formatLocalDate(now);
 
-  const cached = (await CacheManager.getDayUsageCache(
-    todayStr,
-    timeZone,
-    latestMtime,
-  )) as WindowUsage | null;
-  if (cached) return cached;
+  const files = await collectAllProjectFiles(
+    mayHoldEntriesSince(startOfDay(now)),
+  );
+  const totals = await readTranscriptTotals(
+    "today",
+    files.map((file) => file.filePath),
+    {
+      key: `${todayStr} ${currentTimeZone()}`,
+      includes: (entry) => formatLocalDate(entry.timestamp) === todayStr,
+    },
+  );
 
-  const fresh = (await scanDays([todayStr])).get(todayStr)!;
-  await CacheManager.setDayUsageCache(todayStr, fresh, timeZone, latestMtime);
-  return fresh;
+  return {
+    cost: await priceTotals(totals),
+    entryCount: totals.entries,
+    tokenBreakdown: totals.tokens,
+  };
 }
 
 let todayUsageInFlight: Promise<WindowUsage> | null = null;
@@ -177,9 +196,9 @@ function getTodayUsage(): Promise<WindowUsage> {
 /**
  * Completed days are cached as totals and trusted until pruned: transcripts
  * are appended with real-time timestamps, so a past day cannot grow. Today is
- * cached against the newest transcript mtime, as the `today` segment always
- * was. Transcripts copied in from elsewhere after a day was cached are not
- * picked up; deleting `~/.claude/powerline/usage` rebuilds the cache.
+ * read from saved offsets (getTodayUsage). Transcripts copied in from
+ * elsewhere after a day was cached are not picked up; deleting
+ * `~/.claude/powerline/usage` rebuilds the cache.
  */
 async function loadWindowUsage(windowStart: Date): Promise<WindowUsage> {
   const now = new Date();

@@ -168,9 +168,9 @@ export async function findTranscriptFile(
  * <session>/subagents/agent-*.jsonl, and workflow agents nest further under
  * subagents/workflows/<runId>/, so the walk has to recurse.
  *
- * This is the single definition of where agent usage lives. Session cost,
- * daily cost and the cache-invalidation mtime check all go through it, so
- * they cannot disagree about which files count.
+ * This is the single definition of where agent usage lives. Session cost and
+ * daily cost both go through it, so they cannot disagree about which files
+ * count.
  */
 export async function findAgentTranscriptPaths(
   sessionDir: string,
@@ -346,10 +346,10 @@ const STREAMING_THRESHOLD_BYTES = 1024 * 1024;
 /**
  * @info Transcripts are append-only, so path + size + mtime identifies their
  * contents exactly. Segments resolve transcripts independently — context and
- * the today and month scans can all parse the session transcript in the same
- * render — and a status line process is short-lived, so memoising within the
- * render removes the duplicate parse without letting a stale result outlive
- * the file it came from.
+ * the month's scan of uncached days can both parse the session transcript in
+ * the same render — and a status line process is short-lived, so memoising
+ * within the render removes the duplicate parse without letting a stale result
+ * outlive the file it came from.
  */
 // Holds the in-flight parse, not its result: segments are started together, so
 // they all reach the cache before the first parse resolves and would otherwise
@@ -596,6 +596,19 @@ export async function collectProjectFiles(
   }
 }
 
+/** Every transcript of every project, agents included. */
+export async function collectAllProjectFiles(
+  fileFilter?: (filePath: string, modTime: Date) => boolean,
+): Promise<FileStat[]> {
+  const projectPaths = await findProjectPaths(getClaudePaths());
+  const fileGroups = await Promise.all(
+    projectPaths.map((projectPath) =>
+      collectProjectFiles(projectPath, fileFilter),
+    ),
+  );
+  return fileGroups.flat();
+}
+
 /**
  * Loads entries from Claude projects with deterministic deduplication.
  * @param timeFilter Optional filter to apply based on timestamp
@@ -611,17 +624,7 @@ export async function loadEntriesFromProjects(
   fileFilter?: (filePath: string, modTime: Date) => boolean,
   sortFiles = false,
 ): Promise<ParsedEntry[]> {
-  const claudePaths = getClaudePaths();
-  const projectPaths = await findProjectPaths(claudePaths);
-
-  const allFilesPromises = projectPaths.map((projectPath) =>
-    collectProjectFiles(projectPath, fileFilter),
-  );
-
-  const allFileResults = await Promise.all(allFilesPromises);
-  const allFilesWithMtime = allFileResults
-    .flat()
-    .filter((file): file is { filePath: string; mtime: Date } => file !== null);
+  const allFilesWithMtime = await collectAllProjectFiles(fileFilter);
 
   if (sortFiles) {
     allFilesWithMtime.sort((a, b) => b.mtime.getTime() - a.mtime.getTime());

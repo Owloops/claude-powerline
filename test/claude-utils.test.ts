@@ -18,7 +18,6 @@ import {
   getOutputStyleName,
   type ClaudeHookData,
 } from "../src/utils/claude";
-import { CacheManager } from "../src/utils/cache";
 import { PricingService } from "../src/segments/pricing";
 import type { ModelPricing } from "../src/segments/pricing";
 
@@ -220,71 +219,6 @@ describe("collectProjectFiles", () => {
       "agent-nested.jsonl",
       "session.jsonl",
     ]);
-  });
-});
-
-describe("CacheManager.getLatestTranscriptMtime", () => {
-  let claudeDir: string;
-  let projectDir: string;
-
-  beforeEach(() => {
-    claudeDir = mkdtempSync(join(tmpdir(), "powerline-mtime-test-"));
-    projectDir = join(claudeDir, "projects", "some-project");
-    mkdirSync(projectDir, { recursive: true });
-    process.env.CLAUDE_CONFIG_DIR = claudeDir;
-  });
-
-  afterEach(() => {
-    delete process.env.CLAUDE_CONFIG_DIR;
-    rmSync(claudeDir, { recursive: true, force: true });
-  });
-
-  const AGENT_MTIME = new Date("2026-07-21T12:00:00Z");
-
-  function writeAgedFile(filePath: string, mtime: Date): void {
-    mkdirSync(join(filePath, ".."), { recursive: true });
-    writeFileSync(filePath, "{}\n");
-    utimesSync(filePath, mtime, mtime);
-  }
-
-  beforeEach(() => {
-    // An older session transcript, so only an agent file can raise the mtime.
-    writeAgedFile(
-      join(projectDir, "session.jsonl"),
-      new Date("2026-07-21T10:00:00Z"),
-    );
-  });
-
-  // Regression tests for issue #98: agent usage that lands after the session
-  // transcript was last written has to move this timestamp, or the today cache
-  // is served stale while session cost keeps climbing past it.
-  it("reflects agent transcripts under subagents/", async () => {
-    writeAgedFile(
-      join(projectDir, "session", "subagents", "agent-flat.jsonl"),
-      AGENT_MTIME,
-    );
-
-    expect(await CacheManager.getLatestTranscriptMtime()).toBe(
-      AGENT_MTIME.getTime(),
-    );
-  });
-
-  it("reflects workflow agent transcripts nested deeper still", async () => {
-    writeAgedFile(
-      join(
-        projectDir,
-        "session",
-        "subagents",
-        "workflows",
-        "wf_1",
-        "agent-nested.jsonl",
-      ),
-      AGENT_MTIME,
-    );
-
-    expect(await CacheManager.getLatestTranscriptMtime()).toBe(
-      AGENT_MTIME.getTime(),
-    );
   });
 });
 
