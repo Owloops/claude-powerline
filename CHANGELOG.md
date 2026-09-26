@@ -1,3 +1,17 @@
+## [1.32.1](https://github.com/Owloops/claude-powerline/compare/v1.32.0...v1.32.1) (2026-09-26)
+
+
+### Bug Fixes
+
+* **pricing:** share one in-flight GitHub fetch across concurrent callers ([497b428](https://github.com/Owloops/claude-powerline/commit/497b428077b698e26bbb8acfb75ccff1a950d06e))
+* **session:** count forked agent transcripts ([d6ad457](https://github.com/Owloops/claude-powerline/commit/d6ad457ed4e0eac208a49840476b3b4bfe609567)), closes [#54](https://github.com/Owloops/claude-powerline/issues/54)
+
+
+### Performance Improvements
+
+* **session:** read only what transcripts gained since the last render ([00015a6](https://github.com/Owloops/claude-powerline/commit/00015a645cbd650232af7a919085df97585aecd5))
+* **today:** read only what transcripts gained since the last render ([12fbb4d](https://github.com/Owloops/claude-powerline/commit/12fbb4dbb80103f953760a0489f1361d455e1966))
+
 # [1.32.0](https://github.com/Owloops/claude-powerline/compare/v1.31.0...v1.32.0) (2026-09-23)
 
 
