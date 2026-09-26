@@ -1,4 +1,4 @@
-import { open, readdir, readFile, stat } from "node:fs/promises";
+import { readdir, readFile, stat } from "node:fs/promises";
 import { existsSync, createReadStream } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
@@ -168,9 +168,9 @@ export async function findTranscriptFile(
  * <session>/subagents/agent-*.jsonl, and workflow agents nest further under
  * subagents/workflows/<runId>/, so the walk has to recurse.
  *
- * This is the single definition of where agent usage lives. Session cost,
- * daily cost and the cache-invalidation mtime check all go through it, so
- * they cannot disagree about which files count.
+ * This is the single definition of where agent usage lives. Session cost and
+ * daily cost both go through it, so they cannot disagree about which files
+ * count.
  */
 export async function findAgentTranscriptPaths(
   sessionDir: string,
@@ -204,74 +204,16 @@ export async function findAgentTranscriptPaths(
   return paths;
 }
 
-const FIRST_LINE_CHUNK_BYTES = 8 * 1024;
-
 /**
- * @info Reads only the first line rather than loading the whole file. Agent
- * transcripts run to megabytes each and only their first line identifies the
- * session, and every file that matches is read again in full immediately
- * afterwards to parse it. Returns null for an empty file.
+ * The session's own directory is what ties an agent transcript to it. Their
+ * first line is no test: a forked agent's is a `fork-context-ref` record,
+ * which names the session as `parentSessionId` and has no `sessionId`.
  */
-export async function readFirstLine(filePath: string): Promise<string | null> {
-  const handle = await open(filePath, "r");
-  try {
-    let buffered = Buffer.alloc(0);
-
-    for (;;) {
-      const chunk = Buffer.allocUnsafe(FIRST_LINE_CHUNK_BYTES);
-      const { bytesRead } = await handle.read(
-        chunk,
-        0,
-        FIRST_LINE_CHUNK_BYTES,
-        buffered.length,
-      );
-      // EOF before any newline: the whole file is a single line.
-      if (bytesRead === 0) break;
-
-      buffered = Buffer.concat([buffered, chunk.subarray(0, bytesRead)]);
-
-      // 0x0a never occurs inside a multi-byte UTF-8 sequence, so cutting on
-      // it cannot split a character.
-      const newline = buffered.indexOf(0x0a);
-      if (newline !== -1)
-        return buffered.subarray(0, newline).toString("utf-8");
-    }
-
-    return buffered.length > 0 ? buffered.toString("utf-8") : null;
-  } finally {
-    await handle.close();
-  }
-}
-
 export async function findAgentTranscripts(
   sessionId: string,
   projectPath: string,
 ): Promise<string[]> {
-  const agentFiles: string[] = [];
-
-  const candidates = await findAgentTranscriptPaths(
-    join(projectPath, sessionId),
-  );
-
-  // Checked one at a time on purpose. Reading the first lines concurrently
-  // measured ~10ms off a ~1.3s render, inside run-to-run noise, and raised the
-  // process's peak fd count from 23 to one per candidate; exhausting that limit
-  // is caught below and silently drops a transcript, understating session cost.
-  for (const filePath of candidates) {
-    try {
-      const firstLine = await readFirstLine(filePath);
-      if (firstLine) {
-        const parsed = JSON.parse(firstLine);
-        if (parsed.sessionId === sessionId) {
-          agentFiles.push(filePath);
-        }
-      }
-    } catch {
-      debug(`Failed to check agent file ${filePath}`);
-    }
-  }
-
-  return agentFiles;
+  return findAgentTranscriptPaths(join(projectPath, sessionId));
 }
 
 export async function getEarliestTimestamp(
@@ -403,10 +345,11 @@ const STREAMING_THRESHOLD_BYTES = 1024 * 1024;
 
 /**
  * @info Transcripts are append-only, so path + size + mtime identifies their
- * contents exactly. Segments resolve transcripts independently — session and
- * context both parse the session transcript in the same render — and a status
- * line process is short-lived, so memoising within the render removes the
- * duplicate parse without letting a stale result outlive the file it came from.
+ * contents exactly. Segments resolve transcripts independently — context and
+ * the month's scan of uncached days can both parse the session transcript in
+ * the same render — and a status line process is short-lived, so memoising
+ * within the render removes the duplicate parse without letting a stale result
+ * outlive the file it came from.
  */
 // Holds the in-flight parse, not its result: segments are started together, so
 // they all reach the cache before the first parse resolves and would otherwise
@@ -468,7 +411,7 @@ interface RawTranscriptLine extends RawEntryFields {
  * also carries tool results and message content that nothing here touches, and
  * holding the whole parsed line kept those alive for every entry — peak memory
  * grew with transcript size rather than with the usage data actually needed.
- * Both parsers build entries through here so the two cannot drift apart.
+ * Every parser builds entries through here so they cannot drift apart.
  */
 function toParsedEntry(raw: RawTranscriptLine): ParsedEntry | null {
   if (!raw.timestamp) return null;
@@ -497,26 +440,26 @@ function toParsedEntry(raw: RawTranscriptLine): ParsedEntry | null {
   };
 }
 
+function parseTranscriptLine(line: string): ParsedEntry | null {
+  const trimmed = line.trim();
+  if (!trimmed) return null;
+  try {
+    return toParsedEntry(JSON.parse(trimmed));
+  } catch (parseError) {
+    debug(`Failed to parse JSONL line: ${parseError}`);
+    return null;
+  }
+}
+
 async function parseJsonlFileInMemory(
   filePath: string,
 ): Promise<ParsedEntry[]> {
   const content = await readFile(filePath, "utf-8");
-  const lines = content
-    .trim()
-    .split("\n")
-    .filter((line) => line.trim());
   const entries: ParsedEntry[] = [];
 
-  for (const line of lines) {
-    try {
-      const entry = toParsedEntry(JSON.parse(line));
-      if (!entry) continue;
-
-      entries.push(entry);
-    } catch (parseError) {
-      debug(`Failed to parse JSONL line: ${parseError}`);
-      continue;
-    }
+  for (const line of content.split("\n")) {
+    const entry = parseTranscriptLine(line);
+    if (entry) entries.push(entry);
   }
 
   return entries;
@@ -534,17 +477,8 @@ async function parseJsonlFileStreaming(
     });
 
     rl.on("line", (line) => {
-      const trimmedLine = line.trim();
-      if (!trimmedLine) return;
-
-      try {
-        const entry = toParsedEntry(JSON.parse(trimmedLine));
-        if (!entry) return;
-
-        entries.push(entry);
-      } catch (parseError) {
-        debug(`Failed to parse JSONL line: ${parseError}`);
-      }
+      const entry = parseTranscriptLine(line);
+      if (entry) entries.push(entry);
     });
 
     rl.on("close", () => {
@@ -561,6 +495,58 @@ async function parseJsonlFileStreaming(
       reject(error);
     });
   });
+}
+
+export interface TranscriptRead {
+  /** Entries on the complete lines read, in file order. */
+  entries: ParsedEntry[];
+  /** Offset just past the last newline read, where the next read resumes. */
+  end: number;
+  /**
+   * The entry on a last line not yet ended by a newline, when it parses.
+   * Claude Code may still be writing that line, so `end` stops before it.
+   */
+  tail: ParsedEntry | null;
+}
+
+/**
+ * Parses a transcript from byte offset `start` to its end. Streams, like
+ * parseJsonlFileStreaming, so the first read of a large transcript does not
+ * hold the whole file in memory.
+ */
+export async function readTranscriptFrom(
+  filePath: string,
+  start: number,
+): Promise<TranscriptRead> {
+  const entries: ParsedEntry[] = [];
+  let end = start;
+  // The unterminated start of the next line, as chunks: a tool result line can
+  // span many of them, and concatenating once per line keeps that linear.
+  let partial: Buffer[] = [];
+
+  for await (const chunk of createReadStream(filePath, { start })) {
+    const buffer = chunk as Buffer;
+    let lineStart = 0;
+    let newline: number;
+    while ((newline = buffer.indexOf(0x0a, lineStart)) !== -1) {
+      partial.push(buffer.subarray(lineStart, newline));
+      const line = Buffer.concat(partial);
+      partial = [];
+      end += line.length + 1;
+      lineStart = newline + 1;
+
+      const entry = parseTranscriptLine(line.toString("utf-8"));
+      if (entry) entries.push(entry);
+    }
+    if (lineStart < buffer.length) partial.push(buffer.subarray(lineStart));
+  }
+
+  const tail =
+    partial.length > 0
+      ? parseTranscriptLine(Buffer.concat(partial).toString("utf-8"))
+      : null;
+
+  return { entries, end, tail };
 }
 
 interface FileStat {
@@ -610,6 +596,19 @@ export async function collectProjectFiles(
   }
 }
 
+/** Every transcript of every project, agents included. */
+export async function collectAllProjectFiles(
+  fileFilter?: (filePath: string, modTime: Date) => boolean,
+): Promise<FileStat[]> {
+  const projectPaths = await findProjectPaths(getClaudePaths());
+  const fileGroups = await Promise.all(
+    projectPaths.map((projectPath) =>
+      collectProjectFiles(projectPath, fileFilter),
+    ),
+  );
+  return fileGroups.flat();
+}
+
 /**
  * Loads entries from Claude projects with deterministic deduplication.
  * @param timeFilter Optional filter to apply based on timestamp
@@ -625,17 +624,7 @@ export async function loadEntriesFromProjects(
   fileFilter?: (filePath: string, modTime: Date) => boolean,
   sortFiles = false,
 ): Promise<ParsedEntry[]> {
-  const claudePaths = getClaudePaths();
-  const projectPaths = await findProjectPaths(claudePaths);
-
-  const allFilesPromises = projectPaths.map((projectPath) =>
-    collectProjectFiles(projectPath, fileFilter),
-  );
-
-  const allFileResults = await Promise.all(allFilesPromises);
-  const allFilesWithMtime = allFileResults
-    .flat()
-    .filter((file): file is { filePath: string; mtime: Date } => file !== null);
+  const allFilesWithMtime = await collectAllProjectFiles(fileFilter);
 
   if (sortFiles) {
     allFilesWithMtime.sort((a, b) => b.mtime.getTime() - a.mtime.getTime());

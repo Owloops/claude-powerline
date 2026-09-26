@@ -12,12 +12,15 @@ import {
   type ClaudeHookData,
 } from "../src/utils/claude";
 import { CacheManager } from "../src/utils/cache";
-import { mkdirSync, rmSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 
 jest.mock("../src/utils/claude", () => ({
   loadEntriesFromProjects: jest.fn(),
+  // Today reads transcripts by offset, covered in usage-window.test.ts; here it
+  // finds none, leaving the month to its completed days.
+  collectAllProjectFiles: jest.fn(async () => []),
   getEffortLevel: (hookData: any) => {
     const level = hookData?.effort?.level;
     if (typeof level !== "string") return null;
@@ -43,7 +46,6 @@ const mockLoadEntries = loadEntriesFromProjects as jest.MockedFunction<
 
 describe("Segment Time Logic", () => {
   let tempDir: string;
-  let mockEntries: any[];
   let originalCacheDir: string | undefined;
 
   beforeEach(() => {
@@ -52,47 +54,7 @@ describe("Segment Time Logic", () => {
     originalCacheDir = process.env.CLAUDE_POWERLINE_CACHE_DIR;
     process.env.CLAUDE_POWERLINE_CACHE_DIR = tempDir;
 
-    const now = new Date();
-    const midnight = new Date();
-    midnight.setHours(0, 0, 0, 0);
-
-    const hoursSinceMidnight = now.getHours();
-    const blockNumber = Math.floor(hoursSinceMidnight / 5);
-    const blockStart = new Date();
-    blockStart.setHours(blockNumber * 5, 0, 0, 0);
-
-    mockEntries = [
-      {
-        timestamp: new Date(midnight.getTime() + 2 * 60 * 60 * 1000),
-        message: {
-          usage: {
-            input_tokens: 1000,
-            output_tokens: 500,
-            cache_creation_input_tokens: 100,
-            cache_read_input_tokens: 50,
-          },
-          model: "claude-3-5-sonnet",
-        },
-        costUSD: 25.5,
-        raw: {},
-      },
-      {
-        timestamp: new Date(blockStart.getTime() + 60 * 60 * 1000),
-        message: {
-          usage: {
-            input_tokens: 2000,
-            output_tokens: 1000,
-            cache_creation_input_tokens: 200,
-            cache_read_input_tokens: 100,
-          },
-          model: "claude-3-5-sonnet",
-        },
-        costUSD: 45.75,
-        raw: {},
-      },
-    ];
-
-    mockLoadEntries.mockResolvedValue(mockEntries);
+    mockLoadEntries.mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -141,20 +103,6 @@ describe("Segment Time Logic", () => {
   });
 
   describe("Today Segment", () => {
-    it("should include all entries since midnight", async () => {
-      const todayProvider = new TodayProvider();
-      const todayInfo = await todayProvider.getTodayInfo();
-
-      expect(todayInfo.cost).toBe(71.25);
-      expect(todayInfo.tokens).toBe(4950);
-
-      expect(todayInfo.tokenBreakdown).toBeDefined();
-      expect(todayInfo.tokenBreakdown!.input).toBe(3000);
-      expect(todayInfo.tokenBreakdown!.output).toBe(1500);
-      expect(todayInfo.tokenBreakdown!.cacheCreation).toBe(300);
-      expect(todayInfo.tokenBreakdown!.cacheRead).toBe(150);
-    });
-
     it("should format date consistently using local time", async () => {
       const todayProvider = new TodayProvider();
       const todayInfo = await todayProvider.getTodayInfo();
@@ -170,20 +118,6 @@ describe("Segment Time Logic", () => {
   });
 
   describe("Month Segment", () => {
-    it("should include all entries since the start of the month", async () => {
-      const monthProvider = new MonthProvider();
-      const monthInfo = await monthProvider.getMonthInfo();
-
-      expect(monthInfo.cost).toBe(71.25);
-      expect(monthInfo.tokens).toBe(4950);
-
-      expect(monthInfo.tokenBreakdown).toBeDefined();
-      expect(monthInfo.tokenBreakdown!.input).toBe(3000);
-      expect(monthInfo.tokenBreakdown!.output).toBe(1500);
-      expect(monthInfo.tokenBreakdown!.cacheCreation).toBe(300);
-      expect(monthInfo.tokenBreakdown!.cacheRead).toBe(150);
-    });
-
     it("should format month consistently using local time", async () => {
       const monthProvider = new MonthProvider();
       const monthInfo = await monthProvider.getMonthInfo();
@@ -200,8 +134,6 @@ describe("Segment Time Logic", () => {
   describe("Usage Window Cache", () => {
     const now = new Date(2026, 8, 12, 12, 0, 0);
     const yesterdayEntry = usageEntry(new Date(2026, 8, 11, 9, 0, 0), 10);
-    const todayEntry = usageEntry(new Date(2026, 8, 12, 9, 0, 0), 1);
-    let mtimeSpy: jest.SpyInstance;
 
     function usageEntry(timestamp: Date, costUSD: number) {
       return {
@@ -243,47 +175,11 @@ describe("Segment Time Logic", () => {
           "queueMicrotask",
         ],
       });
-      mtimeSpy = jest
-        .spyOn(CacheManager, "getLatestTranscriptMtime")
-        .mockResolvedValue(1000);
-      mockLoadEntries.mockResolvedValue([yesterdayEntry, todayEntry] as any);
+      mockLoadEntries.mockResolvedValue([yesterdayEntry] as any);
     });
 
     afterEach(() => {
-      mtimeSpy.mockRestore();
       jest.useRealTimers();
-    });
-
-    it("sums completed days into month but keeps today to the current day", async () => {
-      const monthInfo = await new MonthProvider().getMonthInfo();
-      const todayInfo = await new TodayProvider().getTodayInfo();
-
-      expect(monthInfo.cost).toBe(11);
-      expect(todayInfo.cost).toBe(1);
-    });
-
-    it("reuses today's total until a transcript changes", async () => {
-      const todayProvider = new TodayProvider();
-      await todayProvider.getTodayInfo();
-      await todayProvider.getTodayInfo();
-      expect(mockLoadEntries).toHaveBeenCalledTimes(1);
-
-      mtimeSpy.mockResolvedValue(2000);
-      await todayProvider.getTodayInfo();
-      expect(mockLoadEntries).toHaveBeenCalledTimes(2);
-    });
-
-    it("shares one scan between concurrent today and month renders", async () => {
-      await new MonthProvider().getMonthInfo();
-      mockLoadEntries.mockClear();
-      mtimeSpy.mockResolvedValue(2000);
-
-      await Promise.all([
-        new MonthProvider().getMonthInfo(),
-        new TodayProvider().getTodayInfo(),
-      ]);
-
-      expect(mockLoadEntries).toHaveBeenCalledTimes(1);
     });
 
     it("does not re-parse completed days on later renders", async () => {
@@ -291,11 +187,10 @@ describe("Segment Time Logic", () => {
       await monthProvider.getMonthInfo();
       expect(scansIncludingYesterday()).toBe(1);
 
-      mtimeSpy.mockResolvedValue(2000);
       const monthInfo = await monthProvider.getMonthInfo();
 
       expect(scansIncludingYesterday()).toBe(1);
-      expect(monthInfo.cost).toBe(11);
+      expect(monthInfo.cost).toBe(10);
     });
 
     it("rebuilds a completed day that was cached under another time zone", async () => {
@@ -307,39 +202,42 @@ describe("Segment Time Logic", () => {
 
       const monthInfo = await new MonthProvider().getMonthInfo();
 
-      expect(monthInfo.cost).toBe(11);
+      expect(monthInfo.cost).toBe(10);
       expect(scansIncludingYesterday()).toBe(1);
     });
 
     it("does not trust a mid-day snapshot as the completed day", async () => {
-      await CacheManager.setDayUsageCache(
-        "2026-09-11",
-        staleUsage,
-        timeZone,
-        500,
+      // As older versions cached the current day.
+      mkdirSync(join(tempDir, "usage"), { recursive: true });
+      writeFileSync(
+        join(tempDir, "usage", "day-2026-09-11.json"),
+        JSON.stringify({
+          data: staleUsage,
+          timestamp: 500,
+          timeZone,
+          complete: false,
+        }),
       );
 
       const monthInfo = await new MonthProvider().getMonthInfo();
 
-      expect(monthInfo.cost).toBe(11);
+      expect(monthInfo.cost).toBe(10);
     });
 
     it("prunes day caches older than the retention window once a day completes", async () => {
-      await CacheManager.setDayUsageCache(
-        "2026-01-01",
-        staleUsage,
-        timeZone,
-        1,
-      );
-      expect(
-        await CacheManager.getDayUsageCache("2026-01-01", timeZone, 1),
-      ).not.toBeNull();
+      // Written directly: saving a day through the cache prunes it right away.
+      const usageDir = join(tempDir, "usage");
+      mkdirSync(usageDir, { recursive: true });
+      const stale = join(usageDir, "day-2026-01-01.json");
+      writeFileSync(stale, "{}");
+      // Left by a save killed before its rename.
+      const orphan = join(usageDir, "day-2026-01-01.json.123.tmp");
+      writeFileSync(orphan, "{}");
 
       await new MonthProvider().getMonthInfo();
 
-      expect(
-        await CacheManager.getDayUsageCache("2026-01-01", timeZone, 1),
-      ).toBeNull();
+      expect(existsSync(stale)).toBe(false);
+      expect(existsSync(orphan)).toBe(false);
       expect(
         await CacheManager.getDayUsageCache("2026-09-11", timeZone),
       ).not.toBeNull();

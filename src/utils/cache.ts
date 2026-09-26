@@ -4,11 +4,6 @@ import { homedir } from "node:os";
 import { createHash } from "node:crypto";
 import { setTimeout } from "node:timers/promises";
 import { debug } from "./logger";
-import {
-  getClaudePaths,
-  findProjectPaths,
-  collectProjectFiles,
-} from "./claude";
 import { formatLocalDate } from "./formatters";
 
 interface ErrnoError extends Error {
@@ -20,7 +15,10 @@ export interface CacheEntry<T> {
   timestamp: number;
   /** Day caches only: the local time zone the day was bucketed in. */
   timeZone?: string;
-  /** Day caches only: false while the day is still accumulating. */
+  /**
+   * Day caches only: always true now. Older versions also cached the current
+   * day, as false, and such a mid-day total must not pass for the whole day.
+   */
   complete?: boolean;
 }
 
@@ -29,7 +27,11 @@ export interface CacheEntry<T> {
  * slack), so a cached day is never rebuilt while it can still be shown.
  */
 const DAY_CACHE_RETENTION_DAYS = 45;
-const DAY_CACHE_FILE = /^day-(\d{4}-\d{2}-\d{2})\.json$/;
+/** Also matches the temp file of a save killed before its rename. */
+const DAY_CACHE_FILE = /^day-(\d{4}-\d{2}-\d{2})\.json(\.\d+\.tmp)?$/;
+
+const TOTALS_CACHE_RETENTION_DAYS = 14;
+const TOTALS_CACHE_FILE = /^totals-.+\.json(\.\d+\.tmp)?$/;
 
 export class CacheManager {
   /** Resolved on every access so tests can point it at a temporary directory. */
@@ -100,11 +102,12 @@ export class CacheManager {
         debug(`Lock acquired for ${name}`);
         return true;
       } catch (error) {
-        if ((error as ErrnoError).code === "EEXIST") {
-          await setTimeout(RETRY_DELAY_MS);
-        } else {
-          throw error;
+        if ((error as ErrnoError).code !== "EEXIST") {
+          // An unwritable cache directory: the save is skipped.
+          debug(`Failed to create lock for ${name}:`, error);
+          return false;
         }
+        await setTimeout(RETRY_DELAY_MS);
       }
     }
     debug(`Failed to acquire lock for ${name} within ${timeout}ms`);
@@ -196,12 +199,17 @@ export class CacheManager {
       return;
     }
 
+    const cachePath = path.join(this.USAGE_CACHE_DIR, `${name}.json`);
+    // Written aside and renamed over, so a reader that does not wait for the
+    // lock still sees either the old file or the new one, never a torn one.
+    const tempPath = `${cachePath}.${process.pid}.tmp`;
     try {
-      const cachePath = path.join(this.USAGE_CACHE_DIR, `${name}.json`);
-      await fs.promises.writeFile(cachePath, JSON.stringify(entry), "utf-8");
+      await fs.promises.writeFile(tempPath, JSON.stringify(entry), "utf-8");
+      await fs.promises.rename(tempPath, cachePath);
       debug(`[CACHE-SET] ${name} disk cache stored`);
     } catch (error) {
       debug(`Failed to save ${name} usage cache:`, error);
+      await fs.promises.rm(tempPath, { force: true }).catch(() => {});
     } finally {
       await this.releaseLock(lockName);
     }
@@ -239,39 +247,28 @@ export class CacheManager {
   }
 
   /**
-   * Usage totals for one local calendar day. Pass `latestMtime` for the
-   * current day: the entry is valid while no transcript is newer. Omit it for
-   * a completed day: the entry is valid only if it was written after the day
-   * ended, so a total captured mid-day is never mistaken for the whole day.
-   * A time zone mismatch always invalidates, because the day boundaries move.
+   * Usage totals for one completed local calendar day. A time zone mismatch
+   * invalidates, because the day boundaries move.
    */
-  static getDayUsageCache(
-    dateStr: string,
-    timeZone: string,
-    latestMtime?: number,
-  ): Promise<unknown> {
-    return this.readUsageCache(`day-${dateStr}`, (entry) => {
-      if (entry.timeZone !== timeZone) return false;
-      return latestMtime === undefined
-        ? entry.complete === true
-        : entry.timestamp >= latestMtime;
-    });
+  static getDayUsageCache(dateStr: string, timeZone: string): Promise<unknown> {
+    return this.readUsageCache(
+      `day-${dateStr}`,
+      (entry) => entry.timeZone === timeZone && entry.complete === true,
+    );
   }
 
   static async setDayUsageCache(
     dateStr: string,
     data: unknown,
     timeZone: string,
-    latestMtime?: number,
   ): Promise<void> {
-    const complete = latestMtime === undefined;
     await this.writeUsageCache(`day-${dateStr}`, {
       data,
-      timestamp: latestMtime ?? Date.now(),
+      timestamp: Date.now(),
       timeZone,
-      complete,
+      complete: true,
     });
-    if (complete) await this.pruneDayUsageCache();
+    await this.pruneDayUsageCache();
   }
 
   private static async pruneDayUsageCache(): Promise<void> {
@@ -300,27 +297,43 @@ export class CacheManager {
   }
 
   /**
-   * Newest mtime across every transcript the cost segments read. It must cover
-   * the same files as collectProjectFiles: when it saw only top-level session
-   * transcripts, agent usage could land without moving this timestamp, so the
-   * today cache stayed valid while session cost had already grown past it
-   * (issue #98).
+   * Transcript totals and read offsets, from transcript-totals.ts. Always valid
+   * when present: the caller checks the offsets against the transcripts.
    */
-  static async getLatestTranscriptMtime(): Promise<number> {
+  static getTotalsCache(name: string): Promise<unknown> {
+    return this.readUsageCache(`totals-${name}`, () => true);
+  }
+
+  static setTotalsCache(name: string, data: unknown): Promise<void> {
+    return this.writeUsageCache(`totals-${name}`, {
+      data,
+      timestamp: Date.now(),
+    });
+  }
+
+  /**
+   * Session totals accumulate one per session, so drop those not written for
+   * a while. Resuming such a session costs one full read of its transcripts.
+   */
+  static async pruneTotalsCache(): Promise<void> {
+    const cutoff = Date.now() - TOTALS_CACHE_RETENTION_DAYS * 86_400_000;
+
     try {
-      const claudePaths = getClaudePaths();
-      const projectPaths = await findProjectPaths(claudePaths);
-
-      const fileGroups = await Promise.all(
-        projectPaths.map((projectPath) => collectProjectFiles(projectPath)),
-      );
-
-      return fileGroups
-        .flat()
-        .reduce((latest, file) => Math.max(latest, file.mtime.getTime()), 0);
+      const files = await fs.promises.readdir(this.USAGE_CACHE_DIR);
+      let pruned = 0;
+      for (const file of files) {
+        if (!TOTALS_CACHE_FILE.test(file)) continue;
+        const filePath = path.join(this.USAGE_CACHE_DIR, file);
+        if ((await fs.promises.stat(filePath)).mtimeMs < cutoff) {
+          await fs.promises.unlink(filePath);
+          pruned++;
+        }
+      }
+      if (pruned > 0) {
+        debug(`Pruned ${pruned} totals cache file(s)`);
+      }
     } catch (error) {
-      debug("Failed to get latest transcript mtime:", error);
-      return Date.now();
+      debug("Failed to prune totals cache:", error);
     }
   }
 }

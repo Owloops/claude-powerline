@@ -12,13 +12,12 @@ import { tmpdir } from "os";
 import {
   findAgentTranscripts,
   parseJsonlFile,
-  readFirstLine,
+  readTranscriptFrom,
   collectProjectFiles,
   createUniqueHash,
   getOutputStyleName,
   type ClaudeHookData,
 } from "../src/utils/claude";
-import { CacheManager } from "../src/utils/cache";
 import { PricingService } from "../src/segments/pricing";
 import type { ModelPricing } from "../src/segments/pricing";
 
@@ -138,14 +137,21 @@ describe("findAgentTranscripts", () => {
     expect(result).toHaveLength(2);
   });
 
-  it("skips files whose first-line sessionId does not match (defensive guard)", async () => {
+  it("finds forked agent transcripts, whose first line has no sessionId", async () => {
     const sessionId = "abc123";
     const subagentsDir = makeSubagentsDir(sessionId);
-    writeAgentFile(subagentsDir, "agent-x1y2z3.jsonl", "other-session");
+    const forkFile = join(subagentsDir, "agent-afork.jsonl");
+    writeFileSync(
+      forkFile,
+      JSON.stringify({ type: "fork-context-ref", parentSessionId: sessionId }) +
+        "\n" +
+        JSON.stringify({ sessionId, message: { usage: {} } }) +
+        "\n",
+    );
 
     const result = await findAgentTranscripts(sessionId, tempDir);
 
-    expect(result).toEqual([]);
+    expect(result).toEqual([forkFile]);
   });
 
   it("skips non-agent- files and non-.jsonl files in the subagents dir", async () => {
@@ -213,71 +219,6 @@ describe("collectProjectFiles", () => {
       "agent-nested.jsonl",
       "session.jsonl",
     ]);
-  });
-});
-
-describe("CacheManager.getLatestTranscriptMtime", () => {
-  let claudeDir: string;
-  let projectDir: string;
-
-  beforeEach(() => {
-    claudeDir = mkdtempSync(join(tmpdir(), "powerline-mtime-test-"));
-    projectDir = join(claudeDir, "projects", "some-project");
-    mkdirSync(projectDir, { recursive: true });
-    process.env.CLAUDE_CONFIG_DIR = claudeDir;
-  });
-
-  afterEach(() => {
-    delete process.env.CLAUDE_CONFIG_DIR;
-    rmSync(claudeDir, { recursive: true, force: true });
-  });
-
-  const AGENT_MTIME = new Date("2026-07-21T12:00:00Z");
-
-  function writeAgedFile(filePath: string, mtime: Date): void {
-    mkdirSync(join(filePath, ".."), { recursive: true });
-    writeFileSync(filePath, "{}\n");
-    utimesSync(filePath, mtime, mtime);
-  }
-
-  beforeEach(() => {
-    // An older session transcript, so only an agent file can raise the mtime.
-    writeAgedFile(
-      join(projectDir, "session.jsonl"),
-      new Date("2026-07-21T10:00:00Z"),
-    );
-  });
-
-  // Regression tests for issue #98: agent usage that lands after the session
-  // transcript was last written has to move this timestamp, or the today cache
-  // is served stale while session cost keeps climbing past it.
-  it("reflects agent transcripts under subagents/", async () => {
-    writeAgedFile(
-      join(projectDir, "session", "subagents", "agent-flat.jsonl"),
-      AGENT_MTIME,
-    );
-
-    expect(await CacheManager.getLatestTranscriptMtime()).toBe(
-      AGENT_MTIME.getTime(),
-    );
-  });
-
-  it("reflects workflow agent transcripts nested deeper still", async () => {
-    writeAgedFile(
-      join(
-        projectDir,
-        "session",
-        "subagents",
-        "workflows",
-        "wf_1",
-        "agent-nested.jsonl",
-      ),
-      AGENT_MTIME,
-    );
-
-    expect(await CacheManager.getLatestTranscriptMtime()).toBe(
-      AGENT_MTIME.getTime(),
-    );
   });
 });
 
@@ -364,58 +305,38 @@ describe("parseJsonlFile caching", () => {
   });
 });
 
-describe("readFirstLine", () => {
+describe("readTranscriptFrom", () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), "first-line-"));
+    tempDir = mkdtempSync(join(tmpdir(), "read-from-"));
   });
 
   afterEach(() => {
     rmSync(tempDir, { recursive: true, force: true });
   });
 
-  const write = (name: string, content: string): string => {
-    const filePath = join(tempDir, name);
-    writeFileSync(filePath, content);
-    return filePath;
-  };
+  const prefix = '{"timestamp":"2026-09-18T10:00:00Z","message":{"id":"';
+  const entryLine = (id: string) => `${prefix}${id}"}}\n`;
 
-  it("reads the first line of a multi-line file", async () => {
-    const filePath = write("multi.jsonl", '{"a":1}\n{"b":2}\n{"c":3}\n');
-    expect(await readFirstLine(filePath)).toBe('{"a":1}');
-  });
+  // The stream hands out 64 KiB chunks from the start offset. The padding
+  // puts the chunk boundary inside one of the 2-byte characters.
+  it("joins a line across chunks and leaves an unterminated tail out of end", async () => {
+    const skipped = entryLine("skipped");
+    const pad = (65_536 - prefix.length) % 2 === 0 ? "a" : "";
+    const long = pad + "é".repeat(40_000);
+    const complete = skipped + entryLine(long) + entryLine("after");
+    const filePath = join(tempDir, "transcript.jsonl");
+    writeFileSync(filePath, complete + entryLine("tail").trimEnd());
 
-  it("reads a sole line that has no trailing newline", async () => {
-    expect(await readFirstLine(write("one.jsonl", '{"a":1}'))).toBe('{"a":1}');
-  });
+    const read = await readTranscriptFrom(filePath, Buffer.byteLength(skipped));
 
-  it("returns null for an empty file", async () => {
-    expect(await readFirstLine(write("empty.jsonl", ""))).toBeNull();
-  });
-
-  it("returns an empty string for a leading blank line", async () => {
-    expect(await readFirstLine(write("blank.jsonl", "\nsecond"))).toBe("");
-  });
-
-  // The reader pulls 8 KiB at a time, so a longer first line exercises the
-  // grow path where one read is not enough to reach the newline.
-  it("reads a first line longer than the read chunk", async () => {
-    const long = "x".repeat(70_000);
-    const filePath = write("long.jsonl", `${long}\nsecond\n`);
-    expect(await readFirstLine(filePath)).toBe(long);
-  });
-
-  it("does not split a multi-byte character across a chunk boundary", async () => {
-    // One leading ASCII byte offsets the 2-byte characters so that one of
-    // them straddles the 8192-byte read boundary.
-    const long = `a${"é".repeat(9000)}`;
-    const filePath = write("utf8.jsonl", `${long}\nsecond\n`);
-    expect(await readFirstLine(filePath)).toBe(long);
-  });
-
-  it("rejects when the file does not exist", async () => {
-    await expect(readFirstLine(join(tempDir, "nope.jsonl"))).rejects.toThrow();
+    expect(read.entries.map((entry) => entry.message?.id)).toEqual([
+      long,
+      "after",
+    ]);
+    expect(read.end).toBe(Buffer.byteLength(complete));
+    expect(read.tail?.message?.id).toBe("tail");
   });
 });
 

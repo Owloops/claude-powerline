@@ -1,5 +1,5 @@
 import { PowerlineRenderer } from "../src/powerline";
-import { GitService, SessionProvider } from "../src/segments";
+import { GitService } from "../src/segments";
 import { TodayProvider } from "../src/segments/today";
 import { MonthProvider } from "../src/segments/month";
 import { loadConfigFromCLI } from "../src/config/loader";
@@ -145,43 +145,6 @@ describe("Core Functionality", () => {
       const result = await renderer.generateStatusline(hookData);
       expect(result.length).toBeGreaterThan(0);
       expect(result.toLowerCase()).toContain("claude");
-    });
-  });
-
-  describe("Session Tracking", () => {
-    it("should calculate token breakdown from transcript", () => {
-      const mockEntries = [
-        {
-          timestamp: "2024-01-01T10:00:00Z",
-          message: {
-            usage: {
-              input_tokens: 1000,
-              output_tokens: 500,
-              cache_creation_input_tokens: 100,
-            },
-          },
-          costUSD: 0.05,
-        },
-        {
-          timestamp: "2024-01-01T10:01:00Z",
-          message: {
-            usage: {
-              input_tokens: 1500,
-              output_tokens: 750,
-              cache_read_input_tokens: 200,
-            },
-          },
-          costUSD: 0.08,
-        },
-      ];
-
-      const sessionProvider = new SessionProvider();
-      const breakdown = sessionProvider.calculateTokenBreakdown(mockEntries);
-
-      expect(breakdown.input).toBe(2500);
-      expect(breakdown.output).toBe(1250);
-      expect(breakdown.cacheCreation).toBe(100);
-      expect(breakdown.cacheRead).toBe(200);
     });
   });
 

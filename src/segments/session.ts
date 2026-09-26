@@ -1,33 +1,23 @@
 import { debug } from "../utils/logger";
-import { PricingService } from "./pricing";
+import { priceTotals, readTranscriptTotals } from "./transcript-totals";
 import {
   findTranscriptFile,
   findAgentTranscripts,
-  parseJsonlFile,
-  deduplicateEntries,
-  type ParsedEntry,
   type ClaudeHookData,
 } from "../utils/claude";
 import { dirname } from "node:path";
 
-export interface SessionUsageEntry {
-  timestamp: string;
-  message: {
-    usage: {
-      input_tokens: number;
-      output_tokens: number;
-      cache_creation_input_tokens?: number;
-      cache_read_input_tokens?: number;
-    };
-  };
-  costUSD?: number;
-}
-
 export interface SessionUsage {
   totalCost: number;
-  entries: SessionUsageEntry[];
+  /** Usage entries counted, after deduplication. */
+  entryCount: number;
+  tokenBreakdown: TokenBreakdown;
 }
 
+/**
+ * Totals states save sums of these: a change here needs STATE_VERSION in
+ * transcript-totals.ts bumped.
+ */
 export interface TokenBreakdown {
   input: number;
   output: number;
@@ -47,22 +37,6 @@ export interface UsageInfo {
   session: SessionInfo;
 }
 
-function convertToSessionEntry(entry: ParsedEntry): SessionUsageEntry {
-  return {
-    timestamp: entry.timestamp.toISOString(),
-    message: {
-      usage: {
-        input_tokens: entry.message?.usage?.input_tokens || 0,
-        output_tokens: entry.message?.usage?.output_tokens || 0,
-        cache_creation_input_tokens:
-          entry.message?.usage?.cache_creation_input_tokens,
-        cache_read_input_tokens: entry.message?.usage?.cache_read_input_tokens,
-      },
-    },
-    costUSD: entry.costUSD,
-  };
-}
-
 export class SessionProvider {
   async getSessionUsage(sessionId: string): Promise<SessionUsage | null> {
     try {
@@ -74,70 +48,31 @@ export class SessionProvider {
 
       debug(`Found transcript at: ${transcriptPath}`);
 
-      const entryLists = [await parseJsonlFile(transcriptPath)];
-      const projectPath = dirname(transcriptPath);
       const agentTranscripts = await findAgentTranscripts(
         sessionId,
-        projectPath,
+        dirname(transcriptPath),
       );
 
       debug(`Found ${agentTranscripts.length} agent transcripts for session`);
 
-      for (const agentPath of agentTranscripts) {
-        entryLists.push(await parseJsonlFile(agentPath));
-      }
-
-      const parsedEntries = entryLists.flat();
-
-      if (parsedEntries.length === 0) {
-        return { totalCost: 0, entries: [] };
-      }
-
-      const usageEntries = deduplicateEntries(
-        parsedEntries.filter((entry) => entry.message?.usage),
-      );
-
-      const entries: SessionUsageEntry[] = [];
-      let totalCost = 0;
-
-      for (const entry of usageEntries) {
-        const sessionEntry = convertToSessionEntry(entry);
-
-        if (sessionEntry.costUSD !== undefined) {
-          totalCost += sessionEntry.costUSD;
-        } else {
-          const cost = await PricingService.calculateCostForEntry(entry.raw);
-          sessionEntry.costUSD = cost;
-          totalCost += cost;
-        }
-
-        entries.push(sessionEntry);
-      }
+      const totals = await readTranscriptTotals(`session-${sessionId}`, [
+        transcriptPath,
+        ...agentTranscripts,
+      ]);
+      const totalCost = await priceTotals(totals);
 
       debug(
-        `Parsed ${entries.length} usage entries, total cost: $${totalCost.toFixed(4)}`,
+        `Counted ${totals.entries} usage entries, total cost: $${totalCost.toFixed(4)}`,
       );
-      return { totalCost, entries };
+      return {
+        totalCost,
+        entryCount: totals.entries,
+        tokenBreakdown: totals.tokens,
+      };
     } catch (error) {
       debug(`Error reading session usage for ${sessionId}:`, error);
       return null;
     }
-  }
-
-  calculateTokenBreakdown(entries: SessionUsageEntry[]): TokenBreakdown {
-    return entries.reduce(
-      (breakdown, entry) => ({
-        input: breakdown.input + (entry.message.usage.input_tokens || 0),
-        output: breakdown.output + (entry.message.usage.output_tokens || 0),
-        cacheCreation:
-          breakdown.cacheCreation +
-          (entry.message.usage.cache_creation_input_tokens || 0),
-        cacheRead:
-          breakdown.cacheRead +
-          (entry.message.usage.cache_read_input_tokens || 0),
-      }),
-      { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 },
-    );
   }
 
   async getSessionInfo(
@@ -146,7 +81,7 @@ export class SessionProvider {
   ): Promise<SessionInfo> {
     const sessionUsage = await this.getSessionUsage(sessionId);
 
-    if (!sessionUsage || sessionUsage.entries.length === 0) {
+    if (!sessionUsage || sessionUsage.entryCount === 0) {
       return {
         cost: null,
         calculatedCost: null,
@@ -156,7 +91,7 @@ export class SessionProvider {
       };
     }
 
-    const tokenBreakdown = this.calculateTokenBreakdown(sessionUsage.entries);
+    const { tokenBreakdown } = sessionUsage;
     const totalTokens =
       tokenBreakdown.input +
       tokenBreakdown.output +

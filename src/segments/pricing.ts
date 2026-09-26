@@ -11,6 +11,18 @@ export interface ModelPricing {
   output: number;
 }
 
+/**
+ * Token counts grouped by the rate they are billed at. Totals states save sums
+ * of these: a change here needs STATE_VERSION in transcript-totals.ts bumped.
+ */
+export interface BillableTokens {
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheWrite5m: number;
+  cacheWrite1h: number;
+}
+
 interface EntryUsage {
   input_tokens?: number;
   output_tokens?: number;
@@ -422,14 +434,19 @@ export class PricingService {
       return 0;
     }
 
-    const modelId = this.extractModelId(entry);
-    const pricing = await this.getModelPricing(modelId);
+    return this.calculateCost(
+      this.extractModelId(entry),
+      this.billableTokens(usage),
+    );
+  }
 
-    const inputTokens = usage.input_tokens || 0;
-    const outputTokens = usage.output_tokens || 0;
+  /**
+   * @info Splits one entry's usage by rate. The split is per entry because the
+   * uncategorized cache writes are clamped at zero per entry, so sums of these
+   * price exactly like the entries they came from.
+   */
+  static billableTokens(usage: EntryUsage): BillableTokens {
     const cacheCreationTokens = usage.cache_creation_input_tokens || 0;
-    const cacheReadTokens = usage.cache_read_input_tokens || 0;
-
     const cacheCreation = usage.cache_creation;
     const oneHourTokens = cacheCreation?.ephemeral_1h_input_tokens ?? 0;
     const explicitFiveMinuteTokens =
@@ -438,20 +455,34 @@ export class PricingService {
       0,
       cacheCreationTokens - oneHourTokens - explicitFiveMinuteTokens,
     );
+
+    return {
+      input: usage.input_tokens || 0,
+      output: usage.output_tokens || 0,
+      cacheRead: usage.cache_read_input_tokens || 0,
+      cacheWrite5m: explicitFiveMinuteTokens + uncategorizedFiveMinuteTokens,
+      cacheWrite1h: oneHourTokens,
+    };
+  }
+
+  static async calculateCost(
+    modelId: string,
+    tokens: BillableTokens,
+  ): Promise<number> {
+    const pricing = await this.getModelPricing(modelId);
     const cacheWrite1hRate = pricing.cache_write_1h ?? pricing.cache_write_5m;
 
-    const inputCost = (inputTokens / 1_000_000) * pricing.input;
-    const outputCost = (outputTokens / 1_000_000) * pricing.output;
-    const cacheReadCost = (cacheReadTokens / 1_000_000) * pricing.cache_read;
+    const inputCost = (tokens.input / 1_000_000) * pricing.input;
+    const outputCost = (tokens.output / 1_000_000) * pricing.output;
+    const cacheReadCost = (tokens.cacheRead / 1_000_000) * pricing.cache_read;
     const cacheCreationCost =
-      (oneHourTokens / 1_000_000) * cacheWrite1hRate +
-      ((explicitFiveMinuteTokens + uncategorizedFiveMinuteTokens) / 1_000_000) *
-        pricing.cache_write_5m;
+      (tokens.cacheWrite1h / 1_000_000) * cacheWrite1hRate +
+      (tokens.cacheWrite5m / 1_000_000) * pricing.cache_write_5m;
 
     return inputCost + outputCost + cacheCreationCost + cacheReadCost;
   }
 
-  private static extractModelId(entry: RawEntryFields): string {
+  static extractModelId(entry: RawEntryFields): string {
     if (entry.model && typeof entry.model === "string") {
       return entry.model;
     }
