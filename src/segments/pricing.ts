@@ -159,6 +159,14 @@ const OFFLINE_PRICING_DATA: Record<string, ModelPricing> = {
 
 export class PricingService {
   private static executionCache: Record<string, ModelPricing> | null = null;
+  // Holds the in-flight load, not just its resolved value. The tui style
+  // fetches every segment's info concurrently (see powerline.ts's
+  // Promise.allSettled), and session and today can each need pricing for an
+  // entry with no recorded costUSD. On a cold cache, each one that arrived
+  // before executionCache was set started its own GitHub fetch. Mirrors
+  // claude.ts's parsedFileCache for the same reason.
+  private static loadingCache: Promise<Record<string, ModelPricing>> | null =
+    null;
   private static modelPricingCache = new Map<string, ModelPricing>();
   private static readonly GITHUB_PRICING_URL =
     "https://raw.githubusercontent.com/Owloops/claude-powerline/main/pricing.json";
@@ -275,14 +283,25 @@ export class PricingService {
     });
   }
 
-  static async getCurrentPricing(): Promise<Record<string, ModelPricing>> {
+  static getCurrentPricing(): Promise<Record<string, ModelPricing>> {
     if (this.executionCache !== null) {
       debug(
         `[CACHE-HIT] Pricing execution cache: ${Object.keys(this.executionCache).length} models`,
       );
-      return this.executionCache;
+      return Promise.resolve(this.executionCache);
     }
 
+    if (!this.loadingCache) {
+      this.loadingCache = this.loadCurrentPricing().finally(() => {
+        this.loadingCache = null;
+      });
+    }
+    return this.loadingCache;
+  }
+
+  private static async loadCurrentPricing(): Promise<
+    Record<string, ModelPricing>
+  > {
     const diskCached = await this.loadDiskCache();
     if (diskCached) {
       debug(

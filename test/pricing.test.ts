@@ -1,5 +1,8 @@
 import { PricingService } from "../src/segments/pricing";
 import type { ModelPricing } from "../src/segments/pricing";
+import { mkdtempSync, rmSync } from "fs";
+import { join } from "path";
+import { tmpdir } from "os";
 
 describe("PricingService cache write pricing", () => {
   const mockPricing: ModelPricing = {
@@ -116,5 +119,73 @@ describe("PricingService cache write pricing", () => {
     );
 
     expect(cost).toBeCloseTo(10 + 20 + 0.5 + 4 + 1, 10);
+  });
+});
+
+describe("PricingService.getCurrentPricing concurrency", () => {
+  let tempDir: string;
+  let originalCacheDir: string | undefined;
+  let fetchSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), "powerline-pricing-cache-"));
+    originalCacheDir = process.env.CLAUDE_POWERLINE_CACHE_DIR;
+    process.env.CLAUDE_POWERLINE_CACHE_DIR = tempDir;
+
+    // Both caches start empty: getCurrentPricing has no other way to reset
+    // its own module-level state between tests.
+    (PricingService as unknown as { executionCache: unknown }).executionCache =
+      null;
+    (PricingService as unknown as { loadingCache: unknown }).loadingCache =
+      null;
+
+    fetchSpy = jest
+      .spyOn(
+        PricingService as unknown as {
+          fetchPricingData: () => Promise<unknown>;
+        },
+        "fetchPricingData",
+      )
+      .mockImplementation(
+        () =>
+          new Promise((resolve) =>
+            setTimeout(() => resolve({ "test-model": { input: 1 } }), 20),
+          ),
+      );
+  });
+
+  afterEach(() => {
+    fetchSpy.mockRestore();
+    rmSync(tempDir, { recursive: true, force: true });
+    if (originalCacheDir === undefined) {
+      delete process.env.CLAUDE_POWERLINE_CACHE_DIR;
+    } else {
+      process.env.CLAUDE_POWERLINE_CACHE_DIR = originalCacheDir;
+    }
+  });
+
+  // The tui style resolves every segment's info concurrently (see
+  // powerline.ts), so session and today can each reach getCurrentPricing
+  // before the first fetch resolves. Each one that started its own fetch was
+  // the bug this covers.
+  it("shares one GitHub fetch across concurrent callers", async () => {
+    const [first, second, third] = await Promise.all([
+      PricingService.getCurrentPricing(),
+      PricingService.getCurrentPricing(),
+      PricingService.getCurrentPricing(),
+    ]);
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(second).toBe(first);
+    expect(third).toBe(first);
+  });
+
+  it("does not fetch again once pricing is cached", async () => {
+    await PricingService.getCurrentPricing();
+    fetchSpy.mockClear();
+
+    await PricingService.getCurrentPricing();
+
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });
