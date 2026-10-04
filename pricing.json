@@ -1,7 +1,7 @@
 {
   "_meta": {
     "source": "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json",
-    "updated": "2026-09-27",
+    "updated": "2026-10-04",
     "currency": "USD",
     "unit": "per_million_tokens"
   },
@@ -219,6 +219,14 @@
     "output": 20,
     "cache_write_5m": 5,
     "cache_write_1h": 8,
+    "cache_read": 0.2
+  },
+  "claude-sonnet-5-5": {
+    "name": "claude-sonnet-5-5",
+    "input": 2,
+    "output": 10,
+    "cache_write_5m": 2.5,
+    "cache_write_1h": 4,
     "cache_read": 0.2
   }
 }
