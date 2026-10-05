@@ -408,7 +408,11 @@ export class GitService {
         if (!line) continue;
 
         if (line.startsWith("## ")) {
-          const branchLine = line.substring(3);
+          // A repo with no commits yet reports its branch as
+          // "No commits yet on <branch>" ("Initial commit on" before git 2.17).
+          const branchLine = line
+            .substring(3)
+            .replace(/^(?:No commits yet|Initial commit) on /, "");
           const branchMatch = branchLine.split("...")[0];
           if (branchMatch && branchMatch !== "HEAD (no branch)") {
             branch = branchMatch;
