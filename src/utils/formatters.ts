@@ -133,13 +133,23 @@ export function formatBurnRate(rate: number | null | undefined): string {
   return rate < 1 ? `${(rate * 100).toFixed(0)}c/h` : `$${rate.toFixed(2)}/h`;
 }
 
+/**
+ * Whether `dirPath` is `baseDir` or inside it. A bare prefix check would also
+ * match a sibling such as `/home/al` for `/home/alex`.
+ */
+export function isPathWithin(dirPath: string, baseDir: string): boolean {
+  if (!dirPath.startsWith(baseDir)) return false;
+  const next = dirPath.charAt(baseDir.length);
+  return next === "" || next === "/" || next === "\\";
+}
+
 export function collapseHome(dirPath: string, homeDir?: string): string {
   const home =
     homeDir ??
     globalThis.process?.env?.HOME ??
     globalThis.process?.env?.USERPROFILE;
-  if (home && dirPath.startsWith(home)) {
-    return dirPath.replace(home, "~");
+  if (home && isPathWithin(dirPath, home)) {
+    return `~${dirPath.slice(home.length)}`;
   }
   return dirPath;
 }
