@@ -1,4 +1,8 @@
-import { formatModelName } from "../src/utils/formatters";
+import {
+  formatDuration,
+  formatModelName,
+  formatTokens,
+} from "../src/utils/formatters";
 
 describe("formatModelName", () => {
   describe("AWS Bedrock models", () => {
@@ -151,5 +155,35 @@ describe("formatModelName", () => {
         formatModelName("  anthropic.claude-sonnet-4-5-20250929-v1:0  "),
       ).toBe("Sonnet 4.5");
     });
+  });
+});
+
+describe("formatTokens", () => {
+  it("formats values within a unit", () => {
+    expect(formatTokens(999)).toBe("999 tokens");
+    expect(formatTokens(1_500)).toBe("1.5K tokens");
+    expect(formatTokens(999_949)).toBe("999.9K tokens");
+    expect(formatTokens(2_500_000)).toBe("2.5M tokens");
+  });
+
+  it("promotes to M when rounding would reach 1000.0K", () => {
+    expect(formatTokens(999_950)).toBe("1.0M tokens");
+    expect(formatTokens(999_999)).toBe("1.0M tokens");
+  });
+});
+
+describe("formatDuration", () => {
+  it("formats values within a unit", () => {
+    expect(formatDuration(45)).toBe("45s");
+    expect(formatDuration(59.4)).toBe("59s");
+    expect(formatDuration(3569)).toBe("59m");
+    expect(formatDuration(5400)).toBe("1.5h");
+    expect(formatDuration(129600)).toBe("1.5d");
+  });
+
+  it("promotes to the next unit when rounding would reach its boundary", () => {
+    expect(formatDuration(59.6)).toBe("1m");
+    expect(formatDuration(3599)).toBe("1.0h");
+    expect(formatDuration(86399)).toBe("1.0d");
   });
 });

@@ -22,7 +22,8 @@ export function formatCost(cost: number | null): string {
 export function formatTokens(tokens: number | null): string {
   if (tokens === null) return "0 tokens";
   if (tokens === 0) return "0 tokens";
-  if (tokens >= 1_000_000) {
+  // Compare against the rounding threshold so 999_950 becomes "1.0M", not "1000.0K"
+  if (tokens >= 999_950) {
     return `${(tokens / 1_000_000).toFixed(1)}M tokens`;
   } else if (tokens >= 1_000) {
     return `${(tokens / 1_000).toFixed(1)}K tokens`;
@@ -60,11 +61,12 @@ export function formatTimeSince(seconds: number): string {
 }
 
 export function formatDuration(seconds: number): string {
-  if (seconds < 60) {
+  // Thresholds account for rounding so 3599s becomes "1.0h", not "60m"
+  if (seconds < 59.5) {
     return `${seconds.toFixed(0)}s`;
-  } else if (seconds < 3600) {
+  } else if (seconds < 3570) {
     return `${(seconds / 60).toFixed(0)}m`;
-  } else if (seconds < 86400) {
+  } else if (seconds < 86220) {
     return `${(seconds / 3600).toFixed(1)}h`;
   } else {
     return `${(seconds / 86400).toFixed(1)}d`;
