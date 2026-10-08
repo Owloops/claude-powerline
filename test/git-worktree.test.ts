@@ -149,5 +149,60 @@ describe("GitService isWorktree", () => {
         expect(options.cwd).toBe(tempDir);
       }
     });
+
+    it("should run git in the worktree from a subdirectory of it, not in the project dir", async () => {
+      projectDir = mkdtempSync(join(tmpdir(), "powerline-project-test-"));
+      mkdirSync(join(projectDir, ".git"), { recursive: true });
+
+      writeFileSync(
+        join(tempDir, ".git"),
+        "gitdir: /repo/.git/worktrees/feature",
+      );
+      const subDir = join(tempDir, "src", "nested");
+      mkdirSync(subDir, { recursive: true });
+      mockExec.mockImplementation(
+        createMockExec("feature-branch", WORKTREE_DIRS),
+      );
+
+      const info = await gitService.getGitInfo(
+        subDir,
+        { showWorktree: true },
+        projectDir,
+      );
+
+      expect(info).not.toBeNull();
+      expect(info!.isWorktree).toBe(true);
+      expect(info!.branch).toBe("feature-branch");
+      for (const [, options] of mockExec.mock.calls) {
+        expect(options.cwd).toBe(tempDir);
+      }
+    });
+
+    it("should run git in the repo holding the working dir when it is not the project's", async () => {
+      projectDir = mkdtempSync(join(tmpdir(), "powerline-project-test-"));
+      mkdirSync(join(projectDir, ".git"), { recursive: true });
+      mkdirSync(join(tempDir, ".git"), { recursive: true });
+      const subDir = join(tempDir, "lib");
+      mkdirSync(subDir, { recursive: true });
+
+      const info = await gitService.getGitInfo(subDir, {}, projectDir);
+
+      expect(info).not.toBeNull();
+      for (const [, options] of mockExec.mock.calls) {
+        expect(options.cwd).toBe(tempDir);
+      }
+    });
+
+    it("should fall back to the project dir when the working dir is in no repo", async () => {
+      projectDir = mkdtempSync(join(tmpdir(), "powerline-project-test-"));
+      mkdirSync(join(projectDir, ".git"), { recursive: true });
+
+      const info = await gitService.getGitInfo(tempDir, {}, projectDir);
+
+      expect(info).not.toBeNull();
+      for (const [, options] of mockExec.mock.calls) {
+        expect(options.cwd).toBe(projectDir);
+      }
+    });
   });
 });
