@@ -443,6 +443,50 @@ describe("Segment Time Logic", () => {
 
       expect(result.text).toBe("/srv/app-web");
     });
+
+    it("should collapse HOME when it ends in a separator", () => {
+      process.env.HOME = "/home/al/";
+      const hookData: ClaudeHookData = {
+        hook_event_name: "Status",
+        session_id: "test",
+        transcript_path: "/tmp/test.json",
+        cwd: "/home/al/proj",
+        model: { id: "claude-3-5-sonnet", display_name: "Claude" },
+        workspace: {
+          current_dir: "/home/al/proj",
+          project_dir: "/home/al/proj",
+        },
+      };
+
+      const result = renderer.renderDirectory(hookData, colors, {
+        enabled: true,
+        style: "full",
+      });
+
+      expect(result.text).toBe("~/proj");
+    });
+
+    it("should show the path below a project dir that ends in a separator", () => {
+      process.env.HOME = "/home/user";
+      const hookData: ClaudeHookData = {
+        hook_event_name: "Status",
+        session_id: "test",
+        transcript_path: "/tmp/test.json",
+        cwd: "/srv/app/src",
+        model: { id: "claude-3-5-sonnet", display_name: "Claude" },
+        workspace: {
+          current_dir: "/srv/app/src",
+          project_dir: "/srv/app/",
+        },
+      };
+
+      const result = renderer.renderDirectory(hookData, colors, {
+        enabled: true,
+        style: "full",
+      });
+
+      expect(result.text).toBe("src");
+    });
   });
 
   describe("Version Segment", () => {

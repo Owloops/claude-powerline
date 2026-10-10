@@ -135,14 +135,25 @@ export function formatBurnRate(rate: number | null | undefined): string {
   return rate < 1 ? `${(rate * 100).toFixed(0)}c/h` : `$${rate.toFixed(2)}/h`;
 }
 
+function isSeparator(char: string | undefined): boolean {
+  return char === "/" || char === "\\";
+}
+
 /**
- * Whether `dirPath` is `baseDir` or inside it. A bare prefix check would also
- * match a sibling such as `/home/al` for `/home/alex`.
+ * The part of `dirPath` below `baseDir`: "" when they are the same directory,
+ * otherwise a path starting with a separator. Null when `dirPath` is outside
+ * `baseDir`. Matching whole segments keeps `/home/al` from claiming
+ * `/home/alex`, and ignoring the base's trailing separators makes `/home/al/`
+ * behave like `/home/al`. A root base such as `/` keeps its separator, so it
+ * only matches itself.
  */
-export function isPathWithin(dirPath: string, baseDir: string): boolean {
-  if (!dirPath.startsWith(baseDir)) return false;
-  const next = dirPath.charAt(baseDir.length);
-  return next === "" || next === "/" || next === "\\";
+export function pathBelow(dirPath: string, baseDir: string): string | null {
+  let end = baseDir.length;
+  while (end > 1 && isSeparator(baseDir[end - 1])) end--;
+  const base = baseDir.slice(0, end);
+  if (!dirPath.startsWith(base)) return null;
+  const rest = dirPath.slice(base.length);
+  return rest === "" || isSeparator(rest[0]) ? rest : null;
 }
 
 export function collapseHome(dirPath: string, homeDir?: string): string {
@@ -150,10 +161,8 @@ export function collapseHome(dirPath: string, homeDir?: string): string {
     homeDir ??
     globalThis.process?.env?.HOME ??
     globalThis.process?.env?.USERPROFILE;
-  if (home && isPathWithin(dirPath, home)) {
-    return `~${dirPath.slice(home.length)}`;
-  }
-  return dirPath;
+  const rest = home ? pathBelow(dirPath, home) : null;
+  return rest === null ? dirPath : `~${rest}`;
 }
 
 export function formatTimeRemaining(totalMinutes: number): string {

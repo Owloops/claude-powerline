@@ -31,7 +31,7 @@ import {
   formatCacheTimerElapsed,
   formatCacheTimerRemaining,
   collapseHome,
-  isPathWithin,
+  pathBelow,
   minutesUntilReset,
   pacePercentage,
   BLOCK_WINDOW_MINUTES,
@@ -869,9 +869,13 @@ export class SegmentRenderer {
     }
 
     if (projectDir && projectDir !== currentDir) {
-      if (isPathWithin(currentDir, projectDir)) {
-        const relativePath = currentDir.slice(projectDir.length + 1);
-        return relativePath || projectDir.split(/[\\/]/).pop() || "project";
+      const rest = pathBelow(currentDir, projectDir);
+      if (rest !== null) {
+        return (
+          rest.slice(1) ||
+          projectDir.split(/[\\/]/).filter(Boolean).pop() ||
+          "project"
+        );
       }
     }
 
