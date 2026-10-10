@@ -31,6 +31,7 @@ import {
   formatCacheTimerElapsed,
   formatCacheTimerRemaining,
   collapseHome,
+  isPathWithin,
   minutesUntilReset,
   pacePercentage,
   BLOCK_WINDOW_MINUTES,
@@ -868,7 +869,7 @@ export class SegmentRenderer {
     }
 
     if (projectDir && projectDir !== currentDir) {
-      if (currentDir.startsWith(projectDir)) {
+      if (isPathWithin(currentDir, projectDir)) {
         const relativePath = currentDir.slice(projectDir.length + 1);
         return relativePath || projectDir.split(/[\\/]/).pop() || "project";
       }
