@@ -74,16 +74,15 @@ export class GitService {
     projectDir?: string,
   ): Promise<GitInfo | null> {
     let gitDir: string;
+    // The repo the working dir is in comes first: from a linked worktree, a
+    // submodule or another repo, running git in the project dir would report
+    // the project's branch and status instead.
+    const workingRepo = this.findRepoRoot(workingDir);
 
-    if (this.hasGitFile(workingDir)) {
-      // A `.git` file rather than a directory means a linked worktree or a
-      // submodule; either way git commands must run from this directory
-      // instead of the project dir.
-      gitDir = workingDir;
+    if (workingRepo) {
+      gitDir = workingRepo;
     } else if (projectDir && this.isGitRepo(projectDir)) {
       gitDir = projectDir;
-    } else if (this.isGitRepo(workingDir)) {
-      gitDir = workingDir;
     } else {
       const foundGitRoot = await this.findGitRoot(workingDir);
       if (!foundGitRoot) {
@@ -344,12 +343,14 @@ export class GitService {
     }
   }
 
-  private hasGitFile(workingDir: string): boolean {
-    try {
-      const gitPath = path.join(workingDir, ".git");
-      return fs.existsSync(gitPath) && fs.statSync(gitPath).isFile();
-    } catch {
-      return false;
+  /** The nearest directory at or above `dir` with a `.git` file or folder. */
+  private findRepoRoot(dir: string): string | null {
+    let current = path.resolve(dir);
+    for (;;) {
+      if (this.isGitRepo(current)) return current;
+      const parent = path.dirname(current);
+      if (parent === current) return null;
+      current = parent;
     }
   }
 
