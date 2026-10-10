@@ -1,3 +1,13 @@
+## [1.32.2](https://github.com/Owloops/claude-powerline/compare/v1.32.1...v1.32.2) (2026-10-10)
+
+
+### Bug Fixes
+
+* **directory:** match home and project dirs on whole path segments ([3d57563](https://github.com/Owloops/claude-powerline/commit/3d575634763e6006e391674a22108c1b0830f6c2))
+* **format:** promote to next unit when rounding reaches the boundary ([c2d262d](https://github.com/Owloops/claude-powerline/commit/c2d262d385b241e40d3482e0d9fd2e3fea65ba90))
+* **git:** run git in the repo the working dir is in ([5e23c9d](https://github.com/Owloops/claude-powerline/commit/5e23c9dc48fa30fe44160cbeb4dabc7edcc40b49))
+* **git:** show the branch name in a repo with no commits ([fd389ac](https://github.com/Owloops/claude-powerline/commit/fd389ac95b9915346fd898c137b09a7c379b6554))
+
 ## [1.32.1](https://github.com/Owloops/claude-powerline/compare/v1.32.0...v1.32.1) (2026-09-26)
 
 
