@@ -1,3 +1,10 @@
+## [1.32.3](https://github.com/Owloops/claude-powerline/compare/v1.32.2...v1.32.3) (2026-10-10)
+
+
+### Bug Fixes
+
+* **directory:** ignore trailing separators on home and project dirs ([882e2ae](https://github.com/Owloops/claude-powerline/commit/882e2ae206b79c72d234f8b7b8b7a4341b42d8db))
+
 ## [1.32.2](https://github.com/Owloops/claude-powerline/compare/v1.32.1...v1.32.2) (2026-10-10)
 
 
