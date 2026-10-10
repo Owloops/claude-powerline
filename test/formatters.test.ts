@@ -1,7 +1,9 @@
 import {
+  collapseHome,
   formatDuration,
   formatModelName,
   formatTokens,
+  pathBelow,
 } from "../src/utils/formatters";
 
 describe("formatModelName", () => {
@@ -185,5 +187,47 @@ describe("formatDuration", () => {
     expect(formatDuration(59.6)).toBe("1m");
     expect(formatDuration(3599)).toBe("1.0h");
     expect(formatDuration(86399)).toBe("1.0d");
+  });
+});
+
+describe("pathBelow", () => {
+  it("returns the remainder below the base", () => {
+    expect(pathBelow("/home/al", "/home/al")).toBe("");
+    expect(pathBelow("/home/al/proj", "/home/al")).toBe("/proj");
+    expect(pathBelow("C:\\Users\\al\\proj", "C:\\Users\\al")).toBe("\\proj");
+  });
+
+  it("matches whole segments only", () => {
+    expect(pathBelow("/home/alex/proj", "/home/al")).toBeNull();
+    expect(pathBelow("/srv/app-web", "/srv/app")).toBeNull();
+  });
+
+  it("ignores trailing separators on the base", () => {
+    expect(pathBelow("/home/al/proj", "/home/al/")).toBe("/proj");
+    expect(pathBelow("/home/al", "/home/al/")).toBe("");
+    expect(pathBelow("C:\\Users\\al\\proj", "C:\\Users\\al\\")).toBe("\\proj");
+    expect(pathBelow("/home/alex", "/home/al/")).toBeNull();
+  });
+
+  it("treats a root base as matching only itself", () => {
+    expect(pathBelow("/", "/")).toBe("");
+    expect(pathBelow("/home/al", "/")).toBeNull();
+  });
+});
+
+describe("collapseHome", () => {
+  it("collapses paths under a home dir with a trailing separator", () => {
+    expect(collapseHome("/home/al/proj", "/home/al/")).toBe("~/proj");
+    expect(collapseHome("/home/al", "/home/al/")).toBe("~");
+    expect(collapseHome("C:\\Users\\al\\proj", "C:\\Users\\al\\")).toBe(
+      "~\\proj",
+    );
+  });
+
+  it("leaves paths outside home unchanged", () => {
+    expect(collapseHome("/home/alex/proj", "/home/al/")).toBe(
+      "/home/alex/proj",
+    );
+    expect(collapseHome("/home/al/proj", "/")).toBe("/home/al/proj");
   });
 });
