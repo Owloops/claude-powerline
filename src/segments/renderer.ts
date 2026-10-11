@@ -27,6 +27,7 @@ import {
   formatTokenBreakdown,
   formatTimeSince,
   formatDuration,
+  formatResponseTime,
   formatLongTimeRemaining,
   formatCacheTimerElapsed,
   formatCacheTimerRemaining,
@@ -661,10 +662,7 @@ export class SegmentRenderer {
     const parts: string[] = [];
 
     if (config?.showLastResponseTime && metricsInfo.lastResponseTime !== null) {
-      const lastResponseTime =
-        metricsInfo.lastResponseTime < 60
-          ? `${metricsInfo.lastResponseTime.toFixed(1)}s`
-          : `${(metricsInfo.lastResponseTime / 60).toFixed(1)}m`;
+      const lastResponseTime = formatResponseTime(metricsInfo.lastResponseTime);
       parts.push(`${this.symbols.metrics_last_response} ${lastResponseTime}`);
     }
 
@@ -672,10 +670,7 @@ export class SegmentRenderer {
       config?.showResponseTime !== false &&
       metricsInfo.responseTime !== null
     ) {
-      const responseTime =
-        metricsInfo.responseTime < 60
-          ? `${metricsInfo.responseTime.toFixed(1)}s`
-          : `${(metricsInfo.responseTime / 60).toFixed(1)}m`;
+      const responseTime = formatResponseTime(metricsInfo.responseTime);
       parts.push(`${this.symbols.metrics_response} ${responseTime}`);
     }
 

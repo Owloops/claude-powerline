@@ -2,6 +2,7 @@ import {
   collapseHome,
   formatDuration,
   formatModelName,
+  formatResponseTime,
   formatTokens,
   pathBelow,
 } from "../src/utils/formatters";
@@ -187,6 +188,19 @@ describe("formatDuration", () => {
     expect(formatDuration(59.6)).toBe("1m");
     expect(formatDuration(3599)).toBe("1.0h");
     expect(formatDuration(86399)).toBe("1.0d");
+  });
+});
+
+describe("formatResponseTime", () => {
+  it("formats seconds and minutes", () => {
+    expect(formatResponseTime(2.34)).toBe("2.3s");
+    expect(formatResponseTime(59.9)).toBe("59.9s");
+    expect(formatResponseTime(90)).toBe("1.5m");
+  });
+
+  it("promotes to minutes when rounding would reach 60s", () => {
+    expect(formatResponseTime(59.95)).toBe("1.0m");
+    expect(formatResponseTime(59.99)).toBe("1.0m");
   });
 });
 

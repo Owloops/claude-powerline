@@ -120,7 +120,8 @@ export function abbreviateFishStyle(dirPath: string): string {
 }
 
 export function formatResponseTime(seconds: number): string {
-  if (seconds < 60) {
+  // 59.95s and up would round to "60.0s", so show minutes instead
+  if (seconds < 59.95) {
     return `${seconds.toFixed(1)}s`;
   }
   return `${(seconds / 60).toFixed(1)}m`;
