@@ -1998,6 +1998,17 @@ describe("Segment Time Logic", () => {
       }
     });
 
+    it("marks the budget by the rounded percentage it displays", () => {
+      // 39.9 / 50 = 79.8%, shown as 80%, which meets warningThreshold 80
+      expect(renderTodayCase({ cost: 39.9, amount: 50 })!.text).toBe(
+        "$39.90 !80%",
+      );
+      // 24.9 / 50 = 49.8%, shown as 50%, which meets the 50% level
+      expect(renderTodayCase({ cost: 24.9, amount: 50 })!.text).toBe(
+        "$24.90 +50%",
+      );
+    });
+
     it("renderMonth applies the same flag semantics", () => {
       const monthSymbols = { month_cost: "◫" } as any;
       const monthColors = {

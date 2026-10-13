@@ -36,13 +36,15 @@ export function getBudgetStatus(
     };
   }
 
-  const percentStr = `${percentage.toFixed(0)}%`;
-  const isWarning = percentage >= warningThreshold;
+  // Compare the rounded value so the marker matches the percentage shown
+  const shownPercentage = Math.round(percentage);
+  const percentStr = `${shownPercentage}%`;
+  const isWarning = shownPercentage >= warningThreshold;
 
   let displayText = "";
   if (isWarning) {
     displayText = ` !${percentStr}`;
-  } else if (percentage >= 50) {
+  } else if (shownPercentage >= 50) {
     displayText = ` +${percentStr}`;
   } else {
     displayText = ` ${percentStr}`;
