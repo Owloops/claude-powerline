@@ -1072,6 +1072,32 @@ describe("Segment Time Logic", () => {
       expect(render("bar")).toBe("B ====!=---- 60%/40% (3h)");
       expect(render("geometric")).toBe("B ▰▰▰▰◆▰▱▱▱▱ 60%/40% (3h)");
     });
+
+    it("should draw a full bar when usage goes past 100%", () => {
+      const config = { theme: "dark", display: { style: "minimal" } } as any;
+      const symbols = {
+        block_cost: "B",
+        bar_filled: "=",
+        bar_empty: "-",
+        pace_over: "!",
+        pace_under: ":",
+      } as any;
+      const renderer = new SegmentRenderer(config, symbols);
+      const render = (
+        displayStyle: "bar" | "geometric" | "capped",
+        showPace = false,
+      ) =>
+        renderer.renderBlock(
+          { nativeUtilization: 110, timeRemaining: 180 },
+          {} as any,
+          { enabled: true, type: "cost", showPace, displayStyle },
+        ).text;
+
+      expect(render("bar")).toBe("B ========== 110% (3h)");
+      expect(render("geometric")).toBe("B ▰▰▰▰▰▰▰▰▰▰ 110% (3h)");
+      expect(render("capped")).toBe("B ━━━━━━━━━━ 110% (3h)");
+      expect(render("bar", true)).toBe("B ====!===== 110%/40% (3h)");
+    });
   });
 
   describe("Weekly Segment", () => {

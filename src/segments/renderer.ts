@@ -620,7 +620,10 @@ export class SegmentRenderer {
     const pctStr = pacePct === undefined ? `${pct}%` : `${pct}%/${pacePct}%`;
 
     if (barStyleDef) {
-      const filledCount = Math.round((pct / 100) * barLength);
+      const filledCount = Math.max(
+        0,
+        Math.min(barLength, Math.round((pct / 100) * barLength)),
+      );
       const emptyCount = barLength - filledCount;
       let bar = this.buildBar(barStyleDef, filledCount, emptyCount, barLength);
       if (pacePct !== undefined) {
