@@ -1072,6 +1072,49 @@ describe("Segment Time Logic", () => {
       expect(render("bar")).toBe("B ====!=---- 60%/40% (3h)");
       expect(render("geometric")).toBe("B ▰▰▰▰◆▰▱▱▱▱ 60%/40% (3h)");
     });
+
+    it("should draw a full bar when usage goes past 100%", () => {
+      const config = { theme: "dark", display: { style: "minimal" } } as any;
+      const symbols = {
+        block_cost: "B",
+        bar_filled: "=",
+        bar_empty: "-",
+        pace_over: "!",
+        pace_under: ":",
+      } as any;
+      const renderer = new SegmentRenderer(config, symbols);
+      const render = (
+        displayStyle: "bar" | "geometric" | "capped",
+        showPace = false,
+      ) =>
+        renderer.renderBlock(
+          { nativeUtilization: 110, timeRemaining: 180 },
+          {} as any,
+          { enabled: true, type: "cost", showPace, displayStyle },
+        ).text;
+
+      expect(render("bar")).toBe("B ========== 110% (3h)");
+      expect(render("geometric")).toBe("B ▰▰▰▰▰▰▰▰▰▰ 110% (3h)");
+      expect(render("capped")).toBe("B ━━━━━━━━━━ 110% (3h)");
+      expect(render("bar", true)).toBe("B ====!===== 110%/40% (3h)");
+    });
+
+    it("should draw an empty bar when usage is below zero", () => {
+      const config = { theme: "dark", display: { style: "minimal" } } as any;
+      const symbols = {
+        block_cost: "B",
+        bar_filled: "=",
+        bar_empty: "-",
+      } as any;
+      const renderer = new SegmentRenderer(config, symbols);
+
+      const result = renderer.renderBlock(
+        { nativeUtilization: -10, timeRemaining: 180 },
+        {} as any,
+        { enabled: true, type: "cost", displayStyle: "bar" },
+      );
+      expect(result.text).toBe("B ---------- -10% (3h)");
+    });
   });
 
   describe("Weekly Segment", () => {
@@ -1108,6 +1151,26 @@ describe("Segment Time Logic", () => {
       expect(result!.text).toContain("◑");
       expect(result!.text).toContain("41%");
       expect(result!.bgColor).toBe(colors.weeklyBg);
+    });
+
+    it("should draw a full bar when usage goes past 100%", () => {
+      const config = { theme: "dark", display: { style: "minimal" } } as any;
+      const symbols = { weekly_cost: "W" } as any;
+      const renderer = new SegmentRenderer(config, symbols);
+      const hookData = {
+        rate_limits: {
+          seven_day: {
+            used_percentage: 120,
+            resets_at: Math.floor(Date.now() / 1000) + 4 * 24 * 3600,
+          },
+        },
+      } as ClaudeHookData;
+
+      const result = renderer.renderWeekly(hookData, {} as any, {
+        enabled: true,
+        displayStyle: "geometric",
+      });
+      expect(result!.text).toMatch(/^W ▰{10} 120% \(/);
     });
 
     it("should return null when seven_day rate limits are absent", () => {

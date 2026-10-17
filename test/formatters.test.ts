@@ -1,5 +1,6 @@
 import {
   collapseHome,
+  filledCells,
   formatDuration,
   formatModelName,
   formatTokens,
@@ -229,5 +230,20 @@ describe("collapseHome", () => {
       "/home/alex/proj",
     );
     expect(collapseHome("/home/al/proj", "/")).toBe("/home/al/proj");
+  });
+});
+
+describe("filledCells", () => {
+  it("rounds the percentage to whole cells", () => {
+    expect(filledCells(0, 10)).toBe(0);
+    expect(filledCells(44, 10)).toBe(4);
+    expect(filledCells(45, 10)).toBe(5);
+    expect(filledCells(100, 10)).toBe(10);
+  });
+
+  it("keeps out-of-range values inside the bar", () => {
+    expect(filledCells(110, 10)).toBe(10);
+    expect(filledCells(-10, 10)).toBe(0);
+    expect(filledCells(NaN, 10)).toBe(0);
   });
 });

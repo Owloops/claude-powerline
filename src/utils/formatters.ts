@@ -199,6 +199,15 @@ export function pacePercentage(
   return Math.round(Math.max(0, 1 - minutesRemaining / windowMinutes) * 100);
 }
 
+/**
+ * Filled cells for a `length`-cell bar. Rate-limit usage can pass 100%, and
+ * an out-of-range count would make `String.repeat` throw.
+ */
+export function filledCells(pct: number, length: number): number {
+  if (!Number.isFinite(pct)) return 0;
+  return Math.max(0, Math.min(length, Math.round((pct / 100) * length)));
+}
+
 export function formatCacheTimerElapsed(seconds: number): string {
   if (seconds >= 3600) return "1h+";
   if (seconds >= 300) return `${Math.floor(seconds / 60)}m`;
