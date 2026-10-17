@@ -120,11 +120,16 @@ export function abbreviateFishStyle(dirPath: string): string {
 }
 
 export function formatResponseTime(seconds: number): string {
-  // 59.95s and up would round to "60.0s", so show minutes instead
-  if (seconds < 59.95) {
-    return `${seconds.toFixed(1)}s`;
+  // Pick the unit from the rounded value, so 59.97s reads "1.0m" and not "60.0s"
+  const secs = Math.round(seconds * 10) / 10;
+  if (secs < 60) {
+    return `${secs.toFixed(1)}s`;
   }
-  return `${(seconds / 60).toFixed(1)}m`;
+  const mins = Math.round(seconds / 6) / 10;
+  if (mins < 60) {
+    return `${mins.toFixed(1)}m`;
+  }
+  return `${(seconds / 3600).toFixed(1)}h`;
 }
 
 export function formatTokenCount(tokens: number | null): string {

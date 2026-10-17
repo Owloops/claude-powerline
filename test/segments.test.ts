@@ -1519,7 +1519,7 @@ describe("Segment Time Logic", () => {
       const metrics = renderer.renderMetrics(
         {
           responseTime: 59.97,
-          lastResponseTime: 59.96,
+          lastResponseTime: 12.34,
           sessionDuration: null,
           messageCount: null,
           linesAdded: null,
@@ -1532,7 +1532,7 @@ describe("Segment Time Logic", () => {
           showLastResponseTime: true,
         } as any,
       );
-      expect(metrics!.text).toBe("Δ 1.0m ⧖ 1.0m");
+      expect(metrics!.text).toBe("Δ 12.3s ⧖ 1.0m");
     });
   });
 

@@ -192,15 +192,22 @@ describe("formatDuration", () => {
 });
 
 describe("formatResponseTime", () => {
-  it("formats seconds and minutes", () => {
+  it("formats seconds, minutes and hours", () => {
     expect(formatResponseTime(2.34)).toBe("2.3s");
     expect(formatResponseTime(59.9)).toBe("59.9s");
     expect(formatResponseTime(90)).toBe("1.5m");
+    expect(formatResponseTime(5400)).toBe("1.5h");
   });
 
   it("promotes to minutes when rounding would reach 60s", () => {
+    expect(formatResponseTime(59.94)).toBe("59.9s");
     expect(formatResponseTime(59.95)).toBe("1.0m");
     expect(formatResponseTime(59.99)).toBe("1.0m");
+  });
+
+  it("promotes to hours when rounding would reach 60m", () => {
+    expect(formatResponseTime(3590)).toBe("59.8m");
+    expect(formatResponseTime(3597)).toBe("1.0h");
   });
 });
 
