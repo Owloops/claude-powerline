@@ -34,6 +34,7 @@ import {
   pathBelow,
   minutesUntilReset,
   pacePercentage,
+  filledCells,
   BLOCK_WINDOW_MINUTES,
   WEEKLY_WINDOW_MINUTES,
 } from "../utils/formatters";
@@ -548,16 +549,10 @@ export class SegmentRenderer {
       mode === "remaining"
         ? contextInfo.contextLeftPercentage
         : contextInfo.usablePercentage;
-    const filledCount = Math.round(
-      (contextInfo.usablePercentage / 100) * barLength,
-    );
-    const emptyCount = barLength - filledCount;
-
     if (barStyleDef) {
       const bar = this.buildBar(
         barStyleDef,
-        filledCount,
-        emptyCount,
+        contextInfo.usablePercentage,
         barLength,
       );
 
@@ -576,12 +571,9 @@ export class SegmentRenderer {
     return { text, bgColor, fgColor, bold };
   }
 
-  private buildBar(
-    s: BarStyleDef,
-    filledCount: number,
-    emptyCount: number,
-    barLength: number,
-  ): string {
+  private buildBar(s: BarStyleDef, pct: number, barLength: number): string {
+    const filledCount = filledCells(pct, barLength);
+    const emptyCount = barLength - filledCount;
     if (s.marker) {
       const pos = Math.min(filledCount, barLength - 1);
       return (
@@ -620,16 +612,11 @@ export class SegmentRenderer {
     const pctStr = pacePct === undefined ? `${pct}%` : `${pct}%/${pacePct}%`;
 
     if (barStyleDef) {
-      const filledCount = Math.max(
-        0,
-        Math.min(barLength, Math.round((pct / 100) * barLength)),
-      );
-      const emptyCount = barLength - filledCount;
-      let bar = this.buildBar(barStyleDef, filledCount, emptyCount, barLength);
+      let bar = this.buildBar(barStyleDef, pct, barLength);
       if (pacePct !== undefined) {
         const cells = [...bar];
         const paceCell = Math.min(
-          Math.round((pacePct / 100) * barLength),
+          filledCells(pacePct, barLength),
           barLength - 1,
         );
         // Only the `bar` style draws its cells from the charset's symbols.

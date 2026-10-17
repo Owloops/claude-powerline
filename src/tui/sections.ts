@@ -24,6 +24,7 @@ import {
   formatLongTimeRemaining,
   minutesUntilReset,
   pacePercentage,
+  filledCells,
   BLOCK_WINDOW_MINUTES,
   WEEKLY_WINDOW_MINUTES,
   abbreviateFishStyle,
@@ -155,19 +156,13 @@ function buildBarString(
   pacePct?: number,
 ): string {
   barWidth = Math.max(5, barWidth);
-  const filledCount = Math.max(
-    0,
-    Math.min(barWidth, Math.round((pct / 100) * barWidth)),
-  );
+  const filledCount = filledCells(pct, barWidth);
   const emptyCount = barWidth - filledCount;
   let bar =
     sym.bar_filled.repeat(filledCount) + sym.bar_empty.repeat(emptyCount);
   if (pacePct !== undefined) {
     const cells = [...bar];
-    const paceCell = Math.min(
-      Math.round((pacePct / 100) * barWidth),
-      barWidth - 1,
-    );
+    const paceCell = Math.min(filledCells(pacePct, barWidth), barWidth - 1);
     cells[paceCell] =
       Math.round(pct) > pacePct ? sym.pace_over : sym.pace_under;
     bar = cells.join("");
@@ -303,10 +298,7 @@ export function buildContextLine(
   const maxStr = formatTokenCount(data.contextInfo.maxTokens);
   const suffix = `  ${usedPct}%  ${tokenStr}/${maxStr}`;
   const barLen = Math.max(5, contentWidth - suffix.length);
-  const filledCount = Math.max(
-    0,
-    Math.min(barLen, Math.round((usedPct / 100) * barLen)),
-  );
+  const filledCount = filledCells(usedPct, barLen);
   const emptyCount = barLen - filledCount;
   const bar =
     sym.bar_filled.repeat(filledCount) + sym.bar_empty.repeat(emptyCount);
