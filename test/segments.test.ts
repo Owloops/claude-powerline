@@ -1566,6 +1566,39 @@ describe("Segment Time Logic", () => {
     });
   });
 
+  describe("Metrics response time", () => {
+    const symbols = {
+      metrics_response: "⧖",
+      metrics_last_response: "Δ",
+    } as any;
+    const colors = { metricsBg: "", metricsFg: "" } as any;
+    const config = {
+      theme: "dark",
+      display: { style: "minimal", lines: [] },
+    } as any;
+    const renderer = new SegmentRenderer(config, symbols);
+
+    it("rolls response times that round to 60s over to minutes", () => {
+      const metrics = renderer.renderMetrics(
+        {
+          responseTime: 59.97,
+          lastResponseTime: 12.34,
+          sessionDuration: null,
+          messageCount: null,
+          linesAdded: null,
+          linesRemoved: null,
+        } as any,
+        colors,
+        {
+          enabled: true,
+          showResponseTime: true,
+          showLastResponseTime: true,
+        } as any,
+      );
+      expect(metrics!.text).toBe("Δ 12.3s ⧖ 1.0m");
+    });
+  });
+
   describe("Git worktree indicator (issue #94)", () => {
     const symbols = {
       branch: "⎇",
