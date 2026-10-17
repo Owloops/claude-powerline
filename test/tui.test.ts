@@ -1309,6 +1309,26 @@ describe("TUI Panel Rendering", () => {
       ).toBe("▪▪▫▫◇▫▫▫▫▫");
     });
 
+    it("colors the bars by the rounded percentage they show", () => {
+      const colors = { ...PLAIN_COLORS, contextCriticalFg: "<crit>" };
+      const tuiData = makeTuiData({
+        blockInfo: { nativeUtilization: 79.6, timeRemaining: 180 },
+      });
+      tuiData.hookData.rate_limits = {
+        seven_day: {
+          used_percentage: 79.6,
+          resets_at: Math.floor(Date.now() / 1000) + 4 * 86400,
+        },
+      };
+
+      expect(
+        buildBlockBar(tuiData, 10, SYMBOLS as any, "", colors, DEFAULT_CONFIG),
+      ).toMatch(/^<crit>/);
+      expect(buildWeeklyBar(tuiData, 10, SYMBOLS as any, "", colors)).toMatch(
+        /^<crit>/,
+      );
+    });
+
     it("shows the pace in the fixed layout", async () => {
       const result = await renderTuiPanel(
         data(),

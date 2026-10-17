@@ -242,7 +242,8 @@ export function buildBlockBar(
 ): string {
   if (!data.blockInfo) return "";
 
-  const pct = data.blockInfo.nativeUtilization;
+  // Rounded like the text beside the bar, so 79.6% shown as "80%" gets the 80% color
+  const pct = Math.round(data.blockInfo.nativeUtilization);
   const warningThreshold = config.budget?.block?.warningThreshold ?? 80;
   const defaultFg =
     partFg?.["block.bar"] ?? partFg?.["block"] ?? colors.blockFg;
@@ -270,7 +271,7 @@ export function buildWeeklyBar(
   const sevenDay = data.hookData.rate_limits?.seven_day;
   if (!sevenDay) return "";
 
-  const pct = sevenDay.used_percentage;
+  const pct = Math.round(sevenDay.used_percentage);
   const defaultFg =
     partFg?.["weekly.bar"] ?? partFg?.["weekly"] ?? colors.weeklyFg;
   const { fg, bold } = resolveThresholdStyle(

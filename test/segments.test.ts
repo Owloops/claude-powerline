@@ -2007,6 +2007,16 @@ describe("Segment Time Logic", () => {
       expect(renderTodayCase({ cost: 24.9, amount: 50 })!.text).toBe(
         "$24.90 +50%",
       );
+      // Token budgets go through the same check
+      expect(
+        renderTodayCase({
+          cost: null,
+          tokens: 79_800,
+          amount: 100_000,
+          budgetType: "tokens",
+          showValue: false,
+        })!.text,
+      ).toBe("!80%");
     });
 
     it("renderMonth applies the same flag semantics", () => {
