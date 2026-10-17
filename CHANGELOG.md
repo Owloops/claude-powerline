@@ -1,3 +1,14 @@
+## [1.32.4](https://github.com/Owloops/claude-powerline/compare/v1.32.3...v1.32.4) (2026-10-17)
+
+
+### Bug Fixes
+
+* **budget:** pick warning marker from the displayed percentage ([7b4ce56](https://github.com/Owloops/claude-powerline/commit/7b4ce56fe32ebdf90f374189ecfa87778f081b60))
+* **metrics:** pick the response time unit from the rounded value ([794ed7d](https://github.com/Owloops/claude-powerline/commit/794ed7d876af4f59705c43ff389f53905c38096f))
+* **metrics:** roll response times that round to 60s over to minutes ([ea1f8bd](https://github.com/Owloops/claude-powerline/commit/ea1f8bd6393e48d617f54e5ba083da95129bfcf6))
+* **segments:** keep block and weekly bars in range past 100% ([720e661](https://github.com/Owloops/claude-powerline/commit/720e66145f4d1800bf6ff5d9ff25360e73dbec7e))
+* **tui:** color block and weekly bars by the rounded percentage ([a35384b](https://github.com/Owloops/claude-powerline/commit/a35384b3afc98ce5b5bb10377d173e9df930f3fd))
+
 ## [1.32.3](https://github.com/Owloops/claude-powerline/compare/v1.32.2...v1.32.3) (2026-10-10)
 
 
