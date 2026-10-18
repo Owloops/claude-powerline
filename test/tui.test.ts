@@ -299,6 +299,19 @@ describe("TUI Panel Rendering", () => {
       expect(result).toMatchSnapshot();
     });
 
+    it("should space the git behind count from the status icon", () => {
+      const render = (ahead: number, behind: number) => {
+        const data = makeTuiData({
+          gitInfo: { branch: "main", status: "clean", ahead, behind },
+        });
+        return resolveSegments(data, mkCtx(tuiConfig, data)).data["git"];
+      };
+
+      expect(render(0, 2)).toBe("⎇ main ✓ ↓2");
+      expect(render(1, 0)).toBe("⎇ main ✓ ↑1");
+      expect(render(1, 2)).toBe("⎇ main ✓ ↑1↓2");
+    });
+
     it("should handle context at critical level", async () => {
       const result = await renderTuiPanel(
         makeTuiData({

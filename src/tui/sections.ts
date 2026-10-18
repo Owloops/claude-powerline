@@ -1066,7 +1066,8 @@ function formatGitSegment(
     : `${parts.branch} ${parts.status}`;
   if (parts.worktree) text = `${parts.worktree} ${text}`;
   if (parts.ahead) text += ` ${parts.ahead}`;
-  if (parts.behind) text += `${parts.behind}`;
+  // Glued to the ahead count ("↑1↓2"), spaced from the status icon otherwise
+  if (parts.behind) text += parts.ahead ? parts.behind : ` ${parts.behind}`;
   if (parts.working) text += ` ${parts.working}`;
   return text;
 }
