@@ -1024,6 +1024,8 @@ function formatGitParts(
     counts.push(`~${data.gitInfo.unstaged}`);
   if (data.gitInfo.untracked && data.gitInfo.untracked > 0)
     counts.push(`?${data.gitInfo.untracked}`);
+  if (data.gitInfo.conflicts && data.gitInfo.conflicts > 0)
+    counts.push(`!${data.gitInfo.conflicts}`);
   const working = counts.length > 0 ? `(${counts.join(" ")})` : "";
 
   const worktree = data.gitInfo.isWorktree ? sym.git_worktree : "";
