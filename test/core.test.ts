@@ -424,5 +424,37 @@ describe("Core Functionality", () => {
       expect(result.usablePercentage).toBe(52);
       expect(result.contextLeftPercentage).toBe(48);
     });
+
+    it("should not report usage from before /compact when current_usage is null", async () => {
+      const transcript = [
+        '{"type":"user","timestamp":"2024-01-01T10:00:00Z","message":{"role":"user","content":"hi"},"isSidechain":false}',
+        '{"type":"assistant","timestamp":"2024-01-01T10:00:05Z","message":{"role":"assistant","usage":{"input_tokens":12,"cache_read_input_tokens":150000,"cache_creation_input_tokens":3000,"output_tokens":400}},"isSidechain":false}',
+        '{"type":"system","subtype":"compact_boundary","content":"Conversation compacted","timestamp":"2024-01-01T10:01:00Z","compactMetadata":{"trigger":"manual","preTokens":153012},"isSidechain":false}',
+        '{"type":"user","timestamp":"2024-01-01T10:01:00Z","message":{"role":"user","content":"This session is being continued from a previous conversation..."},"isCompactSummary":true,"isSidechain":false}',
+      ].join("\n");
+
+      const transcriptPath = join(tempDir, "test-after-compact.jsonl");
+      writeFileSync(transcriptPath, transcript);
+
+      const { ContextProvider } = require("../src/segments/context");
+      const contextProvider = new ContextProvider(DEFAULT_CONFIG);
+
+      const result = await contextProvider.getContextInfo({
+        hook_event_name: "Status",
+        session_id: "test",
+        transcript_path: transcriptPath,
+        cwd: tempDir,
+        model: { id: "claude-sonnet-4-5", display_name: "Sonnet 4.5" },
+        workspace: { current_dir: tempDir, project_dir: tempDir },
+        context_window: {
+          total_input_tokens: 153012,
+          total_output_tokens: 400,
+          context_window_size: 200000,
+          current_usage: null,
+        },
+      });
+
+      expect(result).toBeNull();
+    });
   });
 });
