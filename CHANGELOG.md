@@ -1,3 +1,12 @@
+## [1.32.5](https://github.com/Owloops/claude-powerline/compare/v1.32.4...v1.32.5) (2026-10-24)
+
+
+### Bug Fixes
+
+* **tui:** build the git head parts and segment text from one ahead/behind token ([12e387e](https://github.com/Owloops/claude-powerline/commit/12e387ed1967f9c7aebb2af30153c89dca8b0f5d))
+* **tui:** show conflict count in git working tree counts ([1f11397](https://github.com/Owloops/claude-powerline/commit/1f113972f2e37b75446941beef8a46a0f87681d8))
+* **tui:** space the git behind count from the status icon ([d66ee23](https://github.com/Owloops/claude-powerline/commit/d66ee237d546e5a2b8633c0aca58de11b5c7c62a))
+
 ## [1.32.4](https://github.com/Owloops/claude-powerline/compare/v1.32.3...v1.32.4) (2026-10-17)
 
 
