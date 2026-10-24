@@ -1030,29 +1030,22 @@ function formatGitParts(
 
   const worktree = data.gitInfo.isWorktree ? sym.git_worktree : "";
 
-  const headParts: string[] = [];
-  if (worktree) headParts.push(worktree);
-  if (iconVisible) headParts.push(sym.branch);
-  headParts.push(data.gitInfo.branch, statusIcon);
-  if (ahead) headParts.push(ahead);
-  if (behind) headParts.push(behind);
-
-  const infoParts: string[] = [];
-  if (worktree) infoParts.push(worktree);
-  infoParts.push(data.gitInfo.branch, statusIcon);
-  if (ahead) infoParts.push(ahead);
-  if (behind) infoParts.push(behind);
+  // One token, as in the powerline renderer: "↑1↓2" together, a lone count
+  // spaced from the status icon
+  const aheadBehind = `${ahead}${behind}`;
+  const branchInfo = [data.gitInfo.branch, statusIcon, aheadBehind];
+  const join = (parts: string[]) => parts.filter(Boolean).join(" ");
 
   return {
     icon: iconVisible ? sym.branch : "",
-    headVal: infoParts.join(" "),
+    headVal: join([worktree, ...branchInfo]),
     branch: data.gitInfo.branch,
     status: statusIcon,
     ahead,
     behind,
     working,
     worktree,
-    head: headParts.join(" "),
+    head: join([worktree, iconVisible ? sym.branch : "", ...branchInfo]),
   };
 }
 
@@ -1063,14 +1056,7 @@ function formatGitSegment(
 ): string {
   const parts = formatGitParts(data, sym, iconVisible);
   if (!parts.branch) return "";
-  let text = parts.icon
-    ? `${parts.icon} ${parts.branch} ${parts.status}`
-    : `${parts.branch} ${parts.status}`;
-  if (parts.worktree) text = `${parts.worktree} ${text}`;
-  if (parts.ahead) text += ` ${parts.ahead}`;
-  if (parts.behind) text += `${parts.behind}`;
-  if (parts.working) text += ` ${parts.working}`;
-  return text;
+  return parts.working ? `${parts.head} ${parts.working}` : parts.head;
 }
 
 function formatDirParts(
