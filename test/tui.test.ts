@@ -304,12 +304,30 @@ describe("TUI Panel Rendering", () => {
         const data = makeTuiData({
           gitInfo: { branch: "main", status: "clean", ahead, behind },
         });
-        return resolveSegments(data, mkCtx(tuiConfig, data)).data["git"];
+        return resolveSegments(data, mkCtx(tuiConfig, data)).data;
       };
 
-      expect(render(0, 2)).toBe("⎇ main ✓ ↓2");
-      expect(render(1, 0)).toBe("⎇ main ✓ ↑1");
-      expect(render(1, 2)).toBe("⎇ main ✓ ↑1↓2");
+      expect(render(0, 2)["git"]).toBe("⎇ main ✓ ↓2");
+      expect(render(1, 0)["git"]).toBe("⎇ main ✓ ↑1");
+      expect(render(1, 2)["git"]).toBe("⎇ main ✓ ↑1↓2");
+    });
+
+    it("should build the git head parts the same way as the full segment", () => {
+      const data = makeTuiData({
+        gitInfo: {
+          branch: "main",
+          status: "dirty",
+          ahead: 1,
+          behind: 2,
+          staged: 3,
+          isWorktree: true,
+        },
+      });
+      const result = resolveSegments(data, mkCtx(tuiConfig, data)).data;
+
+      expect(result["git.head"]).toBe("⧉ ⎇ main ● ↑1↓2");
+      expect(result["git.headVal"]).toBe("⧉ main ● ↑1↓2");
+      expect(result["git"]).toBe(`${result["git.head"]} (+3)`);
     });
 
     it("should handle context at critical level", async () => {
