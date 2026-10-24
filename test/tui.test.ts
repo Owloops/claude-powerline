@@ -318,6 +318,28 @@ describe("TUI Panel Rendering", () => {
       );
       expect(result).toMatchSnapshot();
     });
+
+    it("should show git conflict count in working tree counts", async () => {
+      const result = await renderTuiPanel(
+        makeTuiData({
+          gitInfo: {
+            branch: "main",
+            status: "conflicts",
+            ahead: 0,
+            behind: 0,
+            staged: 1,
+            unstaged: 0,
+            untracked: 0,
+            conflicts: 2,
+          },
+        }),
+        BOX_CHARS,
+        "",
+        100,
+        tuiConfig,
+      );
+      expect(result).toContain("(+1 !2)");
+    });
   });
 
   describe("Hardcoded layout unchanged without grid config", () => {
