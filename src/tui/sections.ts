@@ -315,7 +315,13 @@ export function buildContextLine(
 }
 
 function getDirectoryDisplay(hookData: TuiData["hookData"]): string {
-  const currentDir = hookData.workspace?.current_dir || hookData.cwd || "/";
+  // As in the powerline directory segment: a --worktree session shows the
+  // repo it was started from, not the worktree folder
+  const currentDir =
+    hookData.worktree?.original_cwd ||
+    hookData.workspace?.current_dir ||
+    hookData.cwd ||
+    "/";
   return collapseHome(currentDir);
 }
 

@@ -1201,6 +1201,44 @@ describe("TUI Panel Rendering", () => {
     });
   });
 
+  describe("Directory in --worktree sessions (TUI)", () => {
+    const worktreeData = () =>
+      makeTuiData({
+        hookData: {
+          ...makeTuiData().hookData,
+          cwd: "/tmp/worktrees/some-task/src",
+          workspace: {
+            current_dir: "/tmp/worktrees/some-task/src",
+            project_dir: "/tmp/worktrees/some-task",
+          },
+          worktree: {
+            name: "some-task",
+            path: "/tmp/worktrees/some-task",
+            original_cwd: "/srv/repos/claude-powerline",
+          },
+        },
+      });
+
+    it("shows the original repo path in the fixed layout", async () => {
+      const result = await renderTuiPanel(
+        worktreeData(),
+        BOX_CHARS,
+        "",
+        100,
+        tuiConfig,
+      );
+      expect(result).toContain("/s/r/claude-powerline");
+      expect(result).not.toContain("/t/w/s/src");
+    });
+
+    it("shows the original repo name in the dir grid segment", () => {
+      // The default directory style is "basename"
+      const data = worktreeData();
+      const { data: result } = resolveSegments(data, mkCtx(tuiConfig, data));
+      expect(result["dir.value"]).toBe("claude-powerline");
+    });
+  });
+
   describe("Session costSource (TUI)", () => {
     const officialConfig: PowerlineConfig = {
       ...DEFAULT_CONFIG,
