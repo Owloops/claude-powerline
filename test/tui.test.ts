@@ -1382,6 +1382,21 @@ describe("TUI Panel Rendering", () => {
       );
     });
 
+    it("turns the weekly bar to the warning color at 50%, like the segment", () => {
+      const colors = { ...PLAIN_COLORS, contextWarningFg: "<warn>" };
+      const tuiData = makeTuiData();
+      tuiData.hookData.rate_limits = {
+        seven_day: {
+          used_percentage: 55,
+          resets_at: Math.floor(Date.now() / 1000) + 4 * 86400,
+        },
+      };
+
+      expect(buildWeeklyBar(tuiData, 10, SYMBOLS as any, "", colors)).toMatch(
+        /^<warn>/,
+      );
+    });
+
     it("shows the pace in the fixed layout", async () => {
       const result = await renderTuiPanel(
         data(),
