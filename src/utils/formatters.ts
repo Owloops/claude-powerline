@@ -114,7 +114,8 @@ export function abbreviateFishStyle(dirPath: string): string {
       if (part === "~" || part === "") {
         return part;
       }
-      return part.charAt(0);
+      // Like fish, keep the dot of a hidden directory: ".config" -> ".c"
+      return part.startsWith(".") ? part.slice(0, 2) : part.charAt(0);
     })
     .join(sep);
 }

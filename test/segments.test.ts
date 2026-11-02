@@ -349,6 +349,28 @@ describe("Segment Time Logic", () => {
       expect(result.text).toBe("/m/c/U/a/r/dotfiles");
     });
 
+    it("should keep the leading dot of hidden directories", () => {
+      process.env.HOME = "/home/user";
+      const hookData: ClaudeHookData = {
+        hook_event_name: "Status",
+        session_id: "test",
+        transcript_path: "/tmp/test.json",
+        cwd: "/home/user/.config/nvim/lua",
+        model: { id: "claude-3-5-sonnet", display_name: "Claude" },
+        workspace: {
+          current_dir: "/home/user/.config/nvim/lua",
+          project_dir: "/home/user/.config/nvim/lua",
+        },
+      };
+
+      const result = renderer.renderDirectory(hookData, colors, {
+        enabled: true,
+        style: "fish",
+      });
+
+      expect(result.text).toBe("~/.c/n/lua");
+    });
+
     it("should show relative path when inside a subdirectory of project", () => {
       process.env.HOME = "/home/user";
       const hookData: ClaudeHookData = {
