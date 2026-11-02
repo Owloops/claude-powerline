@@ -19,10 +19,12 @@ interface TranscriptEntry {
   message?: {
     role?: string;
     type?: string;
-    content?: Array<{
-      type?: string;
-      [key: string]: unknown;
-    }>;
+    content?:
+      | string
+      | Array<{
+          type?: string;
+          [key: string]: unknown;
+        }>;
     usage?: {
       input_tokens?: number;
       output_tokens?: number;
@@ -31,6 +33,24 @@ interface TranscriptEntry {
     };
   };
   isSidechain?: boolean;
+  isMeta?: boolean;
+}
+
+/**
+ * Whether an entry is a prompt the user sent. Claude Code also writes user
+ * entries for tool results, for text it injects (isMeta: a slash command's
+ * expanded prompt, hook context) and for the output of local commands such
+ * as /model, none of which the user typed.
+ */
+function isUserPrompt(entry: TranscriptEntry): boolean {
+  const messageType = entry.type || entry.message?.role || entry.message?.type;
+  if (messageType !== "user" || entry.isMeta === true) return false;
+
+  const content = entry.message?.content;
+  if (typeof content === "string") {
+    return !/^<(local-command|bash)-(stdout|stderr)>/.test(content);
+  }
+  return content?.[0]?.type !== "tool_result";
 }
 
 export class MetricsProvider {
@@ -78,14 +98,7 @@ export class MetricsProvider {
   }
 
   private calculateMessageCount(entries: TranscriptEntry[]): number {
-    return entries.filter((entry) => {
-      const messageType =
-        entry.type || entry.message?.role || entry.message?.type;
-      const isToolResult =
-        entry.type === "user" &&
-        entry.message?.content?.[0]?.type === "tool_result";
-      return messageType === "user" && !isToolResult;
-    }).length;
+    return entries.filter(isUserPrompt).length;
   }
 
   private calculateLastResponseTime(entries: TranscriptEntry[]): number | null {
@@ -104,12 +117,7 @@ export class MetricsProvider {
         const messageType =
           entry.type || entry.message?.role || entry.message?.type;
 
-        const isToolResult =
-          entry.type === "user" &&
-          entry.message?.content?.[0]?.type === "tool_result";
-        const isRealUserMessage = messageType === "user" && !isToolResult;
-
-        if (isRealUserMessage) {
+        if (isUserPrompt(entry)) {
           lastUserTime = timestamp;
         } else if (messageType === "assistant" && lastUserTime) {
           const responseTime =

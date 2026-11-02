@@ -74,6 +74,48 @@ describe("Metrics Provider", () => {
     expect(metrics.linesRemoved).toBe(10);
   });
 
+  it("counts only the prompts the user sent", async () => {
+    let second = 0;
+    const entry = (type: string, content: unknown, isMeta?: boolean) =>
+      JSON.stringify({
+        timestamp: new Date(Date.UTC(2026, 0, 1, 0, 0, second++)).toISOString(),
+        type,
+        isMeta,
+        message: { role: type, content },
+      });
+
+    // A typed prompt, a local command (/model) with its output, and a prompt
+    // command (/init) whose expanded prompt is written as an isMeta entry.
+    const transcriptContent = [
+      entry("user", "Hello"),
+      entry("assistant", [{ type: "text", text: "Hi!" }]),
+      entry("user", "<command-name>/model</command-name>"),
+      entry("user", "<local-command-stdout>Set model</local-command-stdout>"),
+      entry("user", "<command-name>/init</command-name>"),
+      entry("user", [{ type: "text", text: "Analyze this codebase" }], true),
+      entry("user", "<bash-input>ls</bash-input>"),
+      entry("user", "<bash-stdout>a</bash-stdout><bash-stderr></bash-stderr>"),
+      entry("assistant", [{ type: "tool_use", id: "t1", name: "Read" }]),
+      entry("user", [{ type: "tool_result", tool_use_id: "t1" }]),
+      entry("assistant", [{ type: "text", text: "Done" }]),
+    ].join("\n");
+
+    const transcriptPath = join(tempDir, "test.jsonl");
+    writeFileSync(transcriptPath, transcriptContent);
+
+    jest
+      .spyOn(claudePaths, "findTranscriptFile")
+      .mockResolvedValue(transcriptPath);
+
+    const metrics = await metricsProvider.getMetricsInfo(
+      "commands-session",
+      createMockHookData("commands-session"),
+    );
+
+    // "Hello", "/model", "/init" and "!ls"
+    expect(metrics.messageCount).toBe(4);
+  });
+
   it("handles missing transcript gracefully", async () => {
     jest.spyOn(claudePaths, "findTranscriptFile").mockResolvedValue(null);
 
