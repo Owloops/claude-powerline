@@ -1,3 +1,19 @@
+## [1.32.6](https://github.com/Owloops/claude-powerline/compare/v1.32.5...v1.32.6) (2026-11-02)
+
+
+### Bug Fixes
+
+* **cacheTimer:** ignore local command entries when anchoring ([e8d4efc](https://github.com/Owloops/claude-powerline/commit/e8d4efc9a957889b0c93f3ce51fde216444b7862))
+* **colors:** expand 3-digit hex shorthand in color conversion ([9bfbf15](https://github.com/Owloops/claude-powerline/commit/9bfbf155dff5ae406b5a7613e0a0e2ccee322152))
+* **context:** ignore usage from before /compact in transcript fallback ([471c603](https://github.com/Owloops/claude-powerline/commit/471c603eea55d0f1b51397c50f484eb33165f341))
+* **directory:** keep the dot of hidden dirs in fish-style paths ([b6c4060](https://github.com/Owloops/claude-powerline/commit/b6c40601aef347d8346bb95f2f1570b8a750e67c))
+* **directory:** show folder name for basename style with trailing slash ([8192ac6](https://github.com/Owloops/claude-powerline/commit/8192ac6cfc52fd8cbcf75a57410b8d737812ec25))
+* **metrics:** count only prompts the user sent ([788357c](https://github.com/Owloops/claude-powerline/commit/788357c9866f8e1108ee981dd6922b8abcb6ab2f))
+* **metrics:** skip bash mode output too ([3b4b13f](https://github.com/Owloops/claude-powerline/commit/3b4b13f59943465cc6b1e8c04cf6cb59d34df1e2))
+* **tui:** color the weekly bar from 50% like the weekly segment ([d48546e](https://github.com/Owloops/claude-powerline/commit/d48546e5289e73ceaeb98b6cb8e625d308de9d66))
+* **tui:** measure wide characters as two terminal columns ([d545a26](https://github.com/Owloops/claude-powerline/commit/d545a266ccbf54d2cb3c3b87a4f579844ca57a3f))
+* **tui:** show the original repo path in --worktree sessions ([bcb4fcb](https://github.com/Owloops/claude-powerline/commit/bcb4fcbf7c35af5bfd99d7c98b530ab7beff553c))
+
 ## [1.32.5](https://github.com/Owloops/claude-powerline/compare/v1.32.4...v1.32.5) (2026-10-24)
 
 
