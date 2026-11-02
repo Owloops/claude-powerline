@@ -487,6 +487,27 @@ describe("Segment Time Logic", () => {
 
       expect(result.text).toBe("src");
     });
+
+    it("should show the folder name in basename style when the path ends in a separator", () => {
+      const hookData: ClaudeHookData = {
+        hook_event_name: "Status",
+        session_id: "test",
+        transcript_path: "/tmp/test.json",
+        cwd: "/srv/app/",
+        model: { id: "claude-3-5-sonnet", display_name: "Claude" },
+        workspace: {
+          current_dir: "/srv/app/",
+          project_dir: "/srv/app/",
+        },
+      };
+
+      const result = renderer.renderDirectory(hookData, colors, {
+        enabled: true,
+        style: "basename",
+      });
+
+      expect(result.text).toBe("app");
+    });
   });
 
   describe("Version Segment", () => {

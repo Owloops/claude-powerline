@@ -291,7 +291,8 @@ export class SegmentRenderer {
     const style = config?.style ?? (config?.showBasename ? "basename" : "full");
 
     if (style === "basename") {
-      const basename = currentDir.split(/[\\/]/).pop() || "root";
+      const basename =
+        currentDir.split(/[\\/]/).filter(Boolean).pop() || "root";
       return {
         text: basename,
         bgColor: colors.modeBg,
