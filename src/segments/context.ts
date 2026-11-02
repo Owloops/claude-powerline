@@ -159,6 +159,12 @@ export class ContextProvider {
         const entry = parsedEntries[i];
         if (!entry) continue;
 
+        // Usage from before /compact describes a context that is gone.
+        if (entry.isCompactBoundary) {
+          debug("Context segment: Reached compact boundary, stopping search");
+          break;
+        }
+
         if (!entry.message?.usage?.input_tokens) continue;
         if (entry.isSidechain === true) continue;
 

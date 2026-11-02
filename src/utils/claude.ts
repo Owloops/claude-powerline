@@ -311,6 +311,8 @@ export interface ParsedEntry {
   message?: ParsedEntryMessage;
   costUSD?: number;
   isSidechain?: boolean;
+  /** The marker /compact writes; entries before it are no longer in context. */
+  isCompactBoundary?: boolean;
   raw: RawEntryFields;
 }
 
@@ -404,6 +406,8 @@ interface RawTranscriptLine extends RawEntryFields {
   timestamp?: string;
   costUSD?: unknown;
   isSidechain?: unknown;
+  type?: unknown;
+  subtype?: unknown;
 }
 
 /**
@@ -431,6 +435,8 @@ function toParsedEntry(raw: RawTranscriptLine): ParsedEntry | null {
     message,
     costUSD: typeof raw.costUSD === "number" ? raw.costUSD : undefined,
     isSidechain: raw.isSidechain === true,
+    isCompactBoundary:
+      raw.type === "system" && raw.subtype === "compact_boundary",
     raw: {
       requestId: raw.requestId,
       model: raw.model,
