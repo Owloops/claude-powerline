@@ -269,11 +269,14 @@ export function buildWeeklyBar(
   const pct = Math.round(sevenDay.used_percentage);
   const defaultFg =
     partFg?.["weekly.bar"] ?? partFg?.["weekly"] ?? colors.weeklyFg;
+  // Same thresholds as the weekly powerline segment
   const { fg, bold } = resolveThresholdStyle(
     pct,
     defaultFg,
     colors.weeklyBold,
     colors,
+    50,
+    80,
   );
   const pacePct = resolvePacePct(
     config,
