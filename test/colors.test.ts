@@ -3,6 +3,7 @@ import {
   hexToAnsi,
   hexTo256Ansi,
   extractBgToFg,
+  hexColorDistance,
 } from "../src/utils/colors";
 import { getColorSupport } from "../src/utils/color-support";
 import { getTheme, BUILT_IN_THEMES } from "../src/themes";
@@ -19,6 +20,15 @@ describe("Colors", () => {
         "\x1b[38;2;255;100;50m"
       );
       expect(extractBgToFg("\x1b[41m")).toBe("\x1b[31m");
+    });
+
+    it("should expand 3-digit shorthand hex colors", () => {
+      expect(hexToAnsi("#fff", false)).toBe("\x1b[38;2;255;255;255m");
+      expect(hexToAnsi("#f60", true)).toBe("\x1b[48;2;255;102;0m");
+      expect(hexTo256Ansi("#fff", false)).toBe(hexTo256Ansi("#ffffff", false));
+      expect(hexTo256Ansi("#f60", true)).toBe(hexTo256Ansi("#ff6600", true));
+      expect(hexToBasicAnsi("#0f0", false)).toBe("\x1b[32m");
+      expect(hexColorDistance("#fff", "#ffffff")).toBe(0);
     });
 
     it("should handle transparent backgrounds", () => {

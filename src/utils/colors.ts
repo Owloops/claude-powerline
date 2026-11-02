@@ -1,3 +1,18 @@
+function parseHex(hex: string): [number, number, number] {
+  let digits = hex.slice(1);
+  if (digits.length === 3) {
+    digits = digits
+      .split("")
+      .map((c) => c + c)
+      .join("");
+  }
+  return [
+    parseInt(digits.slice(0, 2), 16),
+    parseInt(digits.slice(2, 4), 16),
+    parseInt(digits.slice(4, 6), 16),
+  ];
+}
+
 export function hexToAnsi(hex: string, isBackground: boolean): string {
   if (
     isBackground &&
@@ -6,9 +21,7 @@ export function hexToAnsi(hex: string, isBackground: boolean): string {
     return "\x1b[49m";
   }
 
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
+  const [r, g, b] = parseHex(hex);
   return `\x1b[${isBackground ? "48" : "38"};2;${r};${g};${b}m`;
 }
 
@@ -55,9 +68,7 @@ export function hexTo256Ansi(hex: string, isBackground: boolean): string {
     return "\x1b[49m";
   }
 
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
+  const [r, g, b] = parseHex(hex);
 
   const toAnsi256 = (r: number, g: number, b: number): number => {
     if (r === g && g === b) {
@@ -89,9 +100,7 @@ export function hexToBasicAnsi(hex: string, isBackground: boolean): string {
     return "";
   }
 
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
+  const [r, g, b] = parseHex(hex);
 
   if (g > r && g > b && g > 120) {
     return "\x1b[32m";
@@ -110,11 +119,7 @@ export function hexToBasicAnsi(hex: string, isBackground: boolean): string {
 }
 
 export function hexColorDistance(hex1: string, hex2: string): number {
-  const r1 = parseInt(hex1.slice(1, 3), 16);
-  const g1 = parseInt(hex1.slice(3, 5), 16);
-  const b1 = parseInt(hex1.slice(5, 7), 16);
-  const r2 = parseInt(hex2.slice(1, 3), 16);
-  const g2 = parseInt(hex2.slice(3, 5), 16);
-  const b2 = parseInt(hex2.slice(5, 7), 16);
+  const [r1, g1, b1] = parseHex(hex1);
+  const [r2, g2, b2] = parseHex(hex2);
   return Math.sqrt((r1 - r2) ** 2 + (g1 - g2) ** 2 + (b1 - b2) ** 2);
 }
