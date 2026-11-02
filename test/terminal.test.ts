@@ -43,6 +43,19 @@ describe("terminal utilities", () => {
     it("should handle string with only ANSI codes", () => {
       expect(visibleLength("\x1b[0m\x1b[38;2;0;0;0m")).toBe(0);
     });
+
+    it("should count wide characters as two terminal columns", () => {
+      expect(visibleLength("项目")).toBe(4);
+      expect(visibleLength("\x1b[1mプロジェクト\x1b[0m")).toBe(12);
+      expect(visibleLength("한글")).toBe(4);
+      expect(visibleLength("⚡ 2m")).toBe(5);
+      expect(visibleLength("📁 src")).toBe(6);
+    });
+
+    it("should not count combining marks or variation selectors", () => {
+      expect(visibleLength("e\u0301")).toBe(1);
+      expect(visibleLength("✓\uFE0E")).toBe(1);
+    });
   });
 });
 

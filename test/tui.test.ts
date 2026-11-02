@@ -19,8 +19,9 @@ import type { PowerlineColors } from "../src/themes";
 import type { PowerlineConfig } from "../src/config/loader";
 import type { OutputStyleSegmentConfig } from "../src/segments/renderer";
 import { BOX_CHARS, SYMBOLS } from "../src/utils/constants";
+import { truncateAnsi } from "../src/tui/primitives";
 import { DEFAULT_CONFIG } from "../src/config/defaults";
-import { visibleLength } from "../src/utils/terminal";
+import { stripAnsi, visibleLength } from "../src/utils/terminal";
 
 // Use empty strings for colors so snapshots capture layout, not ANSI codes
 const PLAIN_COLORS: PowerlineColors = {
@@ -195,6 +196,39 @@ describe("TUI Panel Rendering", () => {
       );
       expect(result).toMatchSnapshot();
     });
+  });
+
+  it("should keep the right border aligned for a CJK directory", async () => {
+    const dir = "/home/user/项目";
+    const result = await renderTuiPanel(
+      makeTuiData({
+        hookData: {
+          ...makeTuiData().hookData,
+          workspace: { project_dir: dir, current_dir: dir },
+          cwd: dir,
+        },
+      }),
+      BOX_CHARS,
+      "",
+      100,
+      tuiConfig,
+    );
+    // Count columns independently of visibleLength: every char here is
+    // narrow except the two CJK ideographs, which take two columns each.
+    const columns = (line: string) =>
+      [...stripAnsi(line)].length +
+      (line.match(/[\u4e00-\u9fff]/g) ?? []).length;
+    const widths = result
+      .replace(/\x1b\[\?2026[hl]/g, "")
+      .split("\n")
+      .map(columns);
+    expect(result).toContain("项目");
+    expect(new Set(widths).size).toBe(1);
+  });
+
+  it("should truncate wide characters to the column budget", () => {
+    // Six ideographs are twelve columns: keep three (six) plus the ellipsis.
+    expect(truncateAnsi("项目项目项目", 7)).toBe("项目项…\x1b[0m");
   });
 
   describe("Medium layout (55-79 cols)", () => {

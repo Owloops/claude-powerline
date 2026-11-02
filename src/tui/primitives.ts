@@ -1,6 +1,6 @@
 import type { BoxChars } from "./types";
 
-import { visibleLength, stripAnsi, ESC, ANSI_SPLIT } from "../utils/terminal";
+import { visibleLength, charWidth, ESC, ANSI_SPLIT } from "../utils/terminal";
 
 export function colorize(
   text: string,
@@ -46,7 +46,7 @@ export function padCenter(text: string, width: number): string {
 }
 
 export function truncateAnsi(text: string, maxWidth: number): string {
-  if (stripAnsi(text).length <= maxWidth) {
+  if (visibleLength(text) <= maxWidth) {
     return text;
   }
 
@@ -59,12 +59,13 @@ export function truncateAnsi(text: string, maxWidth: number): string {
       continue;
     }
     for (const char of part) {
-      if (width >= maxWidth - 1) {
+      const w = charWidth(char);
+      if (width + w > maxWidth - 1) {
         result += "…\x1b[0m";
         return result;
       }
       result += char;
-      width++;
+      width += w;
     }
   }
   return result;
