@@ -93,6 +93,8 @@ describe("Metrics Provider", () => {
       entry("user", "<local-command-stdout>Set model</local-command-stdout>"),
       entry("user", "<command-name>/init</command-name>"),
       entry("user", [{ type: "text", text: "Analyze this codebase" }], true),
+      entry("user", "<bash-input>ls</bash-input>"),
+      entry("user", "<bash-stdout>a</bash-stdout><bash-stderr></bash-stderr>"),
       entry("assistant", [{ type: "tool_use", id: "t1", name: "Read" }]),
       entry("user", [{ type: "tool_result", tool_use_id: "t1" }]),
       entry("assistant", [{ type: "text", text: "Done" }]),
@@ -110,8 +112,8 @@ describe("Metrics Provider", () => {
       createMockHookData("commands-session"),
     );
 
-    // "Hello", "/model" and "/init"
-    expect(metrics.messageCount).toBe(3);
+    // "Hello", "/model", "/init" and "!ls"
+    expect(metrics.messageCount).toBe(4);
   });
 
   it("handles missing transcript gracefully", async () => {

@@ -48,7 +48,7 @@ function isUserPrompt(entry: TranscriptEntry): boolean {
 
   const content = entry.message?.content;
   if (typeof content === "string") {
-    return !/^<local-command-(stdout|stderr)>/.test(content);
+    return !/^<(local-command|bash)-(stdout|stderr)>/.test(content);
   }
   return content?.[0]?.type !== "tool_result";
 }
