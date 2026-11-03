@@ -2,7 +2,7 @@ import type { ParsedEntry, ClaudeHookData } from "../utils/claude";
 import type { PowerlineConfig } from "../config/loader";
 
 import { debug } from "../utils/logger";
-import { parseJsonlFile } from "../utils/claude";
+import { readTranscriptBackwards } from "../utils/claude";
 
 export interface ContextInfo {
   totalTokens: number;
@@ -146,19 +146,9 @@ export class ContextProvider {
     try {
       debug(`Calculating context tokens from transcript: ${transcriptPath}`);
 
-      const parsedEntries = await parseJsonlFile(transcriptPath);
-
-      if (parsedEntries.length === 0) {
-        debug("No entries in transcript");
-        return null;
-      }
-
       let mostRecentEntry: ParsedEntry | null = null;
 
-      for (let i = parsedEntries.length - 1; i >= 0; i--) {
-        const entry = parsedEntries[i];
-        if (!entry) continue;
-
+      for await (const entry of readTranscriptBackwards(transcriptPath)) {
         // Usage from before /compact describes a context that is gone.
         if (entry.isCompactBoundary) {
           debug("Context segment: Reached compact boundary, stopping search");

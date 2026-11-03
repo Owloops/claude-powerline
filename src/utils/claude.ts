@@ -1,4 +1,4 @@
-import { readdir, readFile, stat } from "node:fs/promises";
+import { open, readdir, readFile, stat } from "node:fs/promises";
 import { existsSync, createReadStream } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
@@ -347,11 +347,9 @@ const STREAMING_THRESHOLD_BYTES = 1024 * 1024;
 
 /**
  * @info Transcripts are append-only, so path + size + mtime identifies their
- * contents exactly. Segments resolve transcripts independently — context and
- * the month's scan of uncached days can both parse the session transcript in
- * the same render — and a status line process is short-lived, so memoising
- * within the render removes the duplicate parse without letting a stale result
- * outlive the file it came from.
+ * contents exactly. Segments resolve transcripts independently, and a status
+ * line process is short-lived, so memoising within the render removes a
+ * duplicate parse without letting a stale result outlive the file it came from.
  */
 // Holds the in-flight parse, not its result: segments are started together, so
 // they all reach the cache before the first parse resolves and would otherwise
@@ -553,6 +551,53 @@ export async function readTranscriptFrom(
       : null;
 
   return { entries, end, tail };
+}
+
+export const BACKWARD_CHUNK_BYTES = 64 * 1024;
+
+/**
+ * Parses a transcript from its end, yielding entries last to first, so a caller
+ * after the latest entry of some kind stops reading once it has it. The last
+ * line counts when it parses, newline or not, as in a full parse.
+ */
+export async function* readTranscriptBackwards(
+  filePath: string,
+): AsyncGenerator<ParsedEntry> {
+  const file = await open(filePath, "r");
+  try {
+    let position = (await file.stat()).size;
+    // The end of a line whose start lies in an earlier chunk, as chunks.
+    let partial: Buffer[] = [];
+
+    while (position > 0) {
+      const length = Math.min(BACKWARD_CHUNK_BYTES, position);
+      position -= length;
+      const chunk = Buffer.alloc(length);
+      // A file cut short since the stat reads short; scan only the bytes read.
+      const { bytesRead } = await file.read(chunk, 0, length, position);
+
+      let lineEnd = bytesRead;
+      let newline: number;
+      while (
+        lineEnd > 0 &&
+        (newline = chunk.lastIndexOf(0x0a, lineEnd - 1)) !== -1
+      ) {
+        partial.unshift(chunk.subarray(newline + 1, lineEnd));
+        const entry = parseTranscriptLine(
+          Buffer.concat(partial).toString("utf-8"),
+        );
+        partial = [];
+        lineEnd = newline;
+        if (entry) yield entry;
+      }
+      partial.unshift(chunk.subarray(0, lineEnd));
+    }
+
+    const first = parseTranscriptLine(Buffer.concat(partial).toString("utf-8"));
+    if (first) yield first;
+  } finally {
+    await file.close();
+  }
 }
 
 interface FileStat {
