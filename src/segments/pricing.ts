@@ -163,8 +163,7 @@ export class PricingService {
   // fetches every segment's info concurrently (see powerline.ts's
   // Promise.allSettled), and session and today can each need pricing for an
   // entry with no recorded costUSD. On a cold cache, each one that arrived
-  // before executionCache was set started its own GitHub fetch. Mirrors
-  // claude.ts's parsedFileCache for the same reason.
+  // before executionCache was set started its own GitHub fetch.
   private static loadingCache: Promise<Record<string, ModelPricing>> | null =
     null;
   private static modelPricingCache = new Map<string, ModelPricing>();
