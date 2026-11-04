@@ -24,7 +24,7 @@ import {
 } from "node:fs";
 import { loadavg, platform, arch, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { parseArgs, stripVTControlCharacters } from "node:util";
 
 const { values: args } = parseArgs({
@@ -45,7 +45,7 @@ const APPEND_LINES = 4;
 const MiB = 2 ** 20;
 const MODEL = { id: "claude-opus-4-5-20251101", display_name: "Opus 4.5" };
 
-const root = resolve(import.meta.dirname, "..");
+const root = fileURLToPath(new URL("..", import.meta.url));
 const linux = platform() === "linux";
 const windows = platform() === "win32";
 
