@@ -992,6 +992,85 @@ describe("TUI Panel Rendering", () => {
     });
   });
 
+  describe("grid cell options without enabled", () => {
+    const gridLineConfig = (
+      segments: PowerlineConfig["display"]["lines"][number]["segments"],
+    ): PowerlineConfig => ({
+      ...DEFAULT_CONFIG,
+      display: {
+        ...DEFAULT_CONFIG.display,
+        style: "tui",
+        lines: [{ segments }],
+      },
+    });
+
+    it("applies thinking showEnabled/showEffort from a non-enabled entry", () => {
+      const config = gridLineConfig({
+        thinking: { enabled: false, showEnabled: false, showEffort: true },
+      });
+      const data = makeTuiData({
+        hookData: {
+          ...makeTuiData().hookData,
+          effort: { level: "xhigh" },
+          thinking: { enabled: true },
+        },
+      });
+      const { data: result } = resolveSegments(data, mkCtx(config, data));
+      expect(result["thinking.enabled"]).toBe("");
+      expect(result["thinking.effort"]).toBe("xhigh");
+      expect(result["thinking"]).not.toContain("On");
+    });
+
+    it("applies agent showLabel from a non-enabled entry", () => {
+      const config = gridLineConfig({
+        agent: { enabled: false, showLabel: true },
+      });
+      const data = makeTuiData({
+        hookData: { ...makeTuiData().hookData, agent: { name: "reviewer" } },
+      });
+      const { data: result } = resolveSegments(data, mkCtx(config, data));
+      expect(result["agent"]).toContain("agent: reviewer");
+    });
+
+    it("applies directory style from a non-enabled entry", () => {
+      const config = gridLineConfig({
+        directory: { enabled: false, style: "full" },
+      });
+      const data = makeTuiData({
+        hookData: {
+          ...makeTuiData().hookData,
+          workspace: {
+            project_dir: "/home/user/projects/deep/app",
+            current_dir: "/home/user/projects/deep/app",
+          },
+          cwd: "/home/user/projects/deep/app",
+        },
+      });
+      const { data: result } = resolveSegments(data, mkCtx(config, data));
+      expect(result["dir"]).toContain("/home/user/projects/deep/app");
+    });
+
+    it("prefers the enabled entry over an earlier non-enabled one", () => {
+      const config: PowerlineConfig = {
+        ...DEFAULT_CONFIG,
+        display: {
+          ...DEFAULT_CONFIG.display,
+          style: "tui",
+          lines: [
+            { segments: { agent: { enabled: false, showLabel: true } } },
+            { segments: { agent: { enabled: true, showLabel: false } } },
+          ],
+        },
+      };
+      const data = makeTuiData({
+        hookData: { ...makeTuiData().hookData, agent: { name: "reviewer" } },
+      });
+      const { data: result } = resolveSegments(data, mkCtx(config, data));
+      expect(result["agent"]).toContain("reviewer");
+      expect(result["agent"]).not.toContain("agent:");
+    });
+  });
+
   describe("Budget display toggles (TUI formatTodayParts / formatSessionParts)", () => {
     const sym = SYMBOLS as any;
 

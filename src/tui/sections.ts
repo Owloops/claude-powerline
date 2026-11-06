@@ -1082,9 +1082,7 @@ function formatDirParts(
 
 function formatDirValue(data: TuiData, config: PowerlineConfig): string {
   const raw = getDirectoryDisplay(data.hookData);
-  const dirConfig = config.display.lines
-    .map((line) => line.segments.directory)
-    .find((d) => d?.enabled);
+  const dirConfig = findConfiguredSegment(config, "directory");
   const style =
     dirConfig?.style ?? (dirConfig?.showBasename ? "basename" : "fish");
   if (style === "basename") {
@@ -1140,9 +1138,7 @@ function formatAgentSegment(
 ): string {
   const parts = formatAgentParts(data, sym, iconVisible);
   if (!parts.name) return "";
-  const agentConfig = config.display.lines
-    .map((line) => line.segments.agent)
-    .find((a) => a?.enabled);
+  const agentConfig = findConfiguredSegment(config, "agent");
   const body = agentConfig?.showLabel ? `agent: ${parts.name}` : parts.name;
   return parts.icon ? `${parts.icon} ${body}` : body;
 }
@@ -1741,9 +1737,7 @@ export function resolveSegments(
   );
 
   // Thinking (combined enabled + effort)
-  const thinkingSegConfig = config.display.lines
-    .map((line) => line.segments.thinking)
-    .find((t) => t?.enabled);
+  const thinkingSegConfig = findConfiguredSegment(config, "thinking");
   const thinkingColor = pf?.["thinking"] ?? colors.thinkingFg;
   result.thinking = colorizeOrEmpty(
     formatThinkingSegment(data, sym, thinkingSegConfig, iconVisible.thinking),
