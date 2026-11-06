@@ -1,3 +1,19 @@
+## [1.32.7](https://github.com/Owloops/claude-powerline/compare/v1.32.6...v1.32.7) (2026-11-06)
+
+
+### Bug Fixes
+
+* **colors:** map two-channel colors to yellow, cyan and magenta in basic ANSI ([da24491](https://github.com/Owloops/claude-powerline/commit/da24491d4784ad21a081b785e6246a555e393c9d)), closes [#ffff00](https://github.com/Owloops/claude-powerline/issues/ffff00) [#00](https://github.com/Owloops/claude-powerline/issues/00) [#ffff00](https://github.com/Owloops/claude-powerline/issues/ffff00) [#00](https://github.com/Owloops/claude-powerline/issues/00) [#00d7d7](https://github.com/Owloops/claude-powerline/issues/00d7d7)
+* **session:** keep official cost when transcript usage is missing ([8fc11c4](https://github.com/Owloops/claude-powerline/commit/8fc11c45347c7022c384e73fb875ab8355701d32))
+* **tui:** honor cacheTimer options in grid cells when not enabled ([7a0c306](https://github.com/Owloops/claude-powerline/commit/7a0c3066c3f9b9e7a6e726636425f6af41319edc))
+* **tui:** honor thinking, agent and directory options in grid cells ([fec259b](https://github.com/Owloops/claude-powerline/commit/fec259be5d52e08c283173efa8592571929fbc14))
+* **wrap:** drop the separator column from minimal segment widths ([e412d87](https://github.com/Owloops/claude-powerline/commit/e412d87d54b75726fa0d2e5f4eedf24313368fde))
+
+
+### Performance Improvements
+
+* **context:** read the transcript from its end ([3bb4f4f](https://github.com/Owloops/claude-powerline/commit/3bb4f4f0ae542df49c283c804d625002d2f653f1)), closes [#128](https://github.com/Owloops/claude-powerline/issues/128) [#128](https://github.com/Owloops/claude-powerline/issues/128)
+
 ## [1.32.6](https://github.com/Owloops/claude-powerline/compare/v1.32.5...v1.32.6) (2026-11-02)
 
 
