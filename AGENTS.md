@@ -55,7 +55,9 @@ A change to the render path is measured with `npm run bench` before it is propos
 - Base: the merge base by default. In a series of commits, measure each against the one before with `--base <ref>`.
 - Configurations: one run each with `--config <file>` for the changed segment alone and for the TUI style; the bare run covers the default segments in the powerline style.
 - Hook data: `--payload <file>` merges top-level fields over the default and a `null` removes one. Reach the path the change touches: `{"context_window": null}` forces the context fallback; `block` and `weekly` need `rate_limits`.
-- Output: the bench stops at the first pair whose outputs differ. A change meant to keep the output passes every pair. Segments that print the time (`cacheTimer`, reset countdowns) cannot be compared.
+- Output: the bench stops at the first pair whose outputs differ. A change meant to keep the output passes every pair. Segments that print the time (`cacheTimer`, reset countdowns) cannot be compared. A change that alters the output on purpose runs with `--allow-output-change`.
+- Counts: bytes read, files opened and processes spawned are counted in each render by `scripts/bench-preload.mjs`, the same on every platform and every run. They are the numbers to trust when wall time is noisy. When the app starts reading files through an fs API the preload does not wrap, add it there.
+- CI: `.github/workflows/bench.yml` runs `--quick --check` on Linux, Windows and macOS. `--check` fails when a count grows past the base or past the fixed budgets in `scripts/bench.ts`; wall time, CPU and RSS never fail it. A budget is raised only with a reason in the PR.
 - Conditions: before numbers a PR quotes, ask the user to pin the CPU clock and stop heavy work: wall time on a loaded machine swamps a change of a few percent.
 - Instructions (Linux): the column needs `perf`. When the bench drops it for `kernel.perf_event_paranoid`, ask the user to lower it (1 works).
 - Disclosure: a case that gets slower or heavier is reported with its numbers.

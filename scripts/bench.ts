@@ -1,14 +1,22 @@
 // Compares two builds of claude-powerline on generated inputs and prints a
 // Markdown table a PR can quote: `npm run bench -- [--base <ref>]
-// [--config <file>] [--payload <file>] [--pairs <n>]`.
+// [--config <file>] [--payload <file>] [--pairs <n>] [--quick] [--check]
+// [--allow-output-change]`.
 //
-// Needs Node 22.18 or later, which runs this file without a build step. Keep
-// to erasable TypeScript syntax: no enums, no parameter properties.
+// Needs Node 22.18 or later, which runs this file without a build step
+// (scripts/bench.mjs checks that first). Keep to erasable TypeScript syntax:
+// no enums, no parameter properties.
 //
 // The change is the working tree; the base defaults to the merge base with
 // origin/main. Renders of the two alternate in pairs, so a machine slowing
 // down mid-run hits both alike, and the run stops at the first pair whose
-// outputs differ.
+// outputs differ unless --allow-output-change is given.
+//
+// --check exits non-zero when the change reads more bytes, opens more files
+// or spawns more processes than the base or than the fixed budgets below.
+// Those counts come from scripts/bench-preload.mjs and are the same on every
+// platform and every run, so CI can rely on them; wall time, CPU and RSS are
+// reported but never fail a run.
 
 import { spawn, spawnSync, type SpawnSyncOptions } from "node:child_process";
 import {
@@ -33,6 +41,9 @@ const { values: args } = parseArgs({
     config: { type: "string" },
     payload: { type: "string" },
     pairs: { type: "string", default: "15" },
+    quick: { type: "boolean", default: false },
+    check: { type: "boolean", default: false },
+    "allow-output-change": { type: "boolean", default: false },
   },
 });
 const PAIRS = Number(args.pairs);
@@ -95,18 +106,24 @@ if (!existsSync(baseDist)) {
 
   // git takes an empty directory as the worktree.
   const worktree = mkdtempSync(join(tmpdir(), "cpb-base-"));
-  run("git", ["worktree", "add", "--detach", worktree, baseSha], toStderr);
-  run("npm", ["ci"], { cwd: worktree, ...toStderr });
-  build(worktree);
+  try {
+    run("git", ["worktree", "add", "--detach", worktree, baseSha], toStderr);
+    run("npm", ["ci"], { cwd: worktree, ...toStderr });
+    build(worktree);
 
-  // Copied aside and renamed, so the SHA directory always holds a whole build.
-  const partial = `${baseDist}.${process.pid}.tmp`;
-  cpSync(join(worktree, "dist"), partial, { recursive: true });
-  renameSync(partial, baseDist);
-
-  run("git", ["worktree", "remove", "--force", worktree], toStderr);
-  // On Windows, git empties the directory but leaves it in place.
-  rmSync(worktree, { recursive: true, force: true });
+    // Copied aside and renamed, so the SHA directory always holds a whole build.
+    const partial = `${baseDist}.${process.pid}.tmp`;
+    cpSync(join(worktree, "dist"), partial, { recursive: true });
+    renameSync(partial, baseDist);
+  } finally {
+    // A failed install or build would otherwise leave the worktree registered.
+    spawnSync("git", ["worktree", "remove", "--force", worktree], {
+      cwd: root,
+      stdio: "ignore",
+    });
+    // On Windows, git empties the directory but leaves it in place.
+    rmSync(worktree, { recursive: true, force: true });
+  }
 }
 
 console.error("Building change (working tree)...");
@@ -117,10 +134,17 @@ async function main() {
   mkdirSync(repo);
   writeFileSync(join(repo, "README.md"), "bench\n");
 
+  // The contributor's own git config must not reach the fixture: a signing
+  // key or a commit hook would fail or slow the commit.
   const git = (...argv: string[]) =>
     run(
       "git",
-      ["-c", "user.name=bench", "-c", "user.email=bench@localhost", ...argv],
+      [
+        ...["-c", "user.name=bench", "-c", "user.email=bench@localhost"],
+        ...["-c", "commit.gpgsign=false", "-c", "init.defaultBranch=main"],
+        ...["-c", `core.hooksPath=${join(tmp, "no-hooks")}`],
+        ...argv,
+      ],
       { cwd: repo },
     );
 
@@ -134,18 +158,20 @@ async function main() {
 
   const heldBack = (WARMUPS + PAIRS + PERF_PAIRS) * APPEND_LINES;
   console.error("Generating inputs...");
+  const small = generateStore(join(tmp, "small"), 5 * MiB, heldBack);
   const stores = {
-    small: generateStore(join(tmp, "small"), 5 * MiB, heldBack),
-    large: generateStore(join(tmp, "large"), 250 * MiB, heldBack),
+    small,
+    large: args.quick
+      ? null
+      : generateStore(join(tmp, "large"), 250 * MiB, heldBack),
   };
 
   const config = configFile ?? join(tmp, "config.json");
   if (!configFile)
     writeFileSync(config, JSON.stringify({ display: { style: "powerline" } }));
 
-  const preload = join(tmp, "preload.mjs");
+  const preload = join(root, "scripts", "bench-preload.mjs");
   const preloadOut = join(tmp, "preload.json");
-  writeFileSync(preload, PRELOAD);
 
   const extra = payloadFile
     ? JSON.parse(readFileSync(payloadFile, "utf8"))
@@ -161,7 +187,7 @@ async function main() {
   ];
 
   type Build = (typeof builds)[number];
-  type Store = (typeof stores)["small"];
+  type Store = typeof small;
 
   const env = Object.fromEntries(
     Object.entries(process.env).filter(
@@ -187,6 +213,14 @@ async function main() {
       model: MODEL,
       workspace: { current_dir: repo, project_dir: repo },
       version: "2.1.0",
+      // Without cost, the metrics segment skips its transcript read.
+      cost: {
+        total_cost_usd: 12.5,
+        total_duration_ms: 3_600_000,
+        total_api_duration_ms: 900_000,
+        total_lines_added: 420,
+        total_lines_removed: 69,
+      },
       context_window: {
         total_input_tokens: 1_200_000,
         total_output_tokens: 90_000,
@@ -210,7 +244,10 @@ async function main() {
     out: string;
     wall: number;
     rss: number;
-    rchar: number | null;
+    cpu: number;
+    bytesRead: number;
+    opens: number;
+    spawns: number;
     instructions: number | null;
   }
 
@@ -224,6 +261,8 @@ async function main() {
       ? [...PERF, "-o", perfOut, "--", ...node, ...app]
       : [...node, ...app];
 
+    // Started before spawn, which is part of what a render costs Claude Code.
+    const start = performance.now();
     const child = spawn(cmd!, argv, {
       env: {
         ...env,
@@ -235,7 +274,6 @@ async function main() {
       stdio: ["pipe", "pipe", "inherit"],
     });
 
-    const start = performance.now();
     let out = "";
     child.stdout.on("data", (chunk) => (out += chunk));
     child.stdin.end(input);
@@ -247,7 +285,7 @@ async function main() {
         if (code !== 0)
           return fail(new Error(`${b.name} render exited ${code}`));
 
-        const { rss, rchar } = JSON.parse(readFileSync(preloadOut, "utf8"));
+        const counted = JSON.parse(readFileSync(preloadOut, "utf8"));
 
         // Hybrid CPUs count each core type on its own line (cpu_core, cpu_atom).
         const instructions = perf
@@ -257,20 +295,23 @@ async function main() {
               .reduce((sum, l) => sum + (Number(l.split(",")[0]) || 0), 0)
           : null;
 
-        done({ out, wall, rss, rchar, instructions });
+        done({ out, wall, ...counted, instructions });
       });
     });
   }
 
   const perfReason = probePerf();
 
-  const cases: { name: string; store: Store; warm: boolean }[] = [
+  const cases = [
     { name: "cold · small", store: stores.small, warm: false },
     { name: "cold · large", store: stores.large, warm: false },
     { name: "warm · small", store: stores.small, warm: true },
     { name: "warm · large", store: stores.large, warm: true },
-  ];
+  ].filter((c): c is { name: string; store: Store; warm: boolean } =>
+    Boolean(c.store),
+  );
 
+  let outputChanged = false;
   async function pair(c: (typeof cases)[number], i: number, perf: boolean) {
     if (c.warm) c.store.append();
 
@@ -283,10 +324,14 @@ async function main() {
 
     const [base, change] = samples as [Sample, Sample];
     if (base.out !== change.out) {
-      console.error(
-        `Outputs differ (${c.name}, pair ${i + 1}):\n--- base\n${base.out}\n--- change\n${change.out}`,
-      );
-      process.exit(1);
+      if (args["allow-output-change"]) {
+        outputChanged = true;
+      } else {
+        console.error(
+          `Outputs differ (${c.name}, pair ${i + 1}):\n--- base\n${base.out}\n--- change\n${change.out}`,
+        );
+        process.exit(1);
+      }
     }
 
     return samples;
@@ -322,27 +367,28 @@ async function main() {
     perf?: boolean;
   }[] = [
     { name: "wall", unit: "ms", get: (s) => s.wall, fmt: (n) => n.toFixed(0) },
+    { name: "CPU", unit: "ms", get: (s) => s.cpu, fmt: (n) => n.toFixed(0) },
     {
       name: "peak RSS",
       unit: "MiB",
       get: (s) => s.rss / 1024,
       fmt: (n) => n.toFixed(1),
     },
+    {
+      name: "bytes read",
+      unit: "MiB",
+      get: (s) => s.bytesRead / MiB,
+      fmt: (n) => n.toFixed(2),
+    },
+    { name: "opens", unit: "", get: (s) => s.opens, fmt: String },
+    { name: "spawns", unit: "", get: (s) => s.spawns, fmt: String },
   ];
 
   const notes = [
     "%: median of the per-pair changes, so it can differ from the change between the two medians.",
     "Cold renders start from an empty cache with pricing seeded; the first pricing download is not measured.",
+    "bytes read, opens, spawns: counted at the fs and child_process APIs, the same on every platform.",
   ];
-
-  if (linux)
-    columns.push({
-      name: "bytes read",
-      unit: "MiB",
-      get: (s) => s.rchar && s.rchar / MiB,
-      fmt: (n) => n.toFixed(2),
-    });
-  else notes.push("bytes read: dropped, Linux only.");
 
   if (perfReason === null) {
     columns.push({
@@ -376,9 +422,46 @@ async function main() {
 
     const base = median(values.map(([b]) => b));
     const change = median(values.map(([, c]) => c));
-    const delta = median(values.map(([b, c]) => (c / b - 1) * 100));
-    return `${col.fmt(base)} → ${col.fmt(change)} ${col.unit} (${percent(delta)})`;
+    const delta = median(values.map(([b, c]) => (b ? (c / b - 1) * 100 : 0)));
+    const unit = col.unit ? ` ${col.unit}` : "";
+    return `${col.fmt(base)} → ${col.fmt(change)}${unit} (${percent(delta)})`;
   };
+
+  // The gate looks only at the counts, which do not move between runs or
+  // machines; wall time, CPU and RSS are too noisy on shared CI runners.
+  // Against the base, the slack absorbs one more small read or open, so the
+  // gate is not a hair trigger. The fixed budgets catch what a comparison
+  // cannot: a base that is already slow, or growth spread over many PRs.
+  const GATES = [
+    { name: "bytes read", key: "bytesRead", ratio: 1.1, slack: 64 * 1024 },
+    { name: "opens", key: "opens", ratio: 1.1, slack: 2 },
+    { name: "spawns", key: "spawns", ratio: 1, slack: 0 },
+  ] as const;
+  const budgets = configFile || payloadFile ? {} : BUDGETS;
+  const regressions = rows.flatMap((r) =>
+    GATES.flatMap((g) => {
+      const base = median(r.pairs.map((p) => p[0]![g.key]));
+      const change = median(r.pairs.map((p) => p[1]![g.key]));
+      const budget = budgets[r.name]?.[g.key];
+      return [
+        ...(change > base * g.ratio + g.slack
+          ? [`${r.name}: ${g.name} ${base} → ${change}, over the base`]
+          : []),
+        ...(budget !== undefined && change > budget
+          ? [`${r.name}: ${g.name} ${change}, over the budget of ${budget}`]
+          : []),
+      ];
+    }),
+  );
+
+  if (outputChanged)
+    notes.push(
+      "output: differs from the base in some pairs (--allow-output-change).",
+    );
+  if (Object.keys(budgets).length === 0)
+    notes.push(
+      "budgets: not checked, they apply to the default config and payload only.",
+    );
 
   const short = (sha: string) => sha.slice(0, 7);
   const lines = [
@@ -407,7 +490,27 @@ async function main() {
   ];
 
   console.log(lines.join("\n"));
+
+  if (regressions.length) {
+    console.error(`\nRegressions:\n${regressions.join("\n")}`);
+    if (args.check) process.exitCode = 1;
+  }
 }
+
+// Ceilings for the change's counts with the default config and payload, about
+// twice what main needed when they were set (66, 630, 0.9 and 7.4 MiB read;
+// 59 or 9 opens; one git spawn). Spawns allow a few more because terminal
+// width detection spawns on some platforms. Raise one only with a reason in
+// the PR; lower them when a change makes renders cheaper.
+const BUDGETS: Record<
+  string,
+  Partial<Record<"bytesRead" | "opens" | "spawns", number>>
+> = {
+  "cold · small": { bytesRead: 128 * MiB, opens: 120, spawns: 4 },
+  "cold · large": { bytesRead: 1280 * MiB, opens: 120, spawns: 4 },
+  "warm · small": { bytesRead: 2 * MiB, opens: 20, spawns: 4 },
+  "warm · large": { bytesRead: 16 * MiB, opens: 20, spawns: 4 },
+};
 
 // On one CPU: free to use several, a render's threads spin while waiting on
 // each other, which added 30 to 60% to its count and moved it by 15% between
@@ -432,16 +535,6 @@ function probePerf(): string | null {
 
   return null;
 }
-
-// Peak RSS and, on Linux, bytes read, recorded by each render at its own exit:
-// a parent cannot read /proc/<pid>/io once the child has exited.
-const PRELOAD = `import { readFileSync, writeFileSync } from "node:fs";
-process.on("exit", () => {
-  let rchar = null;
-  try { rchar = Number(/rchar: (\\d+)/.exec(readFileSync("/proc/self/io", "utf8"))[1]); } catch {}
-  writeFileSync(process.env.BENCH_PRELOAD_OUT, JSON.stringify({ rss: process.resourceUsage().maxRSS, rchar }));
-});
-`;
 
 // Writes a Claude Code store under `dir`: one session of about `bytes`, with
 // agent transcripts and a compact boundary, plus about 20 other sessions of
