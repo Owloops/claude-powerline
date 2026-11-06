@@ -1084,6 +1084,8 @@ Extend the statusline using shell composition:
 
 Contributions are welcome! Please feel free to submit issues or pull requests.
 
+If your change touches how the statusline renders, run `npm run bench` (Node 22.18+) before opening the PR. It compares your branch with `main` and prints a before/after table to paste into the PR description. CI runs the same comparison on every PR that changes `src/`.
+
 See [CONTRIBUTORS.md](CONTRIBUTORS.md) for people who have contributed outside of GitHub PRs.
 
 ## License
