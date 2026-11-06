@@ -80,12 +80,15 @@ export class SessionProvider {
     hookData?: ClaudeHookData,
   ): Promise<SessionInfo> {
     const sessionUsage = await this.getSessionUsage(sessionId);
+    const hookDataCost = hookData?.cost?.total_cost_usd ?? null;
 
+    // The official cost comes from the hook data, so it does not depend on
+    // finding usage in the transcripts.
     if (!sessionUsage || sessionUsage.entryCount === 0) {
       return {
         cost: null,
         calculatedCost: null,
-        officialCost: null,
+        officialCost: hookDataCost,
         tokens: null,
         tokenBreakdown: null,
       };
@@ -99,7 +102,6 @@ export class SessionProvider {
       tokenBreakdown.cacheRead;
 
     const calculatedCost = sessionUsage.totalCost;
-    const hookDataCost = hookData?.cost?.total_cost_usd ?? null;
     const cost = calculatedCost ?? hookDataCost;
 
     return {

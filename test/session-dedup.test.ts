@@ -1,4 +1,5 @@
 import { SessionProvider } from "../src/segments";
+import { SegmentRenderer } from "../src/segments/renderer";
 import { writeFileSync, mkdtempSync, rmSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
@@ -106,5 +107,37 @@ describe("Session Usage Deduplication", () => {
     expect(breakdown.output).toBe(61);
     expect(breakdown.cacheCreation).toBe(25);
     expect(breakdown.cacheRead).toBe(10);
+  });
+});
+
+describe("Session official cost without transcript usage", () => {
+  const hookData = {
+    session_id: "missing-session",
+    cost: { total_cost_usd: 1.23 },
+  } as unknown as claudePaths.ClaudeHookData;
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("keeps the hook's official cost when no transcript is found", async () => {
+    jest.spyOn(claudePaths, "findTranscriptFile").mockResolvedValue(null);
+
+    const info = await new SessionProvider().getSessionInfo(
+      "missing-session",
+      hookData,
+    );
+
+    expect(info.officialCost).toBe(1.23);
+    expect(info.calculatedCost).toBeNull();
+
+    const config = { theme: "dark", display: { lines: [] } } as any;
+    const renderer = new SegmentRenderer(config, { session_cost: "S" } as any);
+    const segment = renderer.renderSession(
+      { session: info },
+      { sessionBg: "", sessionFg: "" } as any,
+      { enabled: true, type: "cost", costSource: "official" },
+    );
+    expect(segment!.text).toBe("S $1.23");
   });
 });
