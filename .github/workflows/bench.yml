@@ -3,6 +3,17 @@ name: Bench
 on:
   pull_request:
     branches: [main]
+    # Only what can change a render or the bench itself; a docs, plugin or
+    # test-only PR has nothing to measure.
+    paths:
+      - "src/**"
+      - "scripts/bench*"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - "tsdown.config.ts"
+      - "pricing.json"
+      - ".github/workflows/bench.yml"
 
 permissions:
   contents: read
