@@ -63,6 +63,14 @@ Then ask:
 
 ### If Node.js 18+ IS installed
 
+Also check whether Bun is available:
+
+```bash
+bun --version 2>/dev/null || echo "not_installed"
+```
+
+Store the result as `has_bun` (true when a version is printed). Do not suggest installing Bun; it is only offered in Step 9 when it is already there.
+
 Continue to the next step.
 
 ## Step 2: Nerd Font Detection
@@ -335,7 +343,20 @@ ${CLAUDE_PLUGIN_ROOT}/templates/<template-file>
 
 ## Step 9: Update settings.json
 
-Read `~/.claude/settings.json` if it exists. Add or update ONLY the `statusLine` key:
+If `has_bun` is true, ask:
+
+- **Question**: "Bun is installed. Which should run the statusline?"
+- **Header**: "Runner"
+- **Options**:
+  - "npx (Recommended)" -> Uses Node. Always runs the latest version.
+  - "Bun" -> Starts several times faster. Checks for a new version once a day.
+
+If `has_bun` is false, use npx without asking.
+
+Read `~/.claude/settings.json` if it exists. Add or update ONLY the `statusLine` key, with the command for the chosen runner:
+
+- npx: `npx -y @owloops/claude-powerline@latest`
+- Bun: `bunx --bun @owloops/claude-powerline` (keep `--bun`: without it, Bun starts the package with Node)
 
 ```json
 {
