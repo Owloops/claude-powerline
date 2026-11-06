@@ -114,6 +114,16 @@ export function hexToBasicAnsi(hex: string, isBackground: boolean): string {
     return "\x1b[34m";
   }
 
+  // No single channel leads, so two share the top: yellow, cyan or magenta,
+  // such as the dark theme's yellow context warning.
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  if (max > 120 && min < max) {
+    if (b === min) return "\x1b[33m";
+    if (r === min) return "\x1b[36m";
+    return "\x1b[35m";
+  }
+
   const brightness = (r + g + b) / 3;
   return brightness > 150 ? "\x1b[37m" : "\x1b[90m";
 }

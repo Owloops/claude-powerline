@@ -128,6 +128,20 @@ describe("Colors", () => {
       expect(hexToBasicAnsi("#FF0000", false)).toContain("31");
     });
 
+    it("should map two-channel colors to yellow, cyan and magenta in basic ANSI", () => {
+      expect(hexToBasicAnsi("#ffff00", false)).toBe("\x1b[33m");
+      expect(hexToBasicAnsi("#00ffff", false)).toBe("\x1b[36m");
+      expect(hexToBasicAnsi("#00d7d7", false)).toBe("\x1b[36m");
+      expect(hexToBasicAnsi("#ff87ff", false)).toBe("\x1b[35m");
+      expect(hexToBasicAnsi("#ffffff", false)).toBe("\x1b[37m");
+      expect(hexToBasicAnsi("#000000", false)).toBe("\x1b[90m");
+
+      const darkAnsi = getTheme("dark", "ansi")!;
+      expect(hexToBasicAnsi(darkAnsi.contextWarning.fg, false)).not.toBe(
+        hexToBasicAnsi(darkAnsi.context.fg, false),
+      );
+    });
+
     it("should select correct theme variants by color support", () => {
       const ansi256Theme = getTheme("nord", "ansi256");
       expect(ansi256Theme?.directory.bg).toBe("#5f87af");
