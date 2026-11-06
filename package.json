@@ -25,7 +25,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "benchmark:timing": "scripts/benchmark_timing.sh",
+    "bench": "node scripts/bench.mjs",
     "prepublishOnly": "npm run lint && npm run typecheck && npm run build"
   },
   "keywords": [

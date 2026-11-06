@@ -1,0 +1,56 @@
+name: Bench
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  bench:
+    name: Bench (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          # The bench builds the base from history in a worktree.
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The checkout is the PR merged into its base, so the merge base with the
+      # base branch is the base's tip: the comparison is main before and after.
+      # Output changes are allowed here; the tests own correctness.
+      - name: Bench the default config
+        run: |
+          base=$(git merge-base HEAD "origin/${{ github.base_ref }}")
+          {
+            echo "### ${{ matrix.os }}: default config"
+            npm run --silent bench -- --base "$base" --quick --check --allow-output-change --pairs 5
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Bench the TUI style
+        if: ${{ !cancelled() }}
+        run: |
+          base=$(git merge-base HEAD "origin/${{ github.base_ref }}")
+          echo '{"display":{"style":"tui"}}' > "$RUNNER_TEMP/tui.json"
+          {
+            echo "### ${{ matrix.os }}: TUI style"
+            npm run --silent bench -- --base "$base" --quick --check --allow-output-change --pairs 5 --config "$RUNNER_TEMP/tui.json"
+          } >> "$GITHUB_STEP_SUMMARY"
