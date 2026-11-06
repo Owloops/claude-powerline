@@ -454,8 +454,9 @@ export class PowerlineRenderer {
       return textWidth + capsuleOverhead;
     }
 
-    const powerlineOverhead = 1 + paddingWidth;
-    return textWidth + powerlineOverhead;
+    // Minimal style draws no separator, so only powerline adds a column.
+    const separatorWidth = visibleLength(this.symbols.right);
+    return textWidth + paddingWidth + separatorWidth;
   }
 
   private buildLineFromSegments(

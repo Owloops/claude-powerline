@@ -251,6 +251,24 @@ describe("widthReserve", () => {
       expect(unwrapped.split("\n").length).toBe(1);
     });
 
+    it("should keep a minimal line that exactly fits the width on one line", async () => {
+      // Minimal style draws no separator, so a segment is only as wide as
+      // its padded text.
+      const oneLine = await new PowerlineRenderer({
+        ...createConfig(0),
+        display: { ...createConfig(0).display, autoWrap: false },
+      }).generateStatusline(mockHookData);
+      const lineWidth = visibleLength(oneLine);
+
+      process.env.COLUMNS = String(lineWidth);
+      const result = await new PowerlineRenderer(
+        createConfig(0),
+      ).generateStatusline(mockHookData);
+
+      expect(result.split("\n")).toHaveLength(1);
+      expect(visibleLength(result)).toBe(lineWidth);
+    });
+
     it("should size the fixed tui panel from the same reserve", async () => {
       process.env.COLUMNS = "100";
       const tuiConfig = (widthReserve?: number): PowerlineConfig => {
