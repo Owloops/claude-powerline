@@ -32,6 +32,24 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      # The README offers `bunx --bun`, so the built CLI must run under Bun and
+      # print what Node prints. An empty store keeps both runs on the same data.
+      - name: Smoke test under Bun
+        run: |
+          store=$(mktemp -d)
+          payload='{"session_id":"smoke","workspace":{"current_dir":"'"$PWD"'"},"model":{"id":"claude-opus-4-5","display_name":"Opus 4.5"},"cost":{"total_cost_usd":1.5,"total_duration_ms":60000,"total_api_duration_ms":20000,"total_lines_added":3,"total_lines_removed":1},"context_window":{"context_window_size":200000,"current_usage":{"input_tokens":10,"output_tokens":5,"cache_creation_input_tokens":100,"cache_read_input_tokens":98000}}}'
+          for style in powerline tui; do
+            node_out=$(echo "$payload" | CLAUDE_CONFIG_DIR="$store" COLUMNS=120 node dist/index.mjs --style=$style)
+            bun_out=$(echo "$payload" | CLAUDE_CONFIG_DIR="$store" COLUMNS=120 bun dist/index.mjs --style=$style)
+            if [ -z "$bun_out" ] || [ "$node_out" != "$bun_out" ]; then
+              printf 'Bun output differs from Node for --style=%s\n--- node\n%s\n--- bun\n%s\n' "$style" "$node_out" "$bun_out"
+              exit 1
+            fi
+          done
+
   release:
     name: Release
     runs-on: ubuntu-latest

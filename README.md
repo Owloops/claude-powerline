@@ -48,6 +48,8 @@ Add to your Claude Code `settings.json`:
 
 Start a Claude session and the statusline appears at the bottom. Using `npx` automatically downloads and runs the latest version without manual updates.
 
+If you have [Bun](https://bun.sh), `bunx --bun @owloops/claude-powerline --style=powerline` is a faster alternative. Keep the `--bun` flag, without it `bunx` runs the package with Node.
+
 ## Powerline Studio
 
 <a href="https://powerline.owloops.com/">
