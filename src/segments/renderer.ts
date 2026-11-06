@@ -24,6 +24,7 @@ import {
   formatCost,
   formatTokens,
   formatTokenCount,
+  formatExactTokenCount,
   formatTokenBreakdown,
   formatTimeSince,
   formatDuration,
@@ -560,7 +561,7 @@ export class SegmentRenderer {
 
       const text = config?.showPercentageOnly
         ? `${bar} ${pct}%`
-        : `${bar} ${contextInfo.totalTokens.toLocaleString()} (${pct}%)`;
+        : `${bar} ${formatExactTokenCount(contextInfo.totalTokens)} (${pct}%)`;
 
       return { text, bgColor, fgColor, bold };
     }
@@ -568,7 +569,7 @@ export class SegmentRenderer {
     const iconPrefix = this.leadingIcon(this.symbols.context_time, config);
     const text = config?.showPercentageOnly
       ? `${iconPrefix}${pct}%`
-      : `${iconPrefix}${contextInfo.totalTokens.toLocaleString()} (${pct}%)`;
+      : `${iconPrefix}${formatExactTokenCount(contextInfo.totalTokens)} (${pct}%)`;
 
     return { text, bgColor, fgColor, bold };
   }
