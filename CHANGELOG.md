@@ -1,3 +1,10 @@
+## [1.32.8](https://github.com/Owloops/claude-powerline/compare/v1.32.7...v1.32.8) (2026-11-06)
+
+
+### Bug Fixes
+
+* **context:** group the token count the same under every locale and runtime ([cd971d0](https://github.com/Owloops/claude-powerline/commit/cd971d0545eb8f3dd2cd42815acba22ba607ef97))
+
 ## [1.32.7](https://github.com/Owloops/claude-powerline/compare/v1.32.6...v1.32.7) (2026-11-06)
 
 
