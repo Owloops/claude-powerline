@@ -1,4 +1,4 @@
-import { readdir, readFile, stat } from "node:fs/promises";
+import { open, readdir, readFile, stat } from "node:fs/promises";
 import { existsSync, createReadStream } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
@@ -345,54 +345,21 @@ export function deduplicateEntries(entries: ParsedEntry[]): ParsedEntry[] {
 
 const STREAMING_THRESHOLD_BYTES = 1024 * 1024;
 
-/**
- * @info Transcripts are append-only, so path + size + mtime identifies their
- * contents exactly. Segments resolve transcripts independently — context and
- * the month's scan of uncached days can both parse the session transcript in
- * the same render — and a status line process is short-lived, so memoising
- * within the render removes the duplicate parse without letting a stale result
- * outlive the file it came from.
- */
-// Holds the in-flight parse, not its result: segments are started together, so
-// they all reach the cache before the first parse resolves and would otherwise
-// every one of them miss.
-const parsedFileCache = new Map<string, Promise<readonly ParsedEntry[]>>();
-
-/**
- * @info The array and its entries are shared between callers. The readonly
- * array makes appending to it a type error; the entries are read-only by
- * convention.
- */
-export async function parseJsonlFile(
-  filePath: string,
-): Promise<readonly ParsedEntry[]> {
+export async function parseJsonlFile(filePath: string): Promise<ParsedEntry[]> {
   try {
     const stats = await stat(filePath);
     const fileSizeBytes = stats.size;
-    const cacheKey = `${filePath}:${fileSizeBytes}:${stats.mtimeMs}`;
+    let entries: ParsedEntry[];
 
-    const cached = parsedFileCache.get(cacheKey);
-    if (cached) {
-      debug(`Reusing parsed entries for ${filePath}`);
-      // Awaited rather than returned, so a cached failure lands in the catch
-      // below like a fresh one instead of rejecting out of here.
-      return await cached;
-    }
-
-    const useStreaming = fileSizeBytes > STREAMING_THRESHOLD_BYTES;
-    if (useStreaming) {
+    if (fileSizeBytes > STREAMING_THRESHOLD_BYTES) {
       debug(
         `Using streaming parser for large file ${filePath} (${Math.round(fileSizeBytes / 1024)}KB)`,
       );
+      entries = await parseJsonlFileStreaming(filePath);
+    } else {
+      entries = await parseJsonlFileInMemory(filePath);
     }
 
-    const parsing = useStreaming
-      ? parseJsonlFileStreaming(filePath)
-      : parseJsonlFileInMemory(filePath);
-
-    parsedFileCache.set(cacheKey, parsing);
-
-    const entries = await parsing;
     debug(`Parsed ${entries.length} entries from ${filePath}`);
 
     return entries;
@@ -553,6 +520,53 @@ export async function readTranscriptFrom(
       : null;
 
   return { entries, end, tail };
+}
+
+export const BACKWARD_CHUNK_BYTES = 64 * 1024;
+
+/**
+ * Parses a transcript from its end, yielding entries last to first, so a caller
+ * after the latest entry of some kind stops reading once it has it. The last
+ * line counts when it parses, newline or not, as in a full parse.
+ */
+export async function* readTranscriptBackwards(
+  filePath: string,
+): AsyncGenerator<ParsedEntry> {
+  const file = await open(filePath, "r");
+  try {
+    let position = (await file.stat()).size;
+    // The end of a line whose start lies in an earlier chunk, as chunks.
+    let partial: Buffer[] = [];
+
+    while (position > 0) {
+      const length = Math.min(BACKWARD_CHUNK_BYTES, position);
+      position -= length;
+      const chunk = Buffer.alloc(length);
+      // A file cut short since the stat reads short; scan only the bytes read.
+      const { bytesRead } = await file.read(chunk, 0, length, position);
+
+      let lineEnd = bytesRead;
+      let newline: number;
+      while (
+        lineEnd > 0 &&
+        (newline = chunk.lastIndexOf(0x0a, lineEnd - 1)) !== -1
+      ) {
+        partial.unshift(chunk.subarray(newline + 1, lineEnd));
+        const entry = parseTranscriptLine(
+          Buffer.concat(partial).toString("utf-8"),
+        );
+        partial = [];
+        lineEnd = newline;
+        if (entry) yield entry;
+      }
+      partial.unshift(chunk.subarray(0, lineEnd));
+    }
+
+    const first = parseTranscriptLine(Buffer.concat(partial).toString("utf-8"));
+    if (first) yield first;
+  } finally {
+    await file.close();
+  }
 }
 
 interface FileStat {
