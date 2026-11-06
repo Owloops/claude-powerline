@@ -2,11 +2,25 @@ import {
   collapseHome,
   filledCells,
   formatDuration,
+  formatExactTokenCount,
   formatModelName,
   formatResponseTime,
   formatTokens,
   pathBelow,
 } from "../src/utils/formatters";
+
+describe("formatExactTokenCount", () => {
+  it.each([
+    [0, "0"],
+    [999, "999"],
+    [1000, "1,000"],
+    [98012, "98,012"],
+    [1234567, "1,234,567"],
+    [1999.6, "2,000"],
+  ])("formats %p as %p", (tokens, expected) => {
+    expect(formatExactTokenCount(tokens)).toBe(expected);
+  });
+});
 
 describe("formatModelName", () => {
   describe("AWS Bedrock models", () => {

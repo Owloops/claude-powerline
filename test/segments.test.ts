@@ -1480,7 +1480,7 @@ describe("Segment Time Logic", () => {
         enabled: true,
         displayStyle: "blocks",
       });
-      expect(withTokens!.text).toContain((100000).toLocaleString());
+      expect(withTokens!.text).toContain("100,000");
       expect(withTokens!.text).toContain("50%");
 
       const pctOnly = renderer.renderContext(mkContext(50), colors, {
@@ -1489,7 +1489,23 @@ describe("Segment Time Logic", () => {
         showPercentageOnly: true,
       });
       expect(pctOnly!.text).toContain("50%");
-      expect(pctOnly!.text).not.toContain((100000).toLocaleString());
+      expect(pctOnly!.text).not.toContain("100,000");
+    });
+
+    // CI runs under an English locale, where toLocaleString groups with "," as
+    // well; a locale that groups differently is what shows the dependency.
+    it("groups the token count the same under any locale", () => {
+      const spy = jest
+        .spyOn(Number.prototype, "toLocaleString")
+        .mockReturnValue("100 000");
+      try {
+        const segment = renderer.renderContext(mkContext(50), colors, {
+          enabled: true,
+        });
+        expect(segment!.text).toContain("100,000");
+      } finally {
+        spy.mockRestore();
+      }
     });
   });
 

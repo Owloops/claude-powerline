@@ -137,6 +137,13 @@ export function formatTokenCount(tokens: number | null): string {
   return formatTokens(tokens).replace(" tokens", "");
 }
 
+// Grouped by hand rather than with toLocaleString, whose separator follows the
+// host locale and the runtime: Node on a Finnish system prints "98 012" where
+// Bun prints "98,012". Every other number in the line has a fixed format too.
+export function formatExactTokenCount(tokens: number): string {
+  return String(Math.round(tokens)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
 export function formatBurnRate(rate: number | null | undefined): string {
   if (rate === null || rate === undefined || rate <= 0) return "";
   return rate < 1 ? `${(rate * 100).toFixed(0)}c/h` : `$${rate.toFixed(2)}/h`;
