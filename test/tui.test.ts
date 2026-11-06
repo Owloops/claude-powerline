@@ -718,6 +718,37 @@ describe("TUI Panel Rendering", () => {
       expect(result["cacheTimer"]).toContain("59:50");
     });
 
+    it.each([true, false])(
+      "resolveSegments honors cacheTimer displayMode and ttlSeconds whether enabled is %s, because grid cell placement controls visibility",
+      (enabled) => {
+        const config: PowerlineConfig = {
+          ...DEFAULT_CONFIG,
+          display: {
+            ...DEFAULT_CONFIG.display,
+            style: "tui",
+            lines: [
+              {
+                segments: {
+                  ...DEFAULT_CONFIG.display.lines[0]!.segments,
+                  cacheTimer: {
+                    enabled,
+                    displayMode: "remaining",
+                    ttlSeconds: 300,
+                  },
+                },
+              },
+            ],
+          },
+        };
+        const data = makeTuiData({
+          cacheTimerInfo: { elapsedSeconds: 250 },
+        });
+        const { data: result } = resolveSegments(data, mkCtx(config, data));
+        expect(result["cacheTimer.value"]).toBe("0:50");
+        expect(result["cacheTimer"]).toContain("0:50");
+      },
+    );
+
     it("resolveSegments exposes outputStyle sub-parts (icon, name) when data present, empty when absent", () => {
       const config: PowerlineConfig = {
         ...DEFAULT_CONFIG,

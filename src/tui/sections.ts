@@ -1244,14 +1244,11 @@ function formatThinkingSegment(
   return iconVisible ? `${sym.thinking} ${body}` : body;
 }
 
+/** Falls back to a disabled entry for grid mode, like getOutputStyleConfig. */
 function getCacheTimerConfig(
   config: PowerlineConfig,
 ): CacheTimerSegmentConfig | undefined {
-  return config.display.lines
-    .map((line) => line.segments.cacheTimer)
-    .find((segment): segment is CacheTimerSegmentConfig =>
-      Boolean(segment?.enabled),
-    );
+  return findConfiguredSegment(config, "cacheTimer");
 }
 function cacheTimerRemaining(
   info: NonNullable<TuiData["cacheTimerInfo"]>,
