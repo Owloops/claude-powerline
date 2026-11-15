@@ -1,7 +1,7 @@
 {
   "_meta": {
     "source": "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json",
-    "updated": "2026-11-08",
+    "updated": "2026-11-15",
     "currency": "USD",
     "unit": "per_million_tokens"
   },
@@ -236,5 +236,21 @@
     "cache_write_5m": 0.13,
     "cache_write_1h": 0.2,
     "cache_read": 0.01
+  },
+  "claude-mythos-5-2": {
+    "name": "claude-mythos-5-2",
+    "input": 8,
+    "output": 40,
+    "cache_write_5m": 10,
+    "cache_write_1h": 16,
+    "cache_read": 0.2
+  },
+  "claude-fable-5-2": {
+    "name": "claude-fable-5-2",
+    "input": 8,
+    "output": 40,
+    "cache_write_5m": 10,
+    "cache_write_1h": 16,
+    "cache_read": 0.2
   }
 }
