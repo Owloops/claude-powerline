@@ -101,4 +101,102 @@ describe("CacheTimerProvider", () => {
     expect(elapsed).toBeGreaterThanOrEqual(29);
     expect(elapsed).toBeLessThanOrEqual(31);
   });
+
+  const infoFor = (hookData: Partial<ClaudeHookData>) =>
+    new CacheTimerProvider().getCacheTimerInfo(hookData as ClaudeHookData);
+
+  const nowSeconds = () => Math.floor(Date.now() / 1000);
+
+  it("takes the timer from Claude Code's prompt cache when it has one", async () => {
+    const info = await infoFor({
+      transcript_path: join(tempDir, "missing.jsonl"),
+      prompt_cache: { warm: true, ttl: "5m", expires_at: nowSeconds() + 200 },
+    });
+    expect(info?.detectedTtlSeconds).toBe(300);
+    expect(info?.elapsedSeconds).toBeGreaterThanOrEqual(99);
+    expect(info?.elapsedSeconds).toBeLessThanOrEqual(101);
+  });
+
+  it("keeps counting past expiry", async () => {
+    const info = await infoFor({
+      prompt_cache: { warm: false, ttl: "1h", expires_at: nowSeconds() - 60 },
+    });
+    expect(info?.detectedTtlSeconds).toBe(3600);
+    expect(info?.elapsedSeconds).toBeGreaterThanOrEqual(3659);
+    expect(info?.elapsedSeconds).toBeLessThanOrEqual(3661);
+  });
+
+  it("falls back to the transcript when the prompt cache has no expiry", async () => {
+    const transcriptPath = join(tempDir, "transcript.jsonl");
+    writeFileSync(
+      transcriptPath,
+      JSON.stringify({
+        type: "user",
+        timestamp: ago(42),
+        message: { content: "hi" },
+      }) + "\n",
+    );
+    const info = await infoFor({
+      transcript_path: transcriptPath,
+      prompt_cache: { warm: false, ttl: "5m", expires_at: null },
+    });
+    expect(info?.elapsedSeconds).toBeGreaterThanOrEqual(41);
+    expect(info?.elapsedSeconds).toBeLessThanOrEqual(43);
+  });
+
+  it("reads the ttl from the last response that wrote to the cache", async () => {
+    const transcriptPath = join(tempDir, "transcript.jsonl");
+    const lines = [
+      {
+        type: "assistant",
+        timestamp: ago(700),
+        message: {
+          usage: { cache_creation: { ephemeral_5m_input_tokens: 10 } },
+        },
+      },
+      {
+        type: "assistant",
+        timestamp: ago(600),
+        message: {
+          usage: { cache_creation: { ephemeral_1h_input_tokens: 10 } },
+        },
+      },
+      { type: "user", timestamp: ago(30), message: { content: "hi" } },
+      {
+        type: "assistant",
+        timestamp: ago(25),
+        message: {
+          usage: { cache_creation: { ephemeral_1h_input_tokens: 0 } },
+        },
+      },
+    ];
+    writeFileSync(
+      transcriptPath,
+      lines.map((l) => JSON.stringify(l)).join("\n") + "\n",
+    );
+    const info = await infoFor({ transcript_path: transcriptPath });
+    expect(info?.detectedTtlSeconds).toBe(3600);
+  });
+
+  it("stops looking back past its bound and anchors on the file's time", async () => {
+    const transcriptPath = join(tempDir, "transcript.jsonl");
+    // The user entry sits behind more bytes than the search reads.
+    writeFileSync(
+      transcriptPath,
+      JSON.stringify({
+        type: "user",
+        timestamp: ago(900),
+        message: { content: "hi" },
+      }) +
+        "\n" +
+        JSON.stringify({
+          type: "assistant",
+          timestamp: ago(890),
+          pad: "x".repeat(5 * 1024 * 1024),
+        }) +
+        "\n",
+    );
+    const info = await infoFor({ transcript_path: transcriptPath });
+    expect(info?.elapsedSeconds).toBeLessThanOrEqual(5);
+  });
 });

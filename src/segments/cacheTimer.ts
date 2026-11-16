@@ -1,6 +1,10 @@
-import { readFile, stat } from "node:fs/promises";
+import { stat } from "node:fs/promises";
 import { debug } from "../utils/logger";
-import type { ClaudeHookData } from "../utils/claude";
+import {
+  parseJsonLine,
+  readLinesBackwards,
+  type ClaudeHookData,
+} from "../utils/claude";
 
 export interface CacheTimerInfo {
   elapsedSeconds: number;
@@ -37,60 +41,96 @@ interface TranscriptEntry {
   };
 }
 
+const TTL_SECONDS: Record<string, number> = { "5m": 300, "1h": 3600 };
+
+/**
+ * How far back from the transcript's end the fallback reads. Both things it
+ * looks for sit in the last few entries; the bound keeps a transcript without
+ * them (caching off, a provider that does not report it), or one ending in a
+ * huge tool result, from being read whole on every render.
+ */
+const TAIL_SEARCH_BYTES = 4 * 1024 * 1024;
+
+interface TranscriptTail {
+  lastUserTimestamp: number | null;
+  ttlSeconds: number | null;
+}
+
 export class CacheTimerProvider {
   async getCacheTimerInfo(
     hookData: ClaudeHookData,
   ): Promise<CacheTimerInfo | null> {
+    const fromHook = this.fromPromptCache(hookData?.prompt_cache);
+    if (fromHook) return fromHook;
+
     const path = hookData?.transcript_path;
     if (!path) {
       debug("CacheTimer: no transcript_path in hookData");
       return null;
     }
 
-    const lines = await this.readTranscriptLines(path);
-    const anchor =
-      (lines && this.lastUserTimestamp(lines)) ?? (await this.fileMtime(path));
+    const tail = await this.readTranscriptTail(path);
+    const anchor = tail.lastUserTimestamp ?? (await this.fileMtime(path));
     if (anchor === null) return null;
 
     const elapsedSeconds = Math.max(
       0,
       Math.floor((Date.now() - anchor) / 1000),
     );
-    const detectedTtlSeconds = lines
-      ? (this.detectTtlSeconds(lines) ?? undefined)
+    return {
+      elapsedSeconds,
+      detectedTtlSeconds: tail.ttlSeconds ?? undefined,
+    };
+  }
+
+  /**
+   * Claude Code's own view of the cache: the lifetime of the cached prefix and
+   * when it goes cold. The time since the cache was last refreshed is the part
+   * of that lifetime already used. Null when Claude Code has not reported a
+   * live cache (before the first response, older versions, caching off).
+   */
+  private fromPromptCache(
+    promptCache: ClaudeHookData["prompt_cache"],
+  ): CacheTimerInfo | null {
+    const ttlSeconds = promptCache?.ttl
+      ? TTL_SECONDS[promptCache.ttl]
       : undefined;
-    return { elapsedSeconds, detectedTtlSeconds };
+    const expiresAt = promptCache?.expires_at;
+    if (ttlSeconds === undefined || typeof expiresAt !== "number") return null;
+
+    const remaining = expiresAt - Date.now() / 1000;
+    return {
+      elapsedSeconds: Math.max(0, Math.floor(ttlSeconds - remaining)),
+      detectedTtlSeconds: ttlSeconds,
+    };
   }
 
-  private async readTranscriptLines(path: string): Promise<string[] | null> {
+  /** What the end of the transcript holds; what was found before a failed read is kept. */
+  private async readTranscriptTail(path: string): Promise<TranscriptTail> {
+    const tail: TranscriptTail = { lastUserTimestamp: null, ttlSeconds: null };
     try {
-      const content = await readFile(path, "utf-8");
-      return content.split("\n");
+      for await (const line of readLinesBackwards(path, TAIL_SEARCH_BYTES)) {
+        const entry = parseJsonLine(line) as TranscriptEntry | null;
+        if (entry) {
+          tail.lastUserTimestamp ??= this.userTimestamp(entry);
+          tail.ttlSeconds ??= this.ttlSeconds(entry);
+        }
+        if (tail.lastUserTimestamp !== null && tail.ttlSeconds !== null) break;
+      }
     } catch (error) {
-      debug(`CacheTimer: readFile failed for ${path}: ${String(error)}`);
-      return null;
+      debug(`CacheTimer: reading ${path} failed: ${String(error)}`);
     }
+    return tail;
   }
 
-  private lastUserTimestamp(lines: string[]): number | null {
-    for (let i = lines.length - 1; i >= 0; i--) {
-      const line = lines[i]?.trim();
-      if (!line) continue;
-      try {
-        const entry = JSON.parse(line) as TranscriptEntry;
-        const messageType =
-          entry.type || entry.message?.role || entry.message?.type;
-        if (messageType !== "user") continue;
-        if (this.isLocalEntry(entry)) continue;
-        if (!entry.timestamp) continue;
-        const t = Date.parse(entry.timestamp);
-        if (Number.isNaN(t)) continue;
-        return t;
-      } catch {
-        continue;
-      }
-    }
-    return null;
+  private userTimestamp(entry: TranscriptEntry): number | null {
+    const messageType =
+      entry.type || entry.message?.role || entry.message?.type;
+    if (messageType !== "user") return null;
+    if (this.isLocalEntry(entry)) return null;
+    if (!entry.timestamp) return null;
+    const t = Date.parse(entry.timestamp);
+    return Number.isNaN(t) ? null : t;
   }
 
   private isLocalEntry(entry: TranscriptEntry): boolean {
@@ -108,22 +148,13 @@ export class CacheTimerProvider {
     return LOCAL_ENTRY_PREFIXES.some((prefix) => trimmed.startsWith(prefix));
   }
 
-  private detectTtlSeconds(lines: string[]): number | null {
-    for (let i = lines.length - 1; i >= 0; i--) {
-      const line = lines[i]?.trim();
-      if (!line) continue;
-      try {
-        const entry = JSON.parse(line) as TranscriptEntry;
-        const role = entry.type || entry.message?.role || entry.message?.type;
-        if (role !== "assistant") continue;
-        const cc = entry.message?.usage?.cache_creation;
-        if (!cc) continue;
-        if ((cc.ephemeral_1h_input_tokens ?? 0) > 0) return 3600;
-        if ((cc.ephemeral_5m_input_tokens ?? 0) > 0) return 300;
-      } catch {
-        continue;
-      }
-    }
+  private ttlSeconds(entry: TranscriptEntry): number | null {
+    const role = entry.type || entry.message?.role || entry.message?.type;
+    if (role !== "assistant") return null;
+    const cc = entry.message?.usage?.cache_creation;
+    if (!cc) return null;
+    if ((cc.ephemeral_1h_input_tokens ?? 0) > 0) return TTL_SECONDS["1h"]!;
+    if ((cc.ephemeral_5m_input_tokens ?? 0) > 0) return TTL_SECONDS["5m"]!;
     return null;
   }
 

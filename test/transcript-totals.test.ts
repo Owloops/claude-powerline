@@ -144,7 +144,7 @@ describe("Session totals across renders", () => {
     jest
       .spyOn(PricingService, "getModelPricing")
       .mockImplementation(async (modelId) => pricing[modelId]!);
-    readSpy = jest.spyOn(claude, "readTranscriptFrom");
+    readSpy = jest.spyOn(claude, "scanLinesFrom");
   });
 
   afterEach(() => {
@@ -220,7 +220,11 @@ describe("Session totals across renders", () => {
     expect(usage!.tokenBreakdown.input).toBe(7);
     // The unchanged agent transcript is not read at all.
     expect(readSpy).toHaveBeenCalledTimes(1);
-    expect(readSpy).toHaveBeenCalledWith(mainPath, sizeBefore);
+    expect(readSpy).toHaveBeenCalledWith(
+      mainPath,
+      sizeBefore,
+      expect.any(Function),
+    );
   });
 
   it("keeps reading from the offset while a transcript is shorter than the 1 KiB its fingerprint covers", async () => {
@@ -234,7 +238,11 @@ describe("Session totals across renders", () => {
       const sizeBefore = statSync(mainPath).size;
       appendFileSync(mainPath, line({ input_tokens: 1 }));
       await render();
-      expect(readSpy).toHaveBeenCalledWith(mainPath, sizeBefore);
+      expect(readSpy).toHaveBeenCalledWith(
+        mainPath,
+        sizeBefore,
+        expect.any(Function),
+      );
     }
     expect(statSync(mainPath).size).toBeLessThan(1024);
   });

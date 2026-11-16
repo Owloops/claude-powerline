@@ -1,8 +1,8 @@
 import type { ClaudeHookData } from "../utils/claude";
 
-import { readFile } from "node:fs/promises";
 import { debug } from "../utils/logger";
-import { findTranscriptFile } from "../utils/claude";
+import { findTranscriptFile, parseJsonLine } from "../utils/claude";
+import { readIncrementally } from "../utils/incremental";
 
 export interface MetricsInfo {
   responseTime: number | null;
@@ -53,85 +53,111 @@ function isUserPrompt(entry: TranscriptEntry): boolean {
   return content?.[0]?.type !== "tool_result";
 }
 
+/** Main-conversation entries; a line that does not parse is not one. */
+function parseEntry(line: string): TranscriptEntry | null {
+  const entry = parseJsonLine(line) as TranscriptEntry | null;
+  return entry?.isSidechain === true ? null : entry;
+}
+
+/**
+ * What the last response time needs of an entry: when it was written, and
+ * whether it is a prompt or a reply. Null `at` is an entry without a usable
+ * timestamp, which still takes a place among the recent entries.
+ */
+interface RecentEntry {
+  at: number | null;
+  kind: "prompt" | "reply" | "other";
+}
+
+function toRecentEntry(entry: TranscriptEntry): RecentEntry {
+  const parsed = entry.timestamp ? Date.parse(entry.timestamp) : NaN;
+  const messageType = entry.type || entry.message?.role || entry.message?.type;
+  return {
+    at: Number.isNaN(parsed) ? null : parsed,
+    kind: isUserPrompt(entry)
+      ? "prompt"
+      : messageType === "assistant"
+        ? "reply"
+        : "other",
+  };
+}
+
+/** How many entries back the last response time looks. */
+const RECENT_ENTRIES = 20;
+
+/** Changed when the saved shape changes, so an older cache reads as a miss. */
+const STATE_KEY = "metrics-v1";
+
+interface TranscriptMetrics {
+  /** Prompts the user sent. */
+  prompts: number;
+  /** The last RECENT_ENTRIES entries, in file order. */
+  recent: RecentEntry[];
+}
+
+/** Adds one transcript line to `metrics` in place. */
+function addLine(metrics: TranscriptMetrics, line: string): void {
+  const entry = parseEntry(line);
+  if (!entry) return;
+  const recent = toRecentEntry(entry);
+  if (recent.kind === "prompt") metrics.prompts++;
+  metrics.recent.push(recent);
+  if (metrics.recent.length > RECENT_ENTRIES) metrics.recent.shift();
+}
+
+function lastResponseTime(recent: RecentEntry[]): number | null {
+  let lastPromptAt: number | null = null;
+  let best: number | null = null;
+
+  for (const entry of recent) {
+    if (entry.at === null) continue;
+    if (entry.kind === "prompt") {
+      lastPromptAt = entry.at;
+    } else if (entry.kind === "reply" && lastPromptAt !== null) {
+      const seconds = (entry.at - lastPromptAt) / 1000;
+      if (seconds > 0.1 && seconds < 300) best = seconds;
+    }
+  }
+
+  return best;
+}
+
 export class MetricsProvider {
-  private async loadTranscriptEntries(
+  /**
+   * The session's prompt count and recent entries. Only what was appended
+   * since the last render is read: what the lines before it gave is cached per
+   * session.
+   */
+  private async readMetrics(
     sessionId: string,
-  ): Promise<TranscriptEntry[]> {
+  ): Promise<{ messageCount: number; lastResponseTime: number | null }> {
     try {
       const transcriptPath = await findTranscriptFile(sessionId);
       if (!transcriptPath) {
         debug(`No transcript found for session: ${sessionId}`);
-        return [];
+        return { messageCount: 0, lastResponseTime: null };
       }
 
-      debug(`Loading transcript from: ${transcriptPath}`);
-
-      const content = await readFile(transcriptPath, "utf-8");
-      const lines = content
-        .trim()
-        .split("\n")
-        .filter((line) => line.trim());
-
-      const entries: TranscriptEntry[] = [];
-
-      for (const line of lines) {
-        try {
-          const entry = JSON.parse(line) as TranscriptEntry;
-
-          if (entry.isSidechain === true) {
-            continue;
-          }
-
-          entries.push(entry);
-        } catch (parseError) {
-          debug(`Failed to parse JSONL line: ${parseError}`);
-          continue;
-        }
-      }
-
-      debug(`Loaded ${entries.length} transcript entries`);
-      return entries;
+      // Only what was appended since the last render is read.
+      const metrics = await readIncrementally<TranscriptMetrics>(
+        {
+          name: `metrics-${sessionId}`,
+          key: STATE_KEY,
+          empty: () => ({ prompts: 0, recent: [] }),
+          save: (state) => state,
+          load: (saved) => saved as TranscriptMetrics,
+          addLine,
+        },
+        [transcriptPath],
+      );
+      return {
+        messageCount: metrics.prompts,
+        lastResponseTime: lastResponseTime(metrics.recent),
+      };
     } catch (error) {
-      debug(`Error loading transcript for ${sessionId}:`, error);
-      return [];
+      debug(`Error reading transcript for ${sessionId}:`, error);
+      return { messageCount: 0, lastResponseTime: null };
     }
-  }
-
-  private calculateMessageCount(entries: TranscriptEntry[]): number {
-    return entries.filter(isUserPrompt).length;
-  }
-
-  private calculateLastResponseTime(entries: TranscriptEntry[]): number | null {
-    if (entries.length === 0) return null;
-
-    const recentEntries = entries.slice(-20);
-
-    let lastUserTime: Date | null = null;
-    let bestResponseTime: number | null = null;
-
-    for (const entry of recentEntries) {
-      if (!entry.timestamp) continue;
-
-      try {
-        const timestamp = new Date(entry.timestamp);
-        const messageType =
-          entry.type || entry.message?.role || entry.message?.type;
-
-        if (isUserPrompt(entry)) {
-          lastUserTime = timestamp;
-        } else if (messageType === "assistant" && lastUserTime) {
-          const responseTime =
-            (timestamp.getTime() - lastUserTime.getTime()) / 1000;
-          if (responseTime > 0.1 && responseTime < 300) {
-            bestResponseTime = responseTime;
-          }
-        }
-      } catch {
-        continue;
-      }
-    }
-
-    return bestResponseTime;
   }
 
   async getMetricsInfo(
@@ -153,9 +179,8 @@ export class MetricsProvider {
         };
       }
 
-      const entries = await this.loadTranscriptEntries(sessionId);
-      const messageCount = this.calculateMessageCount(entries);
-      const lastResponseTime = this.calculateLastResponseTime(entries);
+      const { messageCount, lastResponseTime } =
+        await this.readMetrics(sessionId);
 
       return {
         responseTime: hookData.cost.total_api_duration_ms / 1000,

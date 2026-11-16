@@ -4,7 +4,9 @@ import { tmpdir } from "os";
 import {
   findAgentTranscripts,
   parseJsonlFile,
-  readTranscriptFrom,
+  parseTranscriptLine,
+  readLinesBackwards,
+  scanLinesFrom,
   collectProjectFiles,
   createUniqueHash,
   getOutputStyleName,
@@ -234,7 +236,7 @@ describe("parseJsonlFile", () => {
   });
 });
 
-describe("readTranscriptFrom", () => {
+describe("scanLinesFrom and readLinesBackwards", () => {
   let tempDir: string;
 
   beforeEach(() => {
@@ -258,14 +260,39 @@ describe("readTranscriptFrom", () => {
     const filePath = join(tempDir, "transcript.jsonl");
     writeFileSync(filePath, complete + entryLine("tail").trimEnd());
 
-    const read = await readTranscriptFrom(filePath, Buffer.byteLength(skipped));
+    const ids: (string | undefined)[] = [];
+    const scan = await scanLinesFrom(
+      filePath,
+      Buffer.byteLength(skipped),
+      (line) => ids.push(parseTranscriptLine(line)?.message?.id),
+    );
 
-    expect(read.entries.map((entry) => entry.message?.id)).toEqual([
-      long,
-      "after",
-    ]);
-    expect(read.end).toBe(Buffer.byteLength(complete));
-    expect(read.tail?.message?.id).toBe("tail");
+    expect(ids).toEqual([long, "after"]);
+    expect(scan.end).toBe(Buffer.byteLength(complete));
+    expect(parseTranscriptLine(scan.tail!)?.message?.id).toBe("tail");
+  });
+
+  it("reads lines back to front, the unterminated last line included", async () => {
+    const filePath = join(tempDir, "transcript.jsonl");
+    writeFileSync(filePath, "first\n" + "é".repeat(70_000) + "\nlast");
+
+    const lines: string[] = [];
+    for await (const line of readLinesBackwards(filePath)) lines.push(line);
+
+    expect(lines).toEqual(["last", "é".repeat(70_000), "first"]);
+  });
+
+  it("stops reading back at the byte bound, even inside one long line", async () => {
+    const filePath = join(tempDir, "transcript.jsonl");
+    // One 1 MiB line in front of a short last line.
+    writeFileSync(filePath, "x".repeat(1024 * 1024) + "\nlast\n");
+
+    const lines: string[] = [];
+    for await (const line of readLinesBackwards(filePath, 128 * 1024)) {
+      lines.push(line);
+    }
+
+    expect(lines).toEqual(["", "last"]);
   });
 });
 
