@@ -144,6 +144,27 @@ describe("CacheTimerProvider", () => {
     expect(info?.elapsedSeconds).toBeLessThanOrEqual(43);
   });
 
+  it("falls back to the transcript for a ttl it does not know", async () => {
+    const transcriptPath = join(tempDir, "transcript.jsonl");
+    writeFileSync(
+      transcriptPath,
+      [
+        { type: "user", timestamp: ago(42), message: { content: "hi" } },
+        // Valid JSON, unusable timestamp: skipped, not the end of the search.
+        { type: "user", timestamp: { toString: null } },
+      ]
+        .map((entry) => JSON.stringify(entry))
+        .join("\n") + "\n",
+    );
+    const info = await infoFor({
+      transcript_path: transcriptPath,
+      prompt_cache: { ttl: "toString", expires_at: nowSeconds() + 100 },
+    });
+    expect(info?.detectedTtlSeconds).toBeUndefined();
+    expect(info?.elapsedSeconds).toBeGreaterThanOrEqual(41);
+    expect(info?.elapsedSeconds).toBeLessThanOrEqual(43);
+  });
+
   it("reads the ttl from the last response that wrote to the cache", async () => {
     const transcriptPath = join(tempDir, "transcript.jsonl");
     const lines = [

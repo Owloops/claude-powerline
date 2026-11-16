@@ -92,9 +92,11 @@ export class CacheTimerProvider {
   private fromPromptCache(
     promptCache: ClaudeHookData["prompt_cache"],
   ): CacheTimerInfo | null {
-    const ttlSeconds = promptCache?.ttl
-      ? TTL_SECONDS[promptCache.ttl]
-      : undefined;
+    const ttl = promptCache?.ttl;
+    const ttlSeconds =
+      typeof ttl === "string" && Object.hasOwn(TTL_SECONDS, ttl)
+        ? TTL_SECONDS[ttl]
+        : undefined;
     const expiresAt = promptCache?.expires_at;
     if (ttlSeconds === undefined || typeof expiresAt !== "number") return null;
 
@@ -128,7 +130,7 @@ export class CacheTimerProvider {
       entry.type || entry.message?.role || entry.message?.type;
     if (messageType !== "user") return null;
     if (this.isLocalEntry(entry)) return null;
-    if (!entry.timestamp) return null;
+    if (typeof entry.timestamp !== "string") return null;
     const t = Date.parse(entry.timestamp);
     return Number.isNaN(t) ? null : t;
   }

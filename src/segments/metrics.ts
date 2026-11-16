@@ -70,7 +70,8 @@ interface RecentEntry {
 }
 
 function toRecentEntry(entry: TranscriptEntry): RecentEntry {
-  const parsed = entry.timestamp ? Date.parse(entry.timestamp) : NaN;
+  const parsed =
+    typeof entry.timestamp === "string" ? Date.parse(entry.timestamp) : NaN;
   const messageType = entry.type || entry.message?.role || entry.message?.type;
   return {
     at: Number.isNaN(parsed) ? null : parsed,
@@ -110,10 +111,15 @@ function lastResponseTime(recent: RecentEntry[]): number | null {
   let best: number | null = null;
 
   for (const entry of recent) {
-    if (entry.at === null) continue;
     if (entry.kind === "prompt") {
+      // A reply answers the latest prompt: one without a usable time leaves
+      // nothing to measure from, rather than the prompt before it.
       lastPromptAt = entry.at;
-    } else if (entry.kind === "reply" && lastPromptAt !== null) {
+    } else if (
+      entry.kind === "reply" &&
+      entry.at !== null &&
+      lastPromptAt !== null
+    ) {
       const seconds = (entry.at - lastPromptAt) / 1000;
       if (seconds > 0.1 && seconds < 300) best = seconds;
     }

@@ -129,6 +129,22 @@ describe("Metrics Provider", () => {
     expect(metrics.messageCount).toBe(11);
   });
 
+  it("measures no response time from a prompt without a usable timestamp", async () => {
+    const transcriptPath = join(tempDir, "s1.jsonl");
+    const t0 = Date.UTC(2026, 0, 1);
+    const lines = [
+      prompt("first", t0),
+      JSON.stringify({ type: "user", timestamp: "bad", message: {} }),
+      JSON.stringify({ type: "user", timestamp: { toString: null } }),
+      reply(t0 + 1000),
+    ];
+    writeFileSync(transcriptPath, lines.join("\n") + "\n");
+
+    const metrics = await metricsFor(transcriptPath);
+    expect(metrics.lastResponseTime).toBeNull();
+    expect(metrics.messageCount).toBe(3);
+  });
+
   it("calculates metrics from valid transcript", async () => {
     const now = new Date();
     const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);

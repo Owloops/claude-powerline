@@ -294,6 +294,20 @@ describe("scanLinesFrom and readLinesBackwards", () => {
 
     expect(lines).toEqual(["", "last"]);
   });
+
+  it("holds the byte bound when it is not a whole number of chunks", async () => {
+    const filePath = join(tempDir, "transcript.jsonl");
+    writeFileSync(filePath, "out\nin\n");
+
+    const lines: string[] = [];
+    for await (const line of readLinesBackwards(filePath, 4)) lines.push(line);
+
+    expect(lines).toEqual(["", "in"]);
+  });
+
+  it("skips a line whose JSON has an unusable shape", () => {
+    expect(parseTranscriptLine('{"timestamp":{"toString":null}}')).toBeNull();
+  });
 });
 
 describe("parsed entries retain only what consumers read", () => {

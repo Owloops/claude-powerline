@@ -439,7 +439,15 @@ export function parseJsonLine(line: string): object | null {
 
 export function parseTranscriptLine(line: string): ParsedEntry | null {
   const raw = parseJsonLine(line);
-  return raw ? toParsedEntry(raw as RawTranscriptLine) : null;
+  if (!raw) return null;
+  try {
+    return toParsedEntry(raw as RawTranscriptLine);
+  } catch (error) {
+    // Valid JSON of an unexpected shape is one bad line, not a failed read:
+    // thrown here, it would cost every caller the rest of the transcript.
+    debug(`Failed to read transcript entry: ${error}`);
+    return null;
+  }
 }
 
 async function parseJsonlFileInMemory(
@@ -567,7 +575,11 @@ export async function* readLinesBackwards(
     let partial: Buffer[] = [];
 
     while (position > 0 && size - position < maxBytes) {
-      const length = Math.min(BACKWARD_CHUNK_BYTES, position);
+      const length = Math.min(
+        BACKWARD_CHUNK_BYTES,
+        position,
+        maxBytes - (size - position),
+      );
       position -= length;
       const chunk = Buffer.alloc(length);
       // A file cut short since the stat reads short; scan only the bytes read.
