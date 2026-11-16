@@ -21,6 +21,10 @@ jest.mock("../src/utils/claude", () => ({
   // Today reads transcripts by offset, covered in usage-window.test.ts; here it
   // finds none, leaving the month to its completed days.
   collectAllProjectFiles: jest.fn(async () => []),
+  // The cache timer tests below read real transcript files.
+  readLinesBackwards: jest.requireActual("../src/utils/claude")
+    .readLinesBackwards,
+  parseJsonLine: jest.requireActual("../src/utils/claude").parseJsonLine,
   getEffortLevel: (hookData: any) => {
     const level = hookData?.effort?.level;
     if (typeof level !== "string") return null;

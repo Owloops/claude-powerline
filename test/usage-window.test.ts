@@ -89,7 +89,7 @@ describe("Today and month totals across renders", () => {
       cache_write_1h: 0,
       cache_read: 0,
     });
-    readSpy = jest.spyOn(claude, "readTranscriptFrom");
+    readSpy = jest.spyOn(claude, "scanLinesFrom");
   });
 
   afterEach(() => {
@@ -123,7 +123,11 @@ describe("Today and month totals across renders", () => {
 
     expect(await todayTokens()).toBe(7);
     expect(readSpy).toHaveBeenCalledTimes(1);
-    expect(readSpy).toHaveBeenCalledWith(transcript("p1/s1"), sizeBefore);
+    expect(readSpy).toHaveBeenCalledWith(
+      transcript("p1/s1"),
+      sizeBefore,
+      expect.any(Function),
+    );
   });
 
   it("picks up a transcript created since the last render", async () => {
@@ -191,7 +195,11 @@ describe("Today and month totals across renders", () => {
       .mockReturnValue({ ...options, timeZone: "Not/ThisZone" });
     readSpy.mockClear();
     expect(await todayTokens()).toBe(1);
-    expect(readSpy).toHaveBeenCalledWith(transcript("p1/s1"), 0);
+    expect(readSpy).toHaveBeenCalledWith(
+      transcript("p1/s1"),
+      0,
+      expect.any(Function),
+    );
   });
 
   it("adds completed days to today for the month", async () => {
