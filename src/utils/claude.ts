@@ -43,6 +43,17 @@ export interface ClaudeHookData {
     } | null;
   };
   exceeds_200k_tokens?: boolean;
+  /**
+   * The main conversation's prompt cache, as Claude Code tracks it from the
+   * API's cache token counts (Claude Code 2.1.251+). Absent until the first
+   * API response.
+   */
+  prompt_cache?: {
+    warm?: boolean;
+    ttl?: string;
+    /** Epoch seconds; null when the last response reported no cache tokens. */
+    expires_at?: number | null;
+  };
   rate_limits?: {
     five_hour?: {
       used_percentage: number;
@@ -413,13 +424,28 @@ function toParsedEntry(raw: RawTranscriptLine): ParsedEntry | null {
   };
 }
 
-function parseTranscriptLine(line: string): ParsedEntry | null {
+/** The object on a JSONL line; null for a blank line, malformed JSON or a non-object. */
+export function parseJsonLine(line: string): object | null {
   const trimmed = line.trim();
   if (!trimmed) return null;
   try {
-    return toParsedEntry(JSON.parse(trimmed));
+    const value: unknown = JSON.parse(trimmed);
+    return typeof value === "object" ? value : null;
   } catch (parseError) {
     debug(`Failed to parse JSONL line: ${parseError}`);
+    return null;
+  }
+}
+
+export function parseTranscriptLine(line: string): ParsedEntry | null {
+  const raw = parseJsonLine(line);
+  if (!raw) return null;
+  try {
+    return toParsedEntry(raw as RawTranscriptLine);
+  } catch (error) {
+    // Valid JSON of an unexpected shape is one bad line, not a failed read:
+    // thrown here, it would cost every caller the rest of the transcript.
+    debug(`Failed to read transcript entry: ${error}`);
     return null;
   }
 }
@@ -470,29 +496,40 @@ async function parseJsonlFileStreaming(
   });
 }
 
-export interface TranscriptRead {
-  /** Entries on the complete lines read, in file order. */
-  entries: ParsedEntry[];
+/**
+ * A line gathered from one or more chunks. Most lines lie within one chunk,
+ * and decoding that slice directly skips a copy.
+ */
+function decodeLine(parts: Buffer[]): string {
+  return parts.length === 1
+    ? parts[0]!.toString("utf-8")
+    : Buffer.concat(parts).toString("utf-8");
+}
+
+export interface LineScan {
   /** Offset just past the last newline read, where the next read resumes. */
   end: number;
   /**
-   * The entry on a last line not yet ended by a newline, when it parses.
-   * Claude Code may still be writing that line, so `end` stops before it.
+   * A last line not yet ended by a newline. Claude Code may still be writing
+   * it, so `end` stops before it.
    */
-  tail: ParsedEntry | null;
+  tail: string | null;
 }
 
 /**
- * Parses a transcript from byte offset `start` to its end. Streams, like
- * parseJsonlFileStreaming, so the first read of a large transcript does not
- * hold the whole file in memory.
+ * Hands each complete line from byte offset `start` to the end of a file to
+ * `onLine`, in file order. Streams, so the first read of a large transcript
+ * does not hold the whole file in memory: a caller that keeps less than the
+ * lines it sees keeps memory flat.
  */
-export async function readTranscriptFrom(
+export async function scanLinesFrom(
   filePath: string,
   start: number,
-): Promise<TranscriptRead> {
-  const entries: ParsedEntry[] = [];
+  onLine: (line: string) => void,
+): Promise<LineScan> {
   let end = start;
+  // Where the current chunk starts in the file.
+  let chunkStart = start;
   // The unterminated start of the next line, as chunks: a tool result line can
   // span many of them, and concatenating once per line keeps that linear.
   let partial: Buffer[] = [];
@@ -503,43 +540,46 @@ export async function readTranscriptFrom(
     let newline: number;
     while ((newline = buffer.indexOf(0x0a, lineStart)) !== -1) {
       partial.push(buffer.subarray(lineStart, newline));
-      const line = Buffer.concat(partial);
+      const line = decodeLine(partial);
       partial = [];
-      end += line.length + 1;
+      end = chunkStart + newline + 1;
       lineStart = newline + 1;
-
-      const entry = parseTranscriptLine(line.toString("utf-8"));
-      if (entry) entries.push(entry);
+      onLine(line);
     }
     if (lineStart < buffer.length) partial.push(buffer.subarray(lineStart));
+    chunkStart += buffer.length;
   }
 
-  const tail =
-    partial.length > 0
-      ? parseTranscriptLine(Buffer.concat(partial).toString("utf-8"))
-      : null;
-
-  return { entries, end, tail };
+  return { end, tail: partial.length > 0 ? decodeLine(partial) : null };
 }
 
 export const BACKWARD_CHUNK_BYTES = 64 * 1024;
 
 /**
- * Parses a transcript from its end, yielding entries last to first, so a caller
- * after the latest entry of some kind stops reading once it has it. The last
- * line counts when it parses, newline or not, as in a full parse.
+ * Yields the lines of a file last to first, reading it from its end in
+ * chunks, so a caller after the latest line of some kind reads only as far
+ * back as that line. The last line is yielded whether or not a newline ends
+ * it. With `maxBytes`, reading stops once that much of the file's end was
+ * read, and a line reaching further back is not yielded: a caller is bounded
+ * even by one huge line.
  */
-export async function* readTranscriptBackwards(
+export async function* readLinesBackwards(
   filePath: string,
-): AsyncGenerator<ParsedEntry> {
+  maxBytes = Infinity,
+): AsyncGenerator<string> {
   const file = await open(filePath, "r");
   try {
-    let position = (await file.stat()).size;
+    const size = (await file.stat()).size;
+    let position = size;
     // The end of a line whose start lies in an earlier chunk, as chunks.
     let partial: Buffer[] = [];
 
-    while (position > 0) {
-      const length = Math.min(BACKWARD_CHUNK_BYTES, position);
+    while (position > 0 && size - position < maxBytes) {
+      const length = Math.min(
+        BACKWARD_CHUNK_BYTES,
+        position,
+        maxBytes - (size - position),
+      );
       position -= length;
       const chunk = Buffer.alloc(length);
       // A file cut short since the stat reads short; scan only the bytes read.
@@ -552,20 +592,31 @@ export async function* readTranscriptBackwards(
         (newline = chunk.lastIndexOf(0x0a, lineEnd - 1)) !== -1
       ) {
         partial.unshift(chunk.subarray(newline + 1, lineEnd));
-        const entry = parseTranscriptLine(
-          Buffer.concat(partial).toString("utf-8"),
-        );
+        const line = decodeLine(partial);
         partial = [];
         lineEnd = newline;
-        if (entry) yield entry;
+        yield line;
       }
       partial.unshift(chunk.subarray(0, lineEnd));
     }
 
-    const first = parseTranscriptLine(Buffer.concat(partial).toString("utf-8"));
-    if (first) yield first;
+    // The file's first line; when reading stopped early, only part of a line.
+    if (position === 0) yield decodeLine(partial);
   } finally {
     await file.close();
+  }
+}
+
+/**
+ * Parses a transcript from its end, yielding entries last to first. The last
+ * line counts when it parses, newline or not, as in a full parse.
+ */
+export async function* readTranscriptBackwards(
+  filePath: string,
+): AsyncGenerator<ParsedEntry> {
+  for await (const line of readLinesBackwards(filePath)) {
+    const entry = parseTranscriptLine(line);
+    if (entry) yield entry;
   }
 }
 
