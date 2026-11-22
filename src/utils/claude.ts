@@ -8,6 +8,8 @@ import { debug } from "./logger";
 export interface ClaudeHookData {
   hook_event_name: string;
   session_id: string;
+  session_name?: string;
+  prompt_id?: string;
   transcript_path: string;
   cwd: string;
   model: {
@@ -17,6 +19,13 @@ export interface ClaudeHookData {
   workspace: {
     current_dir: string;
     project_dir: string;
+    added_dirs?: string[];
+    git_worktree?: string;
+    repo?: {
+      host: string;
+      owner: string;
+      name: string;
+    };
   };
   version?: string;
   output_style?: {
@@ -53,7 +62,27 @@ export interface ClaudeHookData {
     ttl?: string;
     /** Epoch seconds; null when the last response reported no cache tokens. */
     expires_at?: number | null;
+    caching_observed?: boolean;
+    requests?: number;
+    misses?: number;
+    expected_rebuilds?: number;
+    /** 0 to 1; null while the session has no input tokens. */
+    hit_ratio?: number | null;
+    cache_write_tokens?: number;
+    miss_recache_tokens?: number;
+    /** Epoch seconds; null while the session has no misses. */
+    last_miss_at?: number | null;
+    /** Claude Code 2.1.260+; null when the last miss has no known cause. */
+    last_miss_cause?: {
+      causes: string[];
+      tools_added?: number;
+      tools_removed?: number;
+      system_char_delta?: number;
+    } | null;
+    miss_causes?: Record<string, number>;
+    recache_tokens_if_cold?: number | null;
   };
+  fast_mode?: boolean;
   rate_limits?: {
     five_hour?: {
       used_percentage: number;
@@ -63,6 +92,26 @@ export interface ClaudeHookData {
       used_percentage: number;
       resets_at: number;
     };
+    spend_limit?: {
+      used_percentage: number;
+      resets_at: number;
+      used_usd?: number;
+      limit_usd?: number;
+      /** "daily", "weekly" or "monthly" */
+      period?: string;
+    };
+  };
+  vim?: {
+    /** "NORMAL", "INSERT", "VISUAL" or "VISUAL LINE" */
+    mode: string;
+  };
+  pr?: {
+    number: number;
+    url: string;
+    /** "approved", "pending", "changes_requested" or "draft" */
+    review_state?: string;
+    /** "mr" for a GitLab merge request, absent for a GitHub pull request */
+    kind?: string;
   };
   worktree?: {
     name: string;
