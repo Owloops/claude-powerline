@@ -1,3 +1,10 @@
+# [1.33.0](https://github.com/Owloops/claude-powerline/compare/v1.32.9...v1.33.0) (2026-11-22)
+
+
+### Features
+
+* **types:** describe the current statusline fields in ClaudeHookData ([c5471ad](https://github.com/Owloops/claude-powerline/commit/c5471ad0b3160f417b98cd34c2c8ef12ba04d7c4))
+
 ## [1.32.9](https://github.com/Owloops/claude-powerline/compare/v1.32.8...v1.32.9) (2026-11-22)
 
 
