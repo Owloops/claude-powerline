@@ -1,3 +1,15 @@
+## [1.32.9](https://github.com/Owloops/claude-powerline/compare/v1.32.8...v1.32.9) (2026-11-22)
+
+
+### Bug Fixes
+
+* **segments:** keep one unusable transcript line from ending a read ([e8f0ad9](https://github.com/Owloops/claude-powerline/commit/e8f0ad98d5aad3bcc7ae0652421a79ead58e07c2))
+
+
+### Performance Improvements
+
+* **segments:** stop metrics and cacheTimer from reading whole transcripts ([01ab1bd](https://github.com/Owloops/claude-powerline/commit/01ab1bd31d1cea3565441b134b2315590de0745b))
+
 ## [1.32.8](https://github.com/Owloops/claude-powerline/compare/v1.32.7...v1.32.8) (2026-11-06)
 
 
