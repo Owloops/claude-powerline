@@ -155,6 +155,43 @@ function resolveThresholdStyle(
   return { fg: defaultFg, bold: defaultBold };
 }
 
+/** The block segment's color from its usage level, for its text and its bar. */
+export function blockStyle(
+  blockInfo: TuiData["blockInfo"] & {},
+  colors: PowerlineColors,
+  config: PowerlineConfig | undefined,
+  defaultFg = colors.blockFg,
+): { fg: string; bold: boolean } {
+  return resolveThresholdStyle(
+    // Rounded like the text, so 79.6% shown as "80%" gets the 80% color
+    Math.round(blockInfo.nativeUtilization),
+    defaultFg,
+    colors.blockBold,
+    colors,
+    config,
+    "block",
+    blockInfo.timeRemaining,
+  );
+}
+
+/** The weekly segment's color from its usage level, for its text and its bar. */
+export function weeklyStyle(
+  sevenDay: { used_percentage: number; resets_at: number },
+  colors: PowerlineColors,
+  config: PowerlineConfig | undefined,
+  defaultFg = colors.weeklyFg,
+): { fg: string; bold: boolean } {
+  return resolveThresholdStyle(
+    Math.round(sevenDay.used_percentage),
+    defaultFg,
+    colors.weeklyBold,
+    colors,
+    config,
+    "weekly",
+    minutesUntilReset(sevenDay.resets_at),
+  );
+}
+
 function buildBarString(
   pct: number,
   barWidth: number,
@@ -249,18 +286,12 @@ export function buildBlockBar(
 ): string {
   if (!data.blockInfo) return "";
 
-  // Rounded like the text beside the bar, so 79.6% shown as "80%" gets the 80% color
   const pct = Math.round(data.blockInfo.nativeUtilization);
-  const defaultFg =
-    partFg?.["block.bar"] ?? partFg?.["block"] ?? colors.blockFg;
-  const { fg, bold } = resolveThresholdStyle(
-    pct,
-    defaultFg,
-    colors.blockBold,
+  const { fg, bold } = blockStyle(
+    data.blockInfo,
     colors,
     config,
-    "block",
-    data.blockInfo.timeRemaining,
+    partFg?.["block.bar"] ?? partFg?.["block"] ?? colors.blockFg,
   );
   const pacePct = resolvePacePct(config, "block", data.blockInfo.timeRemaining);
   return buildBarString(pct, barWidth, sym, reset, fg, bold, pacePct);
@@ -280,16 +311,11 @@ export function buildWeeklyBar(
 
   const pct = Math.round(sevenDay.used_percentage);
   const minutesRemaining = minutesUntilReset(sevenDay.resets_at);
-  const defaultFg =
-    partFg?.["weekly.bar"] ?? partFg?.["weekly"] ?? colors.weeklyFg;
-  const { fg, bold } = resolveThresholdStyle(
-    pct,
-    defaultFg,
-    colors.weeklyBold,
+  const { fg, bold } = weeklyStyle(
+    sevenDay,
     colors,
     config,
-    "weekly",
-    minutesRemaining,
+    partFg?.["weekly.bar"] ?? partFg?.["weekly"] ?? colors.weeklyFg,
   );
   const pacePct = resolvePacePct(config, "weekly", minutesRemaining);
   return buildBarString(pct, barWidth, sym, reset, fg, bold, pacePct);
@@ -350,6 +376,7 @@ export function collectMetricSegments(
   const segments: string[] = [];
 
   if (data.blockInfo) {
+    const { fg, bold } = blockStyle(data.blockInfo, colors, config);
     segments.push(
       colorize(
         formatBlockSegment(
@@ -358,14 +385,15 @@ export function collectMetricSegments(
           config,
           resolveIconVisibility(config, "block"),
         ),
-        colors.blockFg,
+        fg,
         reset,
-        colors.blockBold,
+        bold,
       ),
     );
   }
   const sevenDay = data.hookData.rate_limits?.seven_day;
   if (sevenDay) {
+    const { fg, bold } = weeklyStyle(sevenDay, colors, config);
     segments.push(
       colorize(
         formatWeeklySegment(
@@ -374,9 +402,9 @@ export function collectMetricSegments(
           config,
           resolveIconVisibility(config, "weekly"),
         ),
-        colors.weeklyFg,
+        fg,
         reset,
-        colors.weeklyBold,
+        bold,
       ),
     );
   }
@@ -1511,20 +1539,25 @@ export function resolveSegments(
 
   // Block
   if (data.blockInfo) {
-    const blockColor = pf?.["block"] ?? colors.blockFg;
+    const block = blockStyle(
+      data.blockInfo,
+      colors,
+      config,
+      pf?.["block"] ?? colors.blockFg,
+    );
     result.block = colorizeOrEmpty(
       formatBlockSegment(data.blockInfo, sym, config, iconVisible.block),
-      blockColor,
-      colors.blockBold,
+      block.fg,
+      block.bold,
     );
     addParts(
       result,
       "block",
       formatBlockParts(data.blockInfo, sym, config, iconVisible.block),
-      colors.blockFg,
+      block.fg,
       reset,
       pf,
-      colors.blockBold,
+      block.bold,
     );
   } else {
     result.block = "";
@@ -1596,20 +1629,25 @@ export function resolveSegments(
   // Weekly
   const sevenDay = data.hookData.rate_limits?.seven_day;
   if (sevenDay) {
-    const weeklyColor = pf?.["weekly"] ?? colors.weeklyFg;
+    const weekly = weeklyStyle(
+      sevenDay,
+      colors,
+      config,
+      pf?.["weekly"] ?? colors.weeklyFg,
+    );
     result.weekly = colorizeOrEmpty(
       formatWeeklySegment(sevenDay, sym, config, iconVisible.weekly),
-      weeklyColor,
-      colors.weeklyBold,
+      weekly.fg,
+      weekly.bold,
     );
     addParts(
       result,
       "weekly",
       formatWeeklyParts(sevenDay, sym, config, iconVisible.weekly),
-      colors.weeklyFg,
+      weekly.fg,
       reset,
       pf,
-      colors.weeklyBold,
+      weekly.bold,
     );
   } else {
     result.weekly = "";

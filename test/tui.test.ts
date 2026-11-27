@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { renderTuiPanel } from "../src/tui/renderer";
+import { renderMediumMetrics, renderNarrowMetrics } from "../src/tui/layouts";
 import {
   resolveSegments,
   formatTodayParts,
@@ -1668,6 +1669,34 @@ describe("TUI Panel Rendering", () => {
       expect(
         buildWeeklyBar(data(), 10, sym, "", colors, undefined, config),
       ).not.toMatch(/^<(warn|crit)>/);
+    });
+
+    it("colors the block and weekly text the same way in every layout", () => {
+      const config = withSegments({
+        block: { enabled: true, type: "cost", criticalThreshold: 30 },
+        weekly: { enabled: true, warningThreshold: 10 },
+      });
+      const newCtx = () => ({ ...mkCtx(config, data()), colors });
+      const block = /<crit>[^<]*35%/;
+      const weekly = /<warn>[^<]*20%/;
+
+      const wide = collectMetricSegments(data(), SYMBOLS, config, "", colors);
+      expect(wide.join(" ")).toMatch(block);
+      expect(wide.join(" ")).toMatch(weekly);
+
+      for (const render of [renderMediumMetrics, renderNarrowMetrics]) {
+        const ctx = newCtx();
+        render(ctx);
+        expect(ctx.lines.join("\n")).toMatch(block);
+        expect(ctx.lines.join("\n")).toMatch(weekly);
+      }
+
+      const ctx = newCtx();
+      const grid = resolveSegments(ctx.data, ctx).data;
+      expect(grid.block).toMatch(block);
+      expect(grid["block.value"]).toMatch(/^<crit>/);
+      expect(grid.weekly).toMatch(weekly);
+      expect(grid["weekly.pct"]).toMatch(/^<warn>/);
     });
   });
 });
