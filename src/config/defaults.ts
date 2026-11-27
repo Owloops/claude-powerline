@@ -45,6 +45,7 @@ export const DEFAULT_CONFIG: PowerlineConfig = {
             burnType: "cost",
             displayStyle: "text",
             showPace: false,
+            colorBy: "usage",
             warningThreshold: 50,
             // No criticalThreshold: it falls back to budget.block.warningThreshold
           },
@@ -52,6 +53,7 @@ export const DEFAULT_CONFIG: PowerlineConfig = {
             enabled: false,
             displayStyle: "text",
             showPace: false,
+            colorBy: "usage",
             warningThreshold: 50,
             criticalThreshold: 80,
           },

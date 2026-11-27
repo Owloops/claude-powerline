@@ -41,7 +41,11 @@ import {
   WEEKLY_WINDOW_MINUTES,
 } from "../utils/formatters";
 import { resolveBudgetDisplay } from "../utils/budget";
-import { usageLevel, type UsageThresholdConfig } from "../utils/thresholds";
+import {
+  usageLevel,
+  type RateLimitColorConfig,
+  type UsageThresholdConfig,
+} from "../utils/thresholds";
 import type { BudgetItemConfig } from "../config/loader";
 import { shouldShowIcon } from "../utils/icon-visibility";
 import { SYMBOLS } from "../utils/constants";
@@ -123,7 +127,7 @@ export interface MetricsSegmentConfig extends SegmentConfig {
 
 export interface BlockSegmentConfig
   extends SegmentConfig,
-    UsageThresholdConfig {
+    RateLimitColorConfig {
   type: "cost" | "tokens" | "both" | "time" | "weighted";
   burnType?: "cost" | "tokens" | "both" | "none";
   displayStyle?: BarDisplayStyle;
@@ -156,7 +160,7 @@ export interface EnvSegmentConfig extends SegmentConfig {
 
 export interface WeeklySegmentConfig
   extends SegmentConfig,
-    UsageThresholdConfig {
+    RateLimitColorConfig {
   displayStyle?: BarDisplayStyle;
   /** Show the usage an even spend would have reached by now (default: false). */
   showPace?: boolean;
@@ -738,7 +742,13 @@ export class SegmentRenderer {
   ): SegmentData {
     const pct = Math.round(blockInfo.nativeUtilization);
     const timeStr = formatLongTimeRemaining(blockInfo.timeRemaining);
-    const level = usageLevel("block", pct, config, this.config.budget);
+    const level = usageLevel(
+      "block",
+      pct,
+      config,
+      this.config.budget,
+      blockInfo.timeRemaining,
+    );
     const pacePct = config?.showPace
       ? pacePercentage(blockInfo.timeRemaining, BLOCK_WINDOW_MINUTES)
       : undefined;
@@ -778,7 +788,13 @@ export class SegmentRenderer {
     const pacePct = config?.showPace
       ? pacePercentage(timeRemaining, WEEKLY_WINDOW_MINUTES)
       : undefined;
-    const level = usageLevel("weekly", pct, config, this.config.budget);
+    const level = usageLevel(
+      "weekly",
+      pct,
+      config,
+      this.config.budget,
+      timeRemaining,
+    );
 
     let bgColor = colors.weeklyBg;
     let fgColor = colors.weeklyFg;

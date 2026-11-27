@@ -139,12 +139,14 @@ function resolveThresholdStyle(
   colors: PowerlineColors,
   config: PowerlineConfig | undefined,
   key: "context" | "block" | "weekly",
+  minutesRemaining?: number,
 ): { fg: string; bold: boolean } {
   const level = usageLevel(
     key,
     pct,
     config && findConfiguredSegment(config, key),
     config?.budget,
+    minutesRemaining,
   );
   if (level === "critical")
     return { fg: colors.contextCriticalFg, bold: colors.contextCriticalBold };
@@ -258,6 +260,7 @@ export function buildBlockBar(
     colors,
     config,
     "block",
+    data.blockInfo.timeRemaining,
   );
   const pacePct = resolvePacePct(config, "block", data.blockInfo.timeRemaining);
   return buildBarString(pct, barWidth, sym, reset, fg, bold, pacePct);
@@ -276,6 +279,7 @@ export function buildWeeklyBar(
   if (!sevenDay) return "";
 
   const pct = Math.round(sevenDay.used_percentage);
+  const minutesRemaining = minutesUntilReset(sevenDay.resets_at);
   const defaultFg =
     partFg?.["weekly.bar"] ?? partFg?.["weekly"] ?? colors.weeklyFg;
   const { fg, bold } = resolveThresholdStyle(
@@ -285,12 +289,9 @@ export function buildWeeklyBar(
     colors,
     config,
     "weekly",
+    minutesRemaining,
   );
-  const pacePct = resolvePacePct(
-    config,
-    "weekly",
-    minutesUntilReset(sevenDay.resets_at),
-  );
+  const pacePct = resolvePacePct(config, "weekly", minutesRemaining);
   return buildBarString(pct, barWidth, sym, reset, fg, bold, pacePct);
 }
 

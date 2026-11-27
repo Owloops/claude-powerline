@@ -1652,5 +1652,22 @@ describe("TUI Panel Rendering", () => {
         buildBlockBar(data(), 10, SYMBOLS as any, "", colors, config),
       ).toMatch(/^<crit>/);
     });
+
+    it("colors the bars by distance from the pace with colorBy pace", () => {
+      // 258 of the 300 block minutes left puts its pace at 14%, 4 of the 7
+      // days left puts the weekly pace at 43%.
+      const config = withSegments({
+        block: { enabled: true, type: "cost", colorBy: "pace" },
+        weekly: { enabled: true, colorBy: "pace", warningThreshold: 10 },
+      });
+      const sym = SYMBOLS as any;
+
+      expect(buildBlockBar(data(), 10, sym, "", colors, config)).toMatch(
+        /^<crit>/,
+      );
+      expect(
+        buildWeeklyBar(data(), 10, sym, "", colors, undefined, config),
+      ).not.toMatch(/^<(warn|crit)>/);
+    });
   });
 });

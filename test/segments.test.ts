@@ -1071,6 +1071,34 @@ describe("Segment Time Logic", () => {
       expect(at(80, 75)).toBe(colors.contextCriticalBg);
     });
 
+    it("should color by distance from the pace with colorBy pace", () => {
+      const config = { theme: "dark", display: { style: "minimal" } } as any;
+      const colors = {
+        blockBg: "#2a2a2a",
+        contextWarningBg: "#92400e",
+        contextCriticalBg: "#991b1b",
+      } as any;
+      const renderer = new SegmentRenderer(config, { block_cost: "◱" } as any);
+      const at = (pct: number, timeRemaining: number) =>
+        renderer.renderBlock(
+          { nativeUtilization: pct, timeRemaining },
+          colors,
+          {
+            enabled: true,
+            type: "cost",
+            colorBy: "pace",
+          },
+        );
+
+      // 3 of the 5 hours left puts the pace at 40%.
+      const over = at(60, 180);
+      expect(over.text).toBe("◱ 60% (3h)");
+      expect(over.bgColor).toBe(colors.contextCriticalBg);
+      expect(at(45, 180).bgColor).toBe(colors.contextWarningBg);
+      // 85% used with 30 minutes left is under the 90% pace.
+      expect(at(85, 30).bgColor).toBe(colors.blockBg);
+    });
+
     it("should show the pace and keep the usage-based colors with showPace", () => {
       const config = { theme: "dark", display: { style: "minimal" } } as any;
       const symbols = {
@@ -1323,6 +1351,25 @@ describe("Segment Time Logic", () => {
             },
           },
         }) as ClaudeHookData;
+
+      it("should color by distance from the pace with colorBy pace", () => {
+        const at = (usedPercentage: number, secondsUntilReset?: number) =>
+          renderer.renderWeekly(
+            weekly(usedPercentage, secondsUntilReset),
+            colors,
+            {
+              enabled: true,
+              colorBy: "pace",
+            },
+          )!.bgColor;
+
+        expect(at(47)).toBe(colors.weeklyBg);
+        expect(at(48)).toBe(colors.contextWarningBg);
+        expect(at(58)).toBe(colors.contextCriticalBg);
+        // 85% used a day before the reset is under the 86% pace.
+        expect(at(85, 86400)).toBe(colors.weeklyBg);
+        expect(at(95, 3600)).toBe(colors.contextCriticalBg);
+      });
 
       it("should leave the text untouched when disabled", () => {
         const result = renderer.renderWeekly(weekly(60), colors, {
