@@ -32,6 +32,7 @@ import {
   formatCacheTimerRemaining,
 } from "../utils/formatters";
 import { resolveBudgetDisplay } from "../utils/budget";
+import { usageLevel } from "../utils/thresholds";
 import type {
   CacheTimerSegmentConfig,
   OutputStyleSegmentConfig,
@@ -136,12 +137,18 @@ function resolveThresholdStyle(
   defaultFg: string,
   defaultBold: boolean,
   colors: PowerlineColors,
-  warningAt = 60,
-  criticalAt = 80,
+  config: PowerlineConfig | undefined,
+  key: "context" | "block" | "weekly",
 ): { fg: string; bold: boolean } {
-  if (pct >= criticalAt)
+  const level = usageLevel(
+    key,
+    pct,
+    config && findConfiguredSegment(config, key),
+    config?.budget,
+  );
+  if (level === "critical")
     return { fg: colors.contextCriticalFg, bold: colors.contextCriticalBold };
-  if (pct >= warningAt)
+  if (level === "warning")
     return { fg: colors.contextWarningFg, bold: colors.contextWarningBold };
   return { fg: defaultFg, bold: defaultBold };
 }
@@ -212,6 +219,7 @@ export function buildContextBar(
   reset: string,
   colors: PowerlineColors,
   partFg?: Record<string, string>,
+  config?: PowerlineConfig,
 ): string {
   if (!data.contextInfo) return "";
   const usedPct = data.contextInfo.usablePercentage;
@@ -222,6 +230,8 @@ export function buildContextBar(
     defaultFg,
     colors.contextBold,
     colors,
+    config,
+    "context",
   );
   return buildBarString(usedPct, barWidth, sym, reset, fg, bold);
 }
@@ -239,7 +249,6 @@ export function buildBlockBar(
 
   // Rounded like the text beside the bar, so 79.6% shown as "80%" gets the 80% color
   const pct = Math.round(data.blockInfo.nativeUtilization);
-  const warningThreshold = config.budget?.block?.warningThreshold ?? 80;
   const defaultFg =
     partFg?.["block.bar"] ?? partFg?.["block"] ?? colors.blockFg;
   const { fg, bold } = resolveThresholdStyle(
@@ -247,8 +256,8 @@ export function buildBlockBar(
     defaultFg,
     colors.blockBold,
     colors,
-    50,
-    warningThreshold,
+    config,
+    "block",
   );
   const pacePct = resolvePacePct(config, "block", data.blockInfo.timeRemaining);
   return buildBarString(pct, barWidth, sym, reset, fg, bold, pacePct);
@@ -269,14 +278,13 @@ export function buildWeeklyBar(
   const pct = Math.round(sevenDay.used_percentage);
   const defaultFg =
     partFg?.["weekly.bar"] ?? partFg?.["weekly"] ?? colors.weeklyFg;
-  // Same thresholds as the weekly powerline segment
   const { fg, bold } = resolveThresholdStyle(
     pct,
     defaultFg,
     colors.weeklyBold,
     colors,
-    50,
-    80,
+    config,
+    "weekly",
   );
   const pacePct = resolvePacePct(
     config,
@@ -292,6 +300,7 @@ export function buildContextLine(
   sym: SymbolSet,
   reset: string,
   colors: PowerlineColors,
+  config?: PowerlineConfig,
 ): string | null {
   if (!data.contextInfo) {
     return null;
@@ -312,6 +321,8 @@ export function buildContextLine(
     colors.contextFg,
     colors.contextBold,
     colors,
+    config,
+    "context",
   );
 
   return colorize(`${bar}${suffix}`, fg, reset, bold);
@@ -1481,6 +1492,7 @@ export function resolveSegments(
     sym,
     reset,
     colors,
+    config,
   );
   result.context = contextLine ?? "";
   const ctxParts = formatContextParts(data, sym, iconVisible.context);
@@ -1490,6 +1502,8 @@ export function resolveSegments(
         colors.contextFg,
         colors.contextBold,
         colors,
+        config,
+        "context",
       )
     : { fg: colors.contextFg, bold: colors.contextBold };
   addParts(result, "context", ctxParts, ctxStyle.fg, reset, pf, ctxStyle.bold);

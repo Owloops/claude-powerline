@@ -120,10 +120,12 @@ export async function renderTuiPanel(
       cellWidth: number,
     ): string | undefined => {
       if (segment === "context") {
-        return buildContextLine(data, cellWidth, sym, reset, colors) ?? "";
+        return (
+          buildContextLine(data, cellWidth, sym, reset, colors, config) ?? ""
+        );
       }
       if (segment === "context.bar") {
-        return buildContextBar(data, cellWidth, sym, reset, colors, pf);
+        return buildContextBar(data, cellWidth, sym, reset, colors, pf, config);
       }
       if (segment === "block.bar") {
         return buildBlockBar(data, cellWidth, sym, reset, colors, config, pf);
@@ -179,7 +181,14 @@ export async function renderTuiPanel(
 
   lines.push(buildTitleBar(data, box, innerWidth));
 
-  const contextLine = buildContextLine(data, contentWidth, sym, reset, colors);
+  const contextLine = buildContextLine(
+    data,
+    contentWidth,
+    sym,
+    reset,
+    colors,
+    config,
+  );
   if (contextLine) {
     lines.push(contentRow(box, contextLine, innerWidth));
   }

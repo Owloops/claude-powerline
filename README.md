@@ -281,6 +281,7 @@ Opt-in (`enabled: false` by default). Resets on the 1st of each month.
 - `displayStyle`: Visual style for context display (default: `"text"`)
 - `autocompactBuffer`: Number of tokens reserved as the auto-compact trigger zone (default: `33000`). The usable percentage reflects how close you are to the point where compaction fires. Set to `0` if you have auto-compact disabled to show raw context usage instead
 - `percentageMode`: How to display the percentage. `"remaining"` counts down from 100% (context left), `"used"` counts up from 0% (context consumed). Default depends on display style: `"remaining"` for `text`, `"used"` for bar styles
+- `warningThreshold` / `criticalThreshold`: Percent used for the warning/critical color, whatever `percentageMode` shows (default: `60` / `80`)
 
 **Display Styles:**
 
@@ -340,6 +341,7 @@ at all, i.e. on versions older than 2.0.65.
 
 - `displayStyle`: Visual style for utilization display (see table below)
 - `showPace`: Compare usage against an even spend over the window (default: `false`, see Pace below)
+- `warningThreshold` / `criticalThreshold`: Usage % for the warning/critical color (default: `50` / `budget.block.warningThreshold`, else `80`)
 
 Requires Claude Code's native `rate_limits` hook data (Claude.ai Pro/Max subscribers). Displays the official 5-hour utilization percentage and reset countdown. Hidden when native data is unavailable.
 
@@ -382,6 +384,7 @@ Requires Claude Code's native `rate_limits` hook data (Claude.ai Pro/Max subscri
 
 - `displayStyle`: Visual style for utilization display - same options as the block segment (see table above)
 - `showPace`: Compare usage against an even spend over the window - same behavior as the block segment (see Pace above)
+- `warningThreshold` / `criticalThreshold`: Usage % for the warning/critical color (default: `50` / `80`)
 
 Only visible when Claude Code provides native `rate_limits.seven_day` data (Claude.ai Pro/Max subscribers). Hidden when the data is not available.
 

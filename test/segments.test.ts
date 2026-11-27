@@ -1041,6 +1041,36 @@ describe("Segment Time Logic", () => {
       expect(at90.bgColor).toBe(colors.contextCriticalBg);
     });
 
+    it("should take the thresholds from the config, critical falling back to the budget's", () => {
+      const config = {
+        theme: "dark",
+        display: { style: "minimal" },
+        budget: { block: { warningThreshold: 90 } },
+      } as any;
+      const colors = {
+        blockBg: "#2a2a2a",
+        contextWarningBg: "#92400e",
+        contextCriticalBg: "#991b1b",
+      } as any;
+      const renderer = new SegmentRenderer(config, { block_cost: "◱" } as any);
+      const at = (pct: number, criticalThreshold?: number) =>
+        renderer.renderBlock(
+          { nativeUtilization: pct, timeRemaining: 60 },
+          colors,
+          {
+            enabled: true,
+            type: "cost",
+            warningThreshold: 70,
+            criticalThreshold,
+          },
+        ).bgColor;
+
+      expect(at(60)).toBe(colors.blockBg);
+      expect(at(80)).toBe(colors.contextWarningBg);
+      expect(at(90)).toBe(colors.contextCriticalBg);
+      expect(at(80, 75)).toBe(colors.contextCriticalBg);
+    });
+
     it("should show the pace and keep the usage-based colors with showPace", () => {
       const config = { theme: "dark", display: { style: "minimal" } } as any;
       const symbols = {
@@ -1237,6 +1267,33 @@ describe("Segment Time Logic", () => {
 
       const result = renderer.renderWeekly(hookData, colors);
       expect(result).toBeNull();
+    });
+
+    it("should take the warning/critical thresholds from the config", () => {
+      const config = { theme: "dark", display: { style: "minimal" } } as any;
+      const colors = {
+        weeklyBg: "#2a2a3a",
+        contextWarningBg: "#92400e",
+        contextCriticalBg: "#991b1b",
+      } as any;
+      const renderer = new SegmentRenderer(config, { weekly_cost: "◑" } as any);
+      const at = (usedPercentage: number) =>
+        renderer.renderWeekly(
+          {
+            rate_limits: {
+              seven_day: {
+                used_percentage: usedPercentage,
+                resets_at: Math.floor(Date.now() / 1000) + 4 * 24 * 3600,
+              },
+            },
+          } as ClaudeHookData,
+          colors,
+          { enabled: true, warningThreshold: 70, criticalThreshold: 90 },
+        )!.bgColor;
+
+      expect(at(69)).toBe(colors.weeklyBg);
+      expect(at(70)).toBe(colors.contextWarningBg);
+      expect(at(90)).toBe(colors.contextCriticalBg);
     });
 
     describe("showPace", () => {
@@ -1477,6 +1534,19 @@ describe("Segment Time Logic", () => {
         displayStyle: "blocks",
       });
       expect(normal!.bgColor).toBe(colors.contextBg);
+    });
+
+    it("should take the warning/critical thresholds from the config", () => {
+      const at = (usedPct: number) =>
+        renderer.renderContext(mkContext(usedPct), colors, {
+          enabled: true,
+          warningThreshold: 25,
+          criticalThreshold: 50,
+        })!.bgColor;
+
+      expect(at(24)).toBe(colors.contextBg);
+      expect(at(25)).toBe(colors.contextWarningBg);
+      expect(at(50)).toBe(colors.contextCriticalBg);
     });
 
     it("should toggle token count display with showPercentageOnly", () => {
