@@ -1,3 +1,12 @@
+# [1.34.0](https://github.com/Owloops/claude-powerline/compare/v1.33.0...v1.34.0) (2026-11-28)
+
+
+### Features
+
+* **segments:** add colorBy pace to block and weekly ([119e959](https://github.com/Owloops/claude-powerline/commit/119e95940a888cf4d47e823bdeb85e9e94dd758a))
+* **segments:** add warningThreshold and criticalThreshold to context, block and weekly ([eb9954d](https://github.com/Owloops/claude-powerline/commit/eb9954d78977c91d461758213f904e350a9aa208)), closes [#163](https://github.com/Owloops/claude-powerline/issues/163)
+* **tui:** color block and weekly text by usage level ([cd9b08a](https://github.com/Owloops/claude-powerline/commit/cd9b08ac6284e143d2ff11ecb1d4b59ce1058c17))
+
 # [1.33.0](https://github.com/Owloops/claude-powerline/compare/v1.32.9...v1.33.0) (2026-11-22)
 
 
