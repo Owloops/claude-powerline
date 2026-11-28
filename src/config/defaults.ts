@@ -45,8 +45,18 @@ export const DEFAULT_CONFIG: PowerlineConfig = {
             burnType: "cost",
             displayStyle: "text",
             showPace: false,
+            colorBy: "usage",
+            warningThreshold: 50,
+            // No criticalThreshold: it falls back to budget.block.warningThreshold
           },
-          weekly: { enabled: false, displayStyle: "text", showPace: false },
+          weekly: {
+            enabled: false,
+            displayStyle: "text",
+            showPace: false,
+            colorBy: "usage",
+            warningThreshold: 50,
+            criticalThreshold: 80,
+          },
           version: { enabled: false },
           tmux: { enabled: false },
           sessionId: { enabled: false, showIdLabel: true },
@@ -55,6 +65,8 @@ export const DEFAULT_CONFIG: PowerlineConfig = {
             showPercentageOnly: false,
             displayStyle: "text",
             autocompactBuffer: 33000,
+            warningThreshold: 60,
+            criticalThreshold: 80,
           },
           metrics: {
             enabled: false,

@@ -281,6 +281,7 @@ Opt-in (`enabled: false` by default). Resets on the 1st of each month.
 - `displayStyle`: Visual style for context display (default: `"text"`)
 - `autocompactBuffer`: Number of tokens reserved as the auto-compact trigger zone (default: `33000`). The usable percentage reflects how close you are to the point where compaction fires. Set to `0` if you have auto-compact disabled to show raw context usage instead
 - `percentageMode`: How to display the percentage. `"remaining"` counts down from 100% (context left), `"used"` counts up from 0% (context consumed). Default depends on display style: `"remaining"` for `text`, `"used"` for bar styles
+- `warningThreshold` / `criticalThreshold`: Percent used for the warning/critical color, whatever `percentageMode` shows (default: `60` / `80`)
 
 **Display Styles:**
 
@@ -340,6 +341,8 @@ at all, i.e. on versions older than 2.0.65.
 
 - `displayStyle`: Visual style for utilization display (see table below)
 - `showPace`: Compare usage against an even spend over the window (default: `false`, see Pace below)
+- `warningThreshold` / `criticalThreshold`: Usage % for the warning/critical color (default: `50` / `budget.block.warningThreshold`, else `80`)
+- `colorBy`: `"usage"` or `"pace"` (default: `"usage"`, see Pace colors below)
 
 Requires Claude Code's native `rate_limits` hook data (Claude.ai Pro/Max subscribers). Displays the official 5-hour utilization percentage and reset countdown. Hidden when native data is unavailable.
 
@@ -360,6 +363,8 @@ Requires Claude Code's native `rate_limits` hook data (Claude.ai Pro/Max subscri
 | `ball` | `◱ ──●─────── 23% (4h 12m)` |
 
 **Pace:** `showPace` adds the usage an even spend would have reached by now, after the actual usage: `◱ 60%/40% (3h)` in text style, `◱ ▰▰▰▰◆▰▱▱▱▱ 60%/40% (3h)` in bar styles (`◆` over pace, `◇` otherwise, `◈` where it meets the `ball` style's ball). The `tui` style shows `60%/40%`, and its `block.bar`/`weekly.bar` grid cells mark the pace the same way.
+
+**Pace colors:** `colorBy: "pace"` colors by how far usage runs ahead of the pace, in place of the thresholds: warning from 5 points over, critical from 15 points over or at 95% used.
 
 **Symbols:**
 
@@ -382,6 +387,8 @@ Requires Claude Code's native `rate_limits` hook data (Claude.ai Pro/Max subscri
 
 - `displayStyle`: Visual style for utilization display - same options as the block segment (see table above)
 - `showPace`: Compare usage against an even spend over the window - same behavior as the block segment (see Pace above)
+- `warningThreshold` / `criticalThreshold`: Usage % for the warning/critical color (default: `50` / `80`)
+- `colorBy`: Same as the block segment (see Pace colors above)
 
 Only visible when Claude Code provides native `rate_limits.seven_day` data (Claude.ai Pro/Max subscribers). Hidden when the data is not available.
 

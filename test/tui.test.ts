@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { renderTuiPanel } from "../src/tui/renderer";
+import { renderMediumMetrics, renderNarrowMetrics } from "../src/tui/layouts";
 import {
   resolveSegments,
   formatTodayParts,
@@ -12,11 +13,13 @@ import {
   formatWeeklySegment,
   buildBlockBar,
   buildWeeklyBar,
+  buildContextBar,
+  buildContextLine,
 } from "../src/tui/sections";
 import type { TuiData, BoxChars, RenderCtx } from "../src/tui/types";
 import { isValidSegmentRef, SEGMENT_PARTS } from "../src/tui/types";
 import type { PowerlineColors } from "../src/themes";
-import type { PowerlineConfig } from "../src/config/loader";
+import type { LineConfig, PowerlineConfig } from "../src/config/loader";
 import type { OutputStyleSegmentConfig } from "../src/segments/renderer";
 import { BOX_CHARS, SYMBOLS } from "../src/utils/constants";
 import { truncateAnsi } from "../src/tui/primitives";
@@ -1589,6 +1592,111 @@ describe("TUI Panel Rendering", () => {
       );
       expect(result).toContain("60%/40%");
       expect(result).toContain("20%/43%");
+    });
+  });
+
+  describe("usage thresholds (TUI)", () => {
+    const colors = {
+      ...PLAIN_COLORS,
+      contextWarningFg: "<warn>",
+      contextCriticalFg: "<crit>",
+    };
+    const withSegments = (
+      segments: Partial<LineConfig["segments"]>,
+      budget?: PowerlineConfig["budget"],
+    ): PowerlineConfig => ({
+      ...DEFAULT_CONFIG,
+      budget,
+      display: { ...DEFAULT_CONFIG.display, lines: [{ segments }] },
+    });
+    // Context 45% used, block 35%, weekly 20%.
+    const data = () => {
+      const tuiData = makeTuiData();
+      tuiData.hookData.rate_limits = {
+        seven_day: {
+          used_percentage: 20,
+          resets_at: Math.floor(Date.now() / 1000) + 4 * 86400,
+        },
+      };
+      return tuiData;
+    };
+
+    it("colors the bars from the segments' thresholds", () => {
+      const config = withSegments({
+        context: { enabled: true, warningThreshold: 40 },
+        block: { enabled: true, type: "cost", criticalThreshold: 30 },
+        weekly: { enabled: true, warningThreshold: 10 },
+      });
+      const sym = SYMBOLS as any;
+
+      expect(
+        buildContextBar(data(), 10, sym, "", colors, undefined, config),
+      ).toMatch(/^<warn>/);
+      expect(buildContextLine(data(), 40, sym, "", colors, config)).toMatch(
+        /^<warn>/,
+      );
+      expect(buildBlockBar(data(), 10, sym, "", colors, config)).toMatch(
+        /^<crit>/,
+      );
+      expect(
+        buildWeeklyBar(data(), 10, sym, "", colors, undefined, config),
+      ).toMatch(/^<warn>/);
+    });
+
+    it("falls back to budget.block.warningThreshold for the block's critical", () => {
+      const config = withSegments(
+        { block: { enabled: true, type: "cost" } },
+        { block: { warningThreshold: 30 } },
+      );
+
+      expect(
+        buildBlockBar(data(), 10, SYMBOLS as any, "", colors, config),
+      ).toMatch(/^<crit>/);
+    });
+
+    it("colors the bars by distance from the pace with colorBy pace", () => {
+      // 258 of the 300 block minutes left puts its pace at 14%, 4 of the 7
+      // days left puts the weekly pace at 43%.
+      const config = withSegments({
+        block: { enabled: true, type: "cost", colorBy: "pace" },
+        weekly: { enabled: true, colorBy: "pace", warningThreshold: 10 },
+      });
+      const sym = SYMBOLS as any;
+
+      expect(buildBlockBar(data(), 10, sym, "", colors, config)).toMatch(
+        /^<crit>/,
+      );
+      expect(
+        buildWeeklyBar(data(), 10, sym, "", colors, undefined, config),
+      ).not.toMatch(/^<(warn|crit)>/);
+    });
+
+    it("colors the block and weekly text the same way in every layout", () => {
+      const config = withSegments({
+        block: { enabled: true, type: "cost", criticalThreshold: 30 },
+        weekly: { enabled: true, warningThreshold: 10 },
+      });
+      const newCtx = () => ({ ...mkCtx(config, data()), colors });
+      const block = /<crit>[^<]*35%/;
+      const weekly = /<warn>[^<]*20%/;
+
+      const wide = collectMetricSegments(data(), SYMBOLS, config, "", colors);
+      expect(wide.join(" ")).toMatch(block);
+      expect(wide.join(" ")).toMatch(weekly);
+
+      for (const render of [renderMediumMetrics, renderNarrowMetrics]) {
+        const ctx = newCtx();
+        render(ctx);
+        expect(ctx.lines.join("\n")).toMatch(block);
+        expect(ctx.lines.join("\n")).toMatch(weekly);
+      }
+
+      const ctx = newCtx();
+      const grid = resolveSegments(ctx.data, ctx).data;
+      expect(grid.block).toMatch(block);
+      expect(grid["block.value"]).toMatch(/^<crit>/);
+      expect(grid.weekly).toMatch(weekly);
+      expect(grid["weekly.pct"]).toMatch(/^<warn>/);
     });
   });
 });

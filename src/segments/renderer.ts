@@ -41,6 +41,11 @@ import {
   WEEKLY_WINDOW_MINUTES,
 } from "../utils/formatters";
 import { resolveBudgetDisplay } from "../utils/budget";
+import {
+  usageLevel,
+  type RateLimitColorConfig,
+  type UsageThresholdConfig,
+} from "../utils/thresholds";
 import type { BudgetItemConfig } from "../config/loader";
 import { shouldShowIcon } from "../utils/icon-visibility";
 import { SYMBOLS } from "../utils/constants";
@@ -102,7 +107,9 @@ export type BarDisplayStyle =
   | "line"
   | "squares";
 
-export interface ContextSegmentConfig extends SegmentConfig {
+export interface ContextSegmentConfig
+  extends SegmentConfig,
+    UsageThresholdConfig {
   showPercentageOnly?: boolean;
   displayStyle?: BarDisplayStyle;
   autocompactBuffer?: number;
@@ -118,7 +125,9 @@ export interface MetricsSegmentConfig extends SegmentConfig {
   showLinesRemoved?: boolean;
 }
 
-export interface BlockSegmentConfig extends SegmentConfig {
+export interface BlockSegmentConfig
+  extends SegmentConfig,
+    RateLimitColorConfig {
   type: "cost" | "tokens" | "both" | "time" | "weighted";
   burnType?: "cost" | "tokens" | "both" | "none";
   displayStyle?: BarDisplayStyle;
@@ -149,7 +158,9 @@ export interface EnvSegmentConfig extends SegmentConfig {
   prefix?: string;
 }
 
-export interface WeeklySegmentConfig extends SegmentConfig {
+export interface WeeklySegmentConfig
+  extends SegmentConfig,
+    RateLimitColorConfig {
   displayStyle?: BarDisplayStyle;
   /** Show the usage an even spend would have reached by now (default: false). */
   showPace?: boolean;
@@ -534,15 +545,21 @@ export class SegmentRenderer {
       };
     }
 
+    const level = usageLevel(
+      "context",
+      contextInfo.usablePercentage,
+      config,
+      this.config.budget,
+    );
     let bgColor = colors.contextBg;
     let fgColor = colors.contextFg;
     let bold = colors.contextBold;
 
-    if (contextInfo.contextLeftPercentage <= 20) {
+    if (level === "critical") {
       bgColor = colors.contextCriticalBg;
       fgColor = colors.contextCriticalFg;
       bold = colors.contextCriticalBold;
-    } else if (contextInfo.contextLeftPercentage <= 40) {
+    } else if (level === "warning") {
       bgColor = colors.contextWarningBg;
       fgColor = colors.contextWarningFg;
       bold = colors.contextWarningBold;
@@ -725,8 +742,13 @@ export class SegmentRenderer {
   ): SegmentData {
     const pct = Math.round(blockInfo.nativeUtilization);
     const timeStr = formatLongTimeRemaining(blockInfo.timeRemaining);
-    const blockBudget = this.config.budget?.block;
-    const warningThreshold = blockBudget?.warningThreshold ?? 80;
+    const level = usageLevel(
+      "block",
+      pct,
+      config,
+      this.config.budget,
+      blockInfo.timeRemaining,
+    );
     const pacePct = config?.showPace
       ? pacePercentage(blockInfo.timeRemaining, BLOCK_WINDOW_MINUTES)
       : undefined;
@@ -734,11 +756,11 @@ export class SegmentRenderer {
     let bgColor = colors.blockBg;
     let fgColor = colors.blockFg;
     let bold = colors.blockBold;
-    if (pct >= warningThreshold) {
+    if (level === "critical") {
       bgColor = colors.contextCriticalBg;
       fgColor = colors.contextCriticalFg;
       bold = colors.contextCriticalBold;
-    } else if (pct >= 50) {
+    } else if (level === "warning") {
       bgColor = colors.contextWarningBg;
       fgColor = colors.contextWarningFg;
       bold = colors.contextWarningBold;
@@ -766,15 +788,22 @@ export class SegmentRenderer {
     const pacePct = config?.showPace
       ? pacePercentage(timeRemaining, WEEKLY_WINDOW_MINUTES)
       : undefined;
+    const level = usageLevel(
+      "weekly",
+      pct,
+      config,
+      this.config.budget,
+      timeRemaining,
+    );
 
     let bgColor = colors.weeklyBg;
     let fgColor = colors.weeklyFg;
     let bold = colors.weeklyBold;
-    if (pct >= 80) {
+    if (level === "critical") {
       bgColor = colors.contextCriticalBg;
       fgColor = colors.contextCriticalFg;
       bold = colors.contextCriticalBold;
-    } else if (pct >= 50) {
+    } else if (level === "warning") {
       bgColor = colors.contextWarningBg;
       fgColor = colors.contextWarningFg;
       bold = colors.contextWarningBold;

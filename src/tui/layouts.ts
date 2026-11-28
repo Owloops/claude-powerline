@@ -19,6 +19,8 @@ import {
   formatSessionSegment,
   formatTodaySegment,
   resolveSessionCost,
+  blockStyle,
+  weeklyStyle,
 } from "./sections";
 
 // --- Wide layout (80+ cols): metrics on 1 line, workspace+footer on 1 line ---
@@ -90,23 +92,25 @@ export function renderMediumMetrics(ctx: RenderCtx): void {
   const showSessionIcon = resolveIconVisibility(config, "session");
 
   if (data.blockInfo) {
+    const { fg, bold } = blockStyle(data.blockInfo, colors, config);
     line1Parts.push(
       colorize(
         formatBlockSegment(data.blockInfo, sym, config, showBlockIcon),
-        colors.blockFg,
+        fg,
         reset,
-        colors.blockBold,
+        bold,
       ),
     );
   }
   const sevenDay = data.hookData.rate_limits?.seven_day;
   if (sevenDay) {
+    const { fg, bold } = weeklyStyle(sevenDay, colors, config);
     line1Parts.push(
       colorize(
         formatWeeklySegment(sevenDay, sym, config, showWeeklyIcon),
-        colors.weeklyFg,
+        fg,
         reset,
-        colors.weeklyBold,
+        bold,
       ),
     );
   }
@@ -220,14 +224,15 @@ export function renderNarrowMetrics(ctx: RenderCtx): void {
   const showTodayIcon = resolveIconVisibility(config, "today");
 
   if (data.blockInfo) {
+    const { fg, bold } = blockStyle(data.blockInfo, colors, config);
     lines.push(
       contentRow(
         box,
         colorize(
           formatBlockSegment(data.blockInfo, sym, config, showBlockIcon),
-          colors.blockFg,
+          fg,
           reset,
-          colors.blockBold,
+          bold,
         ),
         innerWidth,
       ),
@@ -235,14 +240,15 @@ export function renderNarrowMetrics(ctx: RenderCtx): void {
   }
   const narrowSevenDay = data.hookData.rate_limits?.seven_day;
   if (narrowSevenDay) {
+    const { fg, bold } = weeklyStyle(narrowSevenDay, colors, config);
     lines.push(
       contentRow(
         box,
         colorize(
           formatWeeklySegment(narrowSevenDay, sym, config, showWeeklyIcon),
-          colors.weeklyFg,
+          fg,
           reset,
-          colors.weeklyBold,
+          bold,
         ),
         innerWidth,
       ),
